@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DefaultThreadFactory implements ThreadFactory {
     final ThreadGroup group;
-    final AtomicInteger threadNumber = new AtomicInteger(1);
+    final AtomicInteger threadNumber = new AtomicInteger(0);
     final String namePrefix;
 
     DefaultThreadFactory(String groupName, String threadNamePrefix) {
@@ -29,6 +29,15 @@ public class DefaultThreadFactory implements ThreadFactory {
     public Thread newThread(Runnable r) {
         Thread t = new Thread(group, r,
                               namePrefix + threadNumber.getAndIncrement(),
+                              0);
+        t.setDaemon(getDaemon());
+        t.setPriority(getPriority());
+        return t;
+    }
+    
+    public Thread newNamedThread(String name, Runnable r) {
+        Thread t = new Thread(group, r,
+                              namePrefix + threadNumber.getAndIncrement()+"-"+ name,
                               0);
         t.setDaemon(getDaemon());
         t.setPriority(getPriority());

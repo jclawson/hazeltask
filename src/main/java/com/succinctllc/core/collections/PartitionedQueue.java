@@ -1,6 +1,7 @@
 package com.succinctllc.core.collections;
 
 import java.util.AbstractQueue;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -64,11 +65,13 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 	public boolean offer(E e) {
 		String partition = e.getPartition();
 		Queue<E> q = getOrCreatePartitionQueue(partition);
-		return q.offer(e);
+		boolean result = q.offer(e);
+		notify();
+		return result;
 	}
 	
 	
-
+	//FIXME: guarantee that it will return non-null if queue is not empty (up to router?)
 	public E peek() {
 		ITrackedQueue<E> oldestQueue = partitionRouter.peekPartition();
 		if(oldestQueue != null)
@@ -77,6 +80,7 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 			return null;
 	}
 
+	//FIXME: guarantee that it will return non-null if queue is not empty (up to router?)
 	public E poll() {
 		ITrackedQueue<E> oldestQueue = partitionRouter.nextPartition();
 		if(oldestQueue != null)
@@ -85,9 +89,72 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 			return null;
 	}
 	
+
+	/**
+	 * This iterator does not guarantee it will iterate in insertion order.  It will
+	 * simply iterate each partition queue one by one
+	 * @return
+	 */
 	@Override
 	public Iterator<E> iterator() {
-		throw new RuntimeException("not implemented yet");
+		return new FastPartitionedQueueIterator();
+	}
+	
+	public class FastPartitionedQueueIterator implements Iterator<E> {
+		private final List<Iterator<E>> queueIterators; 
+		private int currentQueue = 0;
+		
+		public FastPartitionedQueueIterator(){
+			queueIterators = new ArrayList<Iterator<E>>(partitions.size());
+			for(ITrackedQueue<E> q : partitions.values()) {
+				queueIterators.add(q.iterator());
+			}
+		}
+		
+		private Iterator<E> getIterator(){
+			if(currentQueue >= queueIterators.size()) {
+				return null;
+			}
+			
+			Iterator<E> it = queueIterators.get(currentQueue);	
+			
+			do {
+				if(it.hasNext()) {
+					return it;
+				}
+				currentQueue++;
+				it = queueIterators.get(currentQueue);
+			} while(currentQueue < queueIterators.size());
+			
+			if(it.hasNext()) {
+				return it;
+			} else {
+				return null;
+			}
+		}
+		
+		public boolean hasNext() {
+			Iterator<E> it = getIterator();
+			if(it != null)
+				return true;
+			else
+				return false;
+		}
+
+		public E next() {
+			Iterator<E> it = getIterator();
+			if(it != null)
+				return it.next();
+			else
+				return null;
+		}
+
+		public void remove() {
+			Iterator<E> it = queueIterators.get(currentQueue);
+			if(it != null)
+				it.remove();
+		}
+		
 	}
 
 	@Override
