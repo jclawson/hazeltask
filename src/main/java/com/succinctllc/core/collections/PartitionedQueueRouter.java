@@ -2,21 +2,21 @@ package com.succinctllc.core.collections;
 
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Callable;
 
 import com.succinctllc.core.collections.tracked.ITrackedQueue;
+import com.succinctllc.executor.router.RoundRobinRouter;
+import com.succinctllc.executor.router.RouteSkipAdapter;
 
 public class PartitionedQueueRouter {
 	public static interface PartitionRouter<E extends Partitionable> {
 		public ITrackedQueue<E> nextPartition();
 		public ITrackedQueue<E> peekPartition();
+		public void setPartitionedQueueue(PartitionedQueue<E> queue);
 	}
 	
 	public static class InOrderRouter<E extends Partitionable> implements PartitionRouter<E> {
-		private final PartitionedQueue<E> queue;
-		public InOrderRouter(PartitionedQueue<E> queue){
-			this.queue = queue;
-		}
+		private PartitionedQueue<E> queue;
 		
 		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
@@ -38,34 +38,44 @@ public class PartitionedQueueRouter {
 			}
 			return oldestQueue;
 		}
+
+        public void setPartitionedQueueue(PartitionedQueue<E> queue) {
+            this.queue = queue;
+        }
 		
 	}
 	
+	
 	public static class RoundRobinPartition<E extends Partitionable> implements PartitionRouter<E> {
-		private final AtomicInteger lastIndex = new AtomicInteger(0);
-		private final PartitionedQueue<E> queue;
+		//private final AtomicReference lastPartition = new AtomicReference();
+		private PartitionedQueue<E> queue;
 		
-		public RoundRobinPartition(PartitionedQueue<E> queue){
-			this.queue = queue;
-		}
+		private RoundRobinRouter<String> router;
+		
 		
 		public ITrackedQueue<E> nextPartition() {
-			List<String> partitions = queue.getPartitions();
-			int size = partitions.size();
-			if(size > 0) {
-				lastIndex.compareAndSet(size, 0);
-				int index = lastIndex.getAndIncrement();
-				if(index >= size)
-					index = 0;
-				String partition = queue.getPartitions().get(index);
-				queue.getPartitionMap().get(partition);
-			}
-			return null;
+		    String partition = router.next();
+		    if(partition == null)
+		        return null;
+		    return queue.getPartition(partition);
 		}	
 		
+		//TODO: it would be nice if peek really worked... but not necessary
 		public ITrackedQueue<E> peekPartition() {
-			return queue.getPartitionMap().get(queue.getPartitions().get(lastIndex.get()));
+			return nextPartition();
 		}
+
+        public void setPartitionedQueueue(final PartitionedQueue<E> queue) {
+            this.queue = queue;
+            router = new RoundRobinRouter<String>(new Callable<List<String>>(){
+                public List<String> call() throws Exception {
+                    return queue.getPartitions();
+                }}, new RouteSkipAdapter<String>() {
+                    public boolean shouldSkip(String item) {
+                        return queue.getPartition(item).size() == 0;
+                    }
+                });
+        }
 	}
 	
 	public static class WeightedPartitionRouter<E extends Partitionable> implements PartitionRouter<E> {
@@ -86,6 +96,10 @@ public class PartitionedQueueRouter {
 		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
 		}
+
+        public void setPartitionedQueueue(PartitionedQueue<E> queue) {
+           
+        }
 		
 	}
 	

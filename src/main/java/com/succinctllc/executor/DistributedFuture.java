@@ -9,19 +9,19 @@ import com.hazelcast.partition.Partition;
 
 public class DistributedFuture<V> implements Future<V>, WorkKeyable {
 
-	private final WorkKey key;
+	private final WorkReference key;
 	private final DistributedWorkTopology topology;
 	
-    public DistributedFuture(DistributedWorkTopology topology, WorkKey key) {
+    public DistributedFuture(DistributedWorkTopology topology, WorkReference key) {
         this.key = key;
         this.topology = topology;
     }
     
     private Partition getHazelcastPartition() {
-    	return topology.hazelcast.getPartitionService().getPartition(key.getPartitionKey());
+    	return topology.hazelcast.getPartitionService().getPartition(key.getHazelcastPartition());
     }
     
-    public DistributedFuture(DistributedWorkTopology topology, WorkKey key, V result) {
+    public DistributedFuture(DistributedWorkTopology topology, WorkReference key, V result) {
     	this.key = key;
     	this.topology = topology;
     }
@@ -57,7 +57,7 @@ public class DistributedFuture<V> implements Future<V>, WorkKeyable {
 		throw new RuntimeException("Not implemented yet");
 	}
 
-	public WorkKey getKey() {
+	public WorkReference getKey() {
 		return key;
 	}
 

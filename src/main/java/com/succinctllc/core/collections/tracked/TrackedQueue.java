@@ -12,13 +12,25 @@ public class TrackedQueue<E> extends AbstractQueue<E> implements ITrackedQueue<E
 	/**
 	 * This must be volatile so that reads are always reading the 
 	 * correct data.  This is higher performing than an AtomicLong
+	 * 
+	 * FIXME: this needs to be an atomic long becaues we have
+	 * multiple threads accessing it...  or lets just not keep 
+	 * track of it... do we even use it???
 	 */
-	private volatile long newestTimestamp;
+	//private volatile long newestTimestamp;
 	
-	private volatile boolean inSync = true;
+	//private volatile boolean inSync = true;
+	private QueueListener<TrackedItem<E>> listener;
+	
 	
 	public TrackedQueue(){
 		delegate = createQueue();
+	}
+	
+	public TrackedQueue(QueueListener<TrackedItem<E>> listener) {
+	    this();
+	    this.listener = listener;
+	    this.listener.setQueue(delegate);
 	}
 	
 	private TrackedItem<E> wrap(E e){
@@ -26,23 +38,38 @@ public class TrackedQueue<E> extends AbstractQueue<E> implements ITrackedQueue<E
 	}
 	
 	public boolean offer(E e) {
-		newestTimestamp = System.currentTimeMillis();
-		return delegate.offer(wrap(e));
+		//newestTimestamp = System.currentTimeMillis();
+	    TrackedItem<E> wrappedElem = wrap(e);
+	    if(delegate.offer(wrappedElem)) {
+	        if(listener != null)
+	            listener.onAdd(wrappedElem);
+	        return true;
+	    }
+	    return false;
 	}
 
 	public E peek() {
-		return delegate.peek().getEntry();
+	    TrackedItem<E> tItem = delegate.peek();
+	    if(tItem == null)
+            return null;
+	    return tItem.getEntry();
 	}
 
 	public E poll() {
-		E result = delegate.poll().getEntry();
-		onRemove();
+		TrackedItem<E> tItem = delegate.poll();
+		if(tItem == null)
+		    return null;
+		
+	    E result = tItem.getEntry();
+		onRemove(tItem);
 		return result;
 	}
 	
-	private void onRemove(){
-		if(this.size() == 0)
-			this.newestTimestamp = 0;
+	private void onRemove(TrackedItem<E> tItem){
+		//if(this.size() == 0)
+		//	this.newestTimestamp = 0;
+	    if(listener != null)
+	        listener.onRemove(tItem);
 	}
 
 	@Override
@@ -55,34 +82,28 @@ public class TrackedQueue<E> extends AbstractQueue<E> implements ITrackedQueue<E
 		return delegate.size();
 	}
 	
-	/* (non-Javadoc)
-	 * @see com.succinctllc.core.collections.ITrackedQueue#getNewestTime()
-	 */
-	public long getNewestTime(){
-		if(!inSync) {
-			syncNewestTime();
-		}
-		return newestTimestamp;
-	}
+//	public long getNewestTime(){
+//		if(!inSync) {
+//			syncNewestTime();
+//		}
+//		return newestTimestamp;
+//	}
 	
 	private void syncNewestTime(){
-		Iterator<TrackedItem<E>> it = delegate.iterator();
-		TrackedItem<E> elem = null;
-		while(it.hasNext()) {
-			elem = it.next();
-		}				
-		if(elem != null)
-			newestTimestamp = elem.getTimestamp();
-		inSync = true;
+//		Iterator<TrackedItem<E>> it = delegate.iterator();
+//		TrackedItem<E> elem = null;
+//		while(it.hasNext()) {
+//			elem = it.next();
+//		}				
+//		if(elem != null)
+//			newestTimestamp = elem.getTimestamp();
+//		inSync = true;
 	}
 	
-	/* (non-Javadoc)
-	 * @see com.succinctllc.core.collections.ITrackedQueue#getOldestTime()
-	 */
 	public long getOldestTime(){
 		TrackedItem<E> entry = delegate.peek();
 		if(entry == null)
-			return 0;
+			return Long.MAX_VALUE;
 		return entry.getTimestamp();
 	}
 	
@@ -107,13 +128,13 @@ public class TrackedQueue<E> extends AbstractQueue<E> implements ITrackedQueue<E
 		}
 
 		public void remove() {
-			long timestamp = lastEntry.getTimestamp();
-			if(trackedQueue.getNewestTime() == timestamp) {
-				//we removed the last entry we added...
-				//the newestTime is now out of sync!
-				trackedQueue.inSync = false;
-			}
-			
+//			long timestamp = lastEntry.getTimestamp();
+//			if(trackedQueue.getNewestTime() == timestamp) {
+//				//we removed the last entry we added...
+//				//the newestTime is now out of sync!
+//				trackedQueue.inSync = false;
+//			}
+		    trackedQueue.onRemove(lastEntry);
 			delegate.remove();
 		}
 		

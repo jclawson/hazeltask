@@ -1,40 +1,35 @@
 package com.succinctllc.executor;
 
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.succinctllc.core.collections.PartitionedQueue;
+import com.succinctllc.executor.collections.HazelcastWorkPartitionedQueue;
 
-public class LocalTaskExecutorService implements ExecutorService {
+public class LocalTaskExecutorService {
 
-	private final DistributedWorkTopology topology;
+	private final DistributedExecutorServiceManager manager;
 	private ExecutorService localExecutorService;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
-	private PartitionedQueue<HazelcastWork<?>> taskQueue;
+	private HazelcastWorkPartitionedQueue taskQueue;
 	
 	private final int maxThreads = 10;
 	
-	protected LocalTaskExecutorService(DistributedWorkTopology topology) {
-		this.topology = topology;
-		taskQueue = new PartitionedQueue<HazelcastWork<?>>();
-		//todo... allow local buffer to fill up before we start
-		//when start() then fill up the executor service from buffer
-		start();
+	protected LocalTaskExecutorService(DistributedExecutorServiceManager distributedExecutorServiceManager) {
+		this.manager = distributedExecutorServiceManager;
+		taskQueue = new HazelcastWorkPartitionedQueue();
 	}
 
 	public void start(){
 		if(isStarted.compareAndSet(false, true)) {
-			DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",topology.name);
+			DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",manager.getTopologyName());
+			
+			//note: if you don't write enough work to the linkedblockingqueue
+			//      new threads will not be created
+			//      you must exceed the queue size to see new threads
 			int blockingQueueSize = maxThreads*2;
 			localExecutorService = new BoundedThreadPoolExecutorService(
 						0, maxThreads,
@@ -44,7 +39,9 @@ public class LocalTaskExecutorService implements ExecutorService {
 		            );
 			
 			//start copy queue thread
-			factory.newNamedThread("QueueSync", new QueueSyncRunnable());
+			Thread t = factory.newNamedThread("QueueSync", new QueueSyncRunnable());
+			t.setDaemon(true);
+			t.start();
 		}
 	}
 	
@@ -64,13 +61,16 @@ public class LocalTaskExecutorService implements ExecutorService {
 			long minInterval = 100; 	//100 milliseconds
 			long interval = minInterval;
 			long exponent = 2;
-			int maxInterval = 15000;   //15 seconds
+			int maxInterval = 10000;   //10 seconds
 			
 			while(!localExecutorService.isShutdown()) {
-				HazelcastWork<?> work = taskQueue.poll();
+				//long start = System.currentTimeMillis();
+			    HazelcastWork work = taskQueue.poll();
 				if(work != null) {
 					interval = minInterval;
 					Future<?> future = localExecutorService.submit(work);
+					
+					//System.out.println("   "+(System.currentTimeMillis()-start));
 					//do something with the future
 				} else { //there was no work in the taskQueue so lets wait a little
 					try {
@@ -84,44 +84,17 @@ public class LocalTaskExecutorService implements ExecutorService {
 		}		
 	}
 	
-	public void bindListener() {
-		
+	public long getOldestWorkCreatedTime(){
+	    return this.taskQueue.getOldestWorkCreatedTime();	          
 	}
 	
-	/**
-	 * This method will remove items from the queue that do not exist in the local map... aka
-	 * hazelcast has migrated items away and we need to remove them from this local member's queue
-	 */
-	public void removeMigratedItems(){
-		Set<WorkKey> keys = topology.map.localKeySet();
-		Iterator<HazelcastWork<?>> it = taskQueue.iterator();
-		while(it.hasNext()) {
-			HazelcastWork<?> work = it.next();
-			WorkKey key = work.getKey();
-			if(!keys.contains(key))
-				it.remove();
-		}
+	public long getQueueSize() {
+	    return this.taskQueue.size();
 	}
 	
-	/**
-	 * This method will add tasks to the queue that exist in the local map, but not in the queue
-	 * aka... hazelcast has migrated some items to the map, and we need to ensure this node will 
-	 * do that work.
-	 * 
-	 * This method may cause duplicate work to be done.
-	 */
-	public void submitMigratedItems() {
-		Set<WorkKey> keys = topology.map.localKeySet();
-		for(WorkKey key : keys) {
-			HazelcastWork<?> work = topology.map.get(key);
-			if(!taskQueue.contains(work)) {
-				Future<?> future = submit(work); //how do we handle future migration?
-			}
-		}
-	}
-	
-	public void execute(Runnable command) {
-		localExecutorService.execute(command);
+	public void execute(HazelcastWork command) {
+	    taskQueue.add(command);
+	    //TODO: what about Futures?
 	}
 
 	public void shutdown() {
@@ -139,46 +112,5 @@ public class LocalTaskExecutorService implements ExecutorService {
 	public boolean isTerminated() {
 		return localExecutorService.isTerminated();
 	}
-
-	public boolean awaitTermination(long timeout, TimeUnit unit)
-			throws InterruptedException {
-		return localExecutorService.awaitTermination(timeout, unit);
-	}
-
-	public <T> Future<T> submit(Callable<T> task) {
-		return localExecutorService.submit(task);
-	}
-
-	public <T> Future<T> submit(Runnable task, T result) {
-		return localExecutorService.submit(task, result);
-	}
-
-	public Future<?> submit(Runnable task) {
-		return localExecutorService.submit(task);
-	}
-
-	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
-			throws InterruptedException {
-		return localExecutorService.invokeAll(tasks);
-	}
-
-	public <T> List<Future<T>> invokeAll(
-			Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
-			throws InterruptedException {
-		return localExecutorService.invokeAll(tasks, timeout, unit);
-	}
-
-	public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
-			throws InterruptedException, ExecutionException {
-		return localExecutorService.invokeAny(tasks);
-	}
-
-	public <T> T invokeAny(Collection<? extends Callable<T>> tasks,
-			long timeout, TimeUnit unit) throws InterruptedException,
-			ExecutionException, TimeoutException {
-		return localExecutorService.invokeAny(tasks, timeout, unit);
-	}
-	
-	
 
 }

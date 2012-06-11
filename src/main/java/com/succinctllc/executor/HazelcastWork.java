@@ -1,27 +1,47 @@
 package com.succinctllc.executor;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.io.Serializable;
 
 import com.hazelcast.core.PartitionAware;
-import com.hazelcast.nio.Data;
-import com.hazelcast.nio.DataSerializable;
-import com.hazelcast.nio.Serializer;
 import com.succinctllc.core.collections.Partitionable;
 
 //TODO: make sure Runnable task is data serializable
-public class HazelcastWork implements Partitionable, PartitionAware<String>, Runnable, WorkKeyable, DataSerializable {
+public class HazelcastWork implements Partitionable, PartitionAware<String>, Runnable, WorkKeyable, Serializable {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable task;
 	private long createdAtMillis;
-	private WorkKey key;
+	private WorkReference key;
+	private String topology;
+	private int submissionCount;
 	
-	public HazelcastWork(WorkKey key, Runnable task){
+	//TODO: store jvmId & nanotime offset so we can better order items on recovery
+	//.... actually order doesn't really matter that much since we have multiple threads
+	//processing stuff.  Unless you want a single thread processing a queue at a time across
+	//all nodes... order doesn't matter
+	
+	public HazelcastWork(String topology, WorkReference key, Runnable task){
 		this.task = task;
 		this.key = key;
+		this.topology = topology;
 		createdAtMillis = System.currentTimeMillis();
+		this.submissionCount = 1;
+	}
+	
+	public void setSubmissionCount(int submissionCount){
+	    this.submissionCount = submissionCount;
+	}
+	
+	public int getSubmissionCount(){
+	    return this.submissionCount;
+	}
+	
+	public void updateCreatedTime(){
+	    this.createdAtMillis = System.currentTimeMillis();
+	}
+	
+	public Runnable getDelegate(){
+	    return task;
 	}
 
 	public String getPartition() {
@@ -41,28 +61,20 @@ public class HazelcastWork implements Partitionable, PartitionAware<String>, Run
 	}
 
 	public void run() {
-		task.run();
+		try {
+		    task.run();
+		} finally {
+		    //TODO: add task exceptions handling / retry logic
+		    //for now, just remove the work becaues its completed
+		    DistributedExecutorServiceManager
+		        .getDistributedExecutorServiceManager(topology)
+		        .getMap()
+		        .remove(key.getId());
+		}
 	}
 
-	public WorkKey getKey() {
+	public WorkReference getKey() {
 		return key;
-	}
-
-	public void writeData(DataOutput out) throws IOException {
-		new Serializer().writeObject(task).writeData(out);
-		key.writeData(out);
-		out.writeLong(createdAtMillis);
-	}
-
-	public void readData(DataInput in) throws IOException {
-		Data data = new Data();
-		data.readData(in);
-		task = (Runnable) new Serializer().readObject(data);
-		
-		key = new WorkKey();
-		key.readData(in);
-		
-		createdAtMillis = in.readLong();
 	}
 
 	

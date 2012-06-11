@@ -10,10 +10,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 
+import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.IMap;
+import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.succinctllc.core.collections.Partitionable;
+import com.succinctllc.executor.tasks.SubmitWorkTask;
 
 /**
  * This is basically a proxy for executor service that returns nicely generic futures
@@ -25,15 +31,15 @@ import com.succinctllc.core.collections.Partitionable;
  *
  */
 public class TaskExecutorService implements ExecutorService {
-	
-	private final DistributedWorkTopology topology;
-	
+	ILogger LOGGER = Logger.getLogger(TaskExecutorService.class.getName());
+    private DistributedExecutorServiceManager distributedExecutorServiceManager;
+    
 	public static interface RunnablePartitionable extends Runnable, Partitionable {
 		
 	}
 	
-	protected TaskExecutorService(DistributedWorkTopology topology){
-		this.topology = topology;
+	protected TaskExecutorService(DistributedExecutorServiceManager distributedExecutorServiceManager){
+		this.distributedExecutorServiceManager = distributedExecutorServiceManager;
 	}
 	
 //	@Override
@@ -47,31 +53,77 @@ public class TaskExecutorService implements ExecutorService {
 //    }
 
 	public void execute(Runnable command) {
+	    execute(command, false);
+	}
+	
+	//TODO: make HazelcastWork package protected, detect if we are resubmitting if command instanceof HazelcastWork
+	protected void execute(Runnable command, boolean isResubmitting) {
 		//TODO: make sure this command is hazelcast serializable
-		IMap<WorkKey, HazelcastWork> map = topology.map;
-		WorkKey workKey = topology.partitionAdapter.getWorkKey(command);
-		HazelcastWork wrapper = new HazelcastWork(workKey, command);
-		map.putIfAbsent(workKey, wrapper);
+		IMap<String, HazelcastWork> map = distributedExecutorServiceManager.getMap();
+		HazelcastWork wrapper;
+		WorkReference workKey;
+		
+		//if resubmitting a HazelcastWork, we make sure not to double wrap
+		if(command instanceof HazelcastWork) {
+		    wrapper = (HazelcastWork) command;
+		    wrapper.updateCreatedTime();
+		    workKey = ((HazelcastWork) command).getKey();
+		} else {
+		    workKey = distributedExecutorServiceManager.getPartitionAdapter().getWorkKey(command);
+		    wrapper = new HazelcastWork(distributedExecutorServiceManager.getTopologyName(), workKey, command);
+		}
+		
+		boolean executeTask = true;
+		
+		if(isResubmitting) {
+		    wrapper.setSubmissionCount(wrapper.getSubmissionCount()+1);
+		    map.put(workKey.getId(), wrapper);
+		} else {
+		    executeTask = map.putIfAbsent(workKey.getId(), wrapper) == null;
+		}
+		
+		
+		if(executeTask) {
+		    Member m = distributedExecutorServiceManager.getMemberRouter().next();
+	        if(m == null) {
+	            LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
+	            return;
+	        }
+	        
+	        //NOTE: its possible to get into a loop of resubmitting things to be worked on, updating their
+	        //created dates, if no members to do work are online.  We do keep track of the submission count
+	        //so we could just eventually expire the work altogether
+	        
+	        DistributedTask<Object> task = new DistributedTask<Object>(new SubmitWorkTask(wrapper, distributedExecutorServiceManager.getTopologyName()), m);
+	        distributedExecutorServiceManager.getWorkDistributorService().execute(task);
+		}
+	}
+
+	public <T> Future<T> submit(Callable<T> task) {
+	    //TODO: make sure this task is hazelcast serializable
+	    WorkReference workKey = distributedExecutorServiceManager.getPartitionAdapter().getWorkKey(task);
+	    //Future<T> future = new DistributedFuture<T>(distributedExecutorServiceManager.getTopologyName(), workKey);
+	    throw new RuntimeException("Not Implemented Yet");
 	}
 
 	public void shutdown() {
 		MultiTask<List<Runnable>> task = new MultiTask<List<Runnable>>(
-				new ShutdownEvent(topology.name, 
+				new ShutdownEvent(distributedExecutorServiceManager.getTopologyName(), 
 						ShutdownEvent.ShutdownType.WAIT_AND_SHUTDOWN
 					), 
-					topology.hazelcast.getCluster().getMembers());
+					distributedExecutorServiceManager.getHazelcast().getCluster().getMembers());
 		
-		topology.hazelcast.getExecutorService().execute(task);
+		distributedExecutorServiceManager.getHazelcast().getExecutorService().execute(task);
 	}
 
 	public List<Runnable> shutdownNow() {
 		MultiTask<List<Runnable>> task = new MultiTask<List<Runnable>>(
-				new ShutdownEvent(topology.name, 
+				new ShutdownEvent(distributedExecutorServiceManager.getTopologyName(), 
 						ShutdownEvent.ShutdownType.SHUTDOWN_NOW
 					), 
-					topology.hazelcast.getCluster().getMembers());
+					distributedExecutorServiceManager.getHazelcast().getCluster().getMembers());
 		
-		topology.hazelcast.getExecutorService().execute(task);
+		distributedExecutorServiceManager.getHazelcast().getExecutorService().execute(task);
 		try {
 			LinkedList<Runnable> allRunnables = new LinkedList<Runnable>();			
 			for(List<Runnable> list : task.get()) {
@@ -85,13 +137,7 @@ public class TaskExecutorService implements ExecutorService {
 		}
 	}
 
-	public <T> Future<T> submit(Callable<T> task) {
-		//TODO: make sure this task is hazelcast serializable
-		WorkKey workKey = topology.partitionAdapter.getWorkKey(task);
-		Future<T> future = new DistributedFuture<T>(topology, workKey);
-		
-		return future;
-	}
+
 
 	public Future<?> submit(Runnable task) {
 		//TODO: make sure this task is hazelcast serializable
@@ -167,7 +213,7 @@ public class TaskExecutorService implements ExecutorService {
 		
 		
 		public List<Runnable> call() throws Exception {
-			LocalTaskExecutorService svc = TaskExecutorServiceFactory.getLocalInstance(topology);
+			LocalTaskExecutorService svc = DistributedExecutorServiceManager.getDistributedExecutorServiceManager(topology).getLocalExecutorService();
 			
 			switch(this.type) {
 			case SHUTDOWN_NOW:

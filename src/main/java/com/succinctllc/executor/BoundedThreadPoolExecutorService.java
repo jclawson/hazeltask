@@ -32,9 +32,11 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 
 		super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue,
 				threadFactory, 
-				new AbortPolicy() //<- this policy should actually never go into affect because of our BoundedExecutorService
+				new CallerRunsPolicy() //<- this policy should actually never go into affect because of our BoundedExecutorService
 		);
-		this.semaphore = new Semaphore(workQueue.remainingCapacity());
+		
+		//I am not sure why I had to do - 2.  It should have just been -1
+		this.semaphore = new Semaphore(workQueue.remainingCapacity()+(maximumPoolSize-2));
 	}
 
 	@Override

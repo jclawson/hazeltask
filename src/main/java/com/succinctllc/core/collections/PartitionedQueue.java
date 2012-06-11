@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,17 +24,24 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 		public void onPartitionCreated(String partition, ITrackedQueue<E> q);
 	}
 	
-	public PartitionedQueue(){
+	public PartitionedQueue(PartitionRouter<E> partitionRouter){
 		partitions = createPartitionMap();
-		partitionRouter = createPartitionRouter();
+		this.partitionRouter = partitionRouter == null 
+		                            ? new PartitionedQueueRouter.InOrderRouter<E>() 
+		                            : partitionRouter;
+		this.partitionRouter.setPartitionedQueueue(this);
 	}
 	
-	protected PartitionRouter<E> createPartitionRouter(){
-		return new PartitionedQueueRouter.InOrderRouter<E>(this);
-	}
+	public PartitionedQueue(){
+        this(null);
+    }
 	
 	protected ConcurrentMap<String, ITrackedQueue<E>> getPartitionMap() {
 		return this.partitions;
+	}
+	
+	protected ITrackedQueue<E> getPartition(String partition){
+	    return this.partitions.get(partition);
 	}
 	
 	protected List<String> getPartitions() {
@@ -45,7 +53,7 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 	}
 	
 	protected ITrackedQueue<E> createQueue(){
-		return new TrackedQueue<E>();//ConcurrentLinkedQueue<E>();
+		return new TrackedQueue<E>();
 	}
 	
 	private Queue<E> getOrCreatePartitionQueue(String partition) {
@@ -123,6 +131,10 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 					return it;
 				}
 				currentQueue++;
+				if(currentQueue >= queueIterators.size()) {
+				    return null;
+				}
+				
 				it = queueIterators.get(currentQueue);
 			} while(currentQueue < queueIterators.size());
 			
@@ -155,6 +167,17 @@ public class PartitionedQueue<E extends Partitionable> extends AbstractQueue<E> 
 				it.remove();
 		}
 		
+	}
+	
+	public long getOldestQueueTime() {
+	    long oldestTime = Long.MAX_VALUE;
+	    for(Entry<String, ITrackedQueue<E>> entry : this.partitions.entrySet()) {
+	        long oldest = entry.getValue().getOldestTime();
+	        if(oldest < oldestTime)
+	            oldestTime = oldest;
+	    }
+	    
+	    return oldestTime;
 	}
 
 	@Override
