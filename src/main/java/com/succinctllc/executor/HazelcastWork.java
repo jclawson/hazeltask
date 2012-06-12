@@ -45,7 +45,7 @@ public class HazelcastWork implements Partitionable, PartitionAware<String>, Run
 	}
 
 	public String getPartition() {
-		return key.getLocalPartition();
+		return key.getGroup();
 	}
 	
 	public String getPartitionKey() {

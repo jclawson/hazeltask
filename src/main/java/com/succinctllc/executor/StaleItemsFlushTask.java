@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.Callable;
 
-import com.google.common.collect.Sets;
 import com.hazelcast.core.IMap;
 import com.hazelcast.query.SqlPredicate;
 import com.succinctllc.hazelcast.cluster.MemberTasks;
@@ -31,7 +30,7 @@ public class StaleItemsFlushTask extends TimerTask {
         // FIXME: replace this with hazelcast-lambdaj code
 
         Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(manager.getCommunicationExecutorService(),
-                Sets.newHashSet(manager.getAvailableMembers()), new GetOldestTime(manager.getTopologyName()));
+                manager.getAvailableMembers(), new GetOldestTime(manager.getTopologyName()));
 
         long min = Long.MAX_VALUE;
         for(MemberResponse<Long> result : results) {

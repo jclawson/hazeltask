@@ -42,7 +42,7 @@ public class ExecutorServiceManagerBuilder {
 	    
 	    public InternalBuilderStep2(HazelcastInstance hazelcast, WorkKeyAdapter partitionAdapter){
 	        serviceIndex = atomicServiceIndex.getAndIncrement();
-	        topologyName = "DW-"+serviceIndex;
+	        topologyName = Topology.getDefault();
 	        type = DistributionType.TOPIC;
 	        this.partitionAdapter = partitionAdapter;
 	        this.hazelcast = hazelcast;
@@ -54,7 +54,7 @@ public class ExecutorServiceManagerBuilder {
         }
 	    
 	    public InternalBuilderStep2 withTopology(String topology){
-	        this.topologyName = topology;
+	        this.topologyName = Topology.createName(topology);
 	        return this;
 	    }
 	    

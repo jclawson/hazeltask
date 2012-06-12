@@ -10,7 +10,7 @@ public class WorkReference implements DataSerializable {
     private static final long serialVersionUID = 1L;
 
     private String            uniqueId;
-    private String            localPartition;
+    private String            group;
     private String            hazelcastPartition;
 
     /**
@@ -21,12 +21,23 @@ public class WorkReference implements DataSerializable {
      * 
      * @param id - The id that uniquely represents this work
      * @param hazelcastPartition - the hazelcast partition to distribute this work to
-     * @param localPartition - the node-local partitioned queue to place this work in
+     * @param group - the node-local partitioned queue to place this work in
      */
-    public WorkReference(String id, String hazelcastPartition, String localPartition) {
+    public WorkReference(String id, String hazelcastPartition, String group) {
         this.uniqueId = id;
-        this.localPartition = localPartition;
+        this.group = group;
         this.hazelcastPartition = hazelcastPartition;
+    }
+    
+    /**
+     * This constructor defaults the hazelcastPartition to the unique id of the work
+     * @param id
+     * @param group
+     */
+    public WorkReference(String id, String group) {
+        this.uniqueId = id;
+        this.group = group;
+        this.hazelcastPartition = id;
     }
 
     protected WorkReference() {
@@ -36,8 +47,8 @@ public class WorkReference implements DataSerializable {
         return hazelcastPartition;
     }
 
-    public String getLocalPartition() {
-        return localPartition;
+    public String getGroup() {
+        return group;
     }
 
     public String getId() {
@@ -46,13 +57,13 @@ public class WorkReference implements DataSerializable {
 
     public void writeData(DataOutput out) throws IOException {
         out.writeUTF(uniqueId);
-        out.writeUTF(localPartition);
+        out.writeUTF(group);
         out.writeUTF(hazelcastPartition);
     }
 
     public void readData(DataInput in) throws IOException {
         uniqueId            = in.readUTF();
-        localPartition      = in.readUTF();
+        group      = in.readUTF();
         hazelcastPartition  = in.readUTF();
     }
 
