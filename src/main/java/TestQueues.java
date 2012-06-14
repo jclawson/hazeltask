@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.succinctllc.hazelcast.work.WorkKeyAdapter;
 import com.succinctllc.hazelcast.work.WorkReference;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
-import com.succinctllc.hazelcast.work.executor.ExecutorServiceManagerBuilder;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder;
 
 
 public class TestQueues {
@@ -16,12 +16,12 @@ public class TestQueues {
      * @param args
      */
     public static void main(String[] args) {
-        DistributedExecutorServiceManager mgr = ExecutorServiceManagerBuilder.builder()
+        DistributedExecutorService svc = DistributedExecutorServiceBuilder.builder()
             .withWorkKeyAdapter(new MyWorkAdapter())
             .build();
         
-        mgr.start();
-        ExecutorService svc = mgr.getDistributedExecutorService();
+        svc.startup();
+        //ExecutorService svc = mgr.getDistributedExecutorService();
         
         if(false) {
             int customerId = 0;

@@ -4,7 +4,10 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -13,15 +16,19 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 import com.hazelcast.core.DistributedTask;
-import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.hazelcast.work.HazelcastWork;
+import com.succinctllc.hazelcast.work.HazelcastWorkManager;
+import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
+import com.succinctllc.hazelcast.work.WorkKeyAdapter;
 import com.succinctllc.hazelcast.work.WorkReference;
-import com.succinctllc.hazelcast.work.executor.tasks.SubmitWorkTask;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
+import com.succinctllc.hazelcast.work.router.ListRouter;
+import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
 
 /**
  * This is basically a proxy for executor service that returns nicely generic futures
@@ -34,16 +41,61 @@ import com.succinctllc.hazelcast.work.executor.tasks.SubmitWorkTask;
  *
  */
 public class DistributedExecutorService implements ExecutorService {
-	ILogger LOGGER = Logger.getLogger(DistributedExecutorService.class.getName());
-    private DistributedExecutorServiceManager distributedExecutorServiceManager;
+    private static ConcurrentMap<String, DistributedExecutorService> servicesByTopology = new ConcurrentHashMap<String, DistributedExecutorService>();
+
+    public static DistributedExecutorService get(String topology) {
+        return servicesByTopology.get(topology);
+    }
+    
+    private static ILogger LOGGER = Logger.getLogger(DistributedExecutorService.class.getName());
+    //private DistributedExecutorServiceManager distributedExecutorServiceManager;
+    
+    private volatile boolean         isReady  = false;
+    private final ListRouter<Member> memberRouter;
+    private final WorkKeyAdapter     partitionAdapter;
+    private final LocalWorkExecutorService                                  localExecutorService;
+    private final HazelcastWorkTopology topology;
+    private final ExecutorService                                           workDistributor;
+    
+    
     
 	public static interface RunnablePartitionable extends Runnable, Groupable {
 		
 	}
 	
-	protected DistributedExecutorService(DistributedExecutorServiceManager distributedExecutorServiceManager){
-		this.distributedExecutorServiceManager = distributedExecutorServiceManager;
+	protected DistributedExecutorService(InternalBuilderStep2 internalBuilderStep1){
+		this.topology = internalBuilderStep1.topology;
+		this.partitionAdapter = internalBuilderStep1.partitionAdapter;
+		workDistributor = topology.getWorkDistributor();
+		
+		if (servicesByTopology.putIfAbsent(topology.getName(), this) != null) { 
+		    throw new IllegalArgumentException(
+                "A DistributedExecutorService already exists for the topology "
+                        + topology.getName()); 
+		}
+		
+		
+		this.localExecutorService = new LocalWorkExecutorService(topology);		
+		memberRouter = new RoundRobinRouter<Member>(new Callable<List<Member>>() {
+            public List<Member> call() throws Exception {
+                return topology.getReadyMembers();
+            }
+        });
 	}
+	
+	public void startup() {
+	    localExecutorService.start();
+        isReady = true;
+	    //flush items that got left behind in the map
+	    new Timer(topology.createName("flush-timer"), true)
+            .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
+	}
+	
+	public HazelcastWorkTopology getTopology(){
+	    return this.topology;
+	}
+	
+	
 	
 //	@Override
 //	protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
@@ -55,14 +107,24 @@ public class DistributedExecutorService implements ExecutorService {
 //        return new DistributedRunnableFuture<T>(runnable, value);
 //    }
 
-	public void execute(Runnable command) {
+	public LocalWorkExecutorService getLocalExecutorService() {
+        return localExecutorService;
+    }
+	
+	
+
+    public boolean isReady() {
+        return isReady;
+    }
+
+    public void execute(Runnable command) {
 	    execute(command, false);
 	}
 	
 	//TODO: make HazelcastWork package protected, detect if we are resubmitting if command instanceof HazelcastWork
 	protected void execute(Runnable command, boolean isResubmitting) {
 		//TODO: make sure this command is hazelcast serializable
-		IMap<String, HazelcastWork> map = distributedExecutorServiceManager.getMap();
+		//IMap<String, HazelcastWork> map = this.map;
 		HazelcastWork wrapper;
 		WorkReference workKey;
 		
@@ -72,22 +134,22 @@ public class DistributedExecutorService implements ExecutorService {
 		    wrapper.updateCreatedTime();
 		    workKey = ((HazelcastWork) command).getKey();
 		} else {
-		    workKey = distributedExecutorServiceManager.getPartitionAdapter().getWorkKey(command);
-		    wrapper = new HazelcastWork(distributedExecutorServiceManager.getTopologyName(), workKey, command);
+		    workKey = partitionAdapter.getWorkKey(command);
+		    wrapper = new HazelcastWork(topology.getName(), workKey, command);
 		}
 		
 		boolean executeTask = true;
 		
 		if(isResubmitting) {
 		    wrapper.setSubmissionCount(wrapper.getSubmissionCount()+1);
-		    map.put(workKey.getId(), wrapper);
+		    topology.getPendingWork().put(workKey.getId(), wrapper);
 		} else {
-		    executeTask = map.putIfAbsent(workKey.getId(), wrapper) == null;
+		    executeTask = topology.getPendingWork().putIfAbsent(workKey.getId(), wrapper) == null;
 		}
 		
 		
 		if(executeTask) {
-		    Member m = distributedExecutorServiceManager.getMemberRouter().next();
+		    Member m = memberRouter.next();
 	        if(m == null) {
 	            LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
 	            return;
@@ -97,36 +159,36 @@ public class DistributedExecutorService implements ExecutorService {
 	        //created dates, if no members to do work are online.  We do keep track of the submission count
 	        //so we could just eventually expire the work altogether
 	        
-	        DistributedTask<Object> task = new DistributedTask<Object>(new SubmitWorkTask(wrapper, distributedExecutorServiceManager.getTopologyName()), m);
-	        distributedExecutorServiceManager.getWorkDistributorService().execute(task);
+	        DistributedTask<Object> task = new DistributedTask<Object>(new SubmitWorkTask(wrapper, topology.getName()), m);
+	        workDistributor.execute(task);
 		}
 	}
 
 	public <T> Future<T> submit(Callable<T> task) {
 	    //TODO: make sure this task is hazelcast serializable
-	    WorkReference workKey = distributedExecutorServiceManager.getPartitionAdapter().getWorkKey(task);
-	    //Future<T> future = new DistributedFuture<T>(distributedExecutorServiceManager.getTopologyName(), workKey);
+	    WorkReference workKey = partitionAdapter.getWorkKey(task);
+	    //Future<T> future = new DistributedFuture<T>(topology.getName(), workKey);
 	    throw new RuntimeException("Not Implemented Yet");
 	}
 
 	public void shutdown() {
 		MultiTask<List<Runnable>> task = new MultiTask<List<Runnable>>(
-				new ShutdownEvent(distributedExecutorServiceManager.getTopologyName(), 
+				new ShutdownEvent(topology.getName(), 
 						ShutdownEvent.ShutdownType.WAIT_AND_SHUTDOWN
 					), 
-					distributedExecutorServiceManager.getHazelcast().getCluster().getMembers());
+					topology.getHazelcast().getCluster().getMembers());
 		
-		distributedExecutorServiceManager.getHazelcast().getExecutorService().execute(task);
+		topology.getHazelcast().getExecutorService().execute(task);
 	}
 
 	public List<Runnable> shutdownNow() {
 		MultiTask<List<Runnable>> task = new MultiTask<List<Runnable>>(
-				new ShutdownEvent(distributedExecutorServiceManager.getTopologyName(), 
+				new ShutdownEvent(topology.getName(), 
 						ShutdownEvent.ShutdownType.SHUTDOWN_NOW
 					), 
-					distributedExecutorServiceManager.getHazelcast().getCluster().getMembers());
+					topology.getHazelcast().getCluster().getMembers());
 		
-		distributedExecutorServiceManager.getHazelcast().getExecutorService().execute(task);
+		topology.getHazelcast().getExecutorService().execute(task);
 		try {
 			LinkedList<Runnable> allRunnables = new LinkedList<Runnable>();			
 			for(List<Runnable> list : task.get()) {
@@ -139,7 +201,6 @@ public class DistributedExecutorService implements ExecutorService {
 			throw new RuntimeException("Thread interrupted while shutting down the executor services", e);
 		}
 	}
-
 
 
 	public Future<?> submit(Runnable task) {
@@ -214,9 +275,10 @@ public class DistributedExecutorService implements ExecutorService {
 			this.topology = topology;
 		}
 		
-		
 		public List<Runnable> call() throws Exception {
-			LocalWorkExecutorService svc = DistributedExecutorServiceManager.getDistributedExecutorServiceManager(topology).getLocalExecutorService();
+			LocalWorkExecutorService svc = HazelcastWorkManager
+			                                  .getDistributedExecutorService(topology)
+			                                  .getLocalExecutorService();
 			
 			switch(this.type) {
 			case SHUTDOWN_NOW:

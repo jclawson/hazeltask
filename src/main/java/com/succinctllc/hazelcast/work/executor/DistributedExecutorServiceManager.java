@@ -1,30 +1,5 @@
 package com.succinctllc.hazelcast.work.executor;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.Timer;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.Member;
-import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
-import com.succinctllc.hazelcast.cluster.MemberTasks;
-import com.succinctllc.hazelcast.cluster.MemberTasks.MemberResponse;
-import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.WorkKeyAdapter;
-import com.succinctllc.hazelcast.work.executor.ExecutorServiceManagerBuilder.DistributionType;
-import com.succinctllc.hazelcast.work.executor.ExecutorServiceManagerBuilder.InternalBuilderStep2;
-import com.succinctllc.hazelcast.work.executor.tasks.StaleItemsFlushTimerTask;
-import com.succinctllc.hazelcast.work.router.ListRouter;
-import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
 
 /**
  * There must only be 1 of these per topologyName
@@ -34,8 +9,9 @@ import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
  * @author jclawson
  * 
  */
+@Deprecated
 public class DistributedExecutorServiceManager {
-
+/*
     private static ConcurrentMap<String, DistributedExecutorServiceManager> serviceManagersByTopology = new ConcurrentHashMap<String, DistributedExecutorServiceManager>();
 
     private final int                                                       serviceIndex;
@@ -144,12 +120,7 @@ public class DistributedExecutorServiceManager {
 
     private volatile long lastChecked = 0;
 
-    /**
-     * returns the list of members that are online and have indicated they are
-     * ready to recieve work
-     * 
-     * @return
-     */
+   
     protected CopyOnWriteArrayListSet<Member> getAvailableMembers() {
         // FIXME: put this in another thread with an exponential backoff
         // this is temporary
@@ -221,6 +192,6 @@ public class DistributedExecutorServiceManager {
 		return isReady;
 	}
     
-    
+    */
 
 }

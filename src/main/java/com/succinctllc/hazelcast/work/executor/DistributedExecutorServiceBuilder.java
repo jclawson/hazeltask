@@ -7,7 +7,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkKeyAdapter;
 
-public class ExecutorServiceManagerBuilder {
+public class DistributedExecutorServiceBuilder {
 	
 	public static DistributedExecutorService dInstance;
 	public static LocalWorkExecutorService lInstance;
@@ -64,10 +64,10 @@ public class ExecutorServiceManagerBuilder {
 //	        return this;
 //	    }
 	    
-	    public DistributedExecutorServiceManager build() {
+	    public DistributedExecutorService build() {
 	        if(this.topology == null)
 	        	this.topology = HazelcastWorkTopology.getDefault(hazelcast);
-	    	return new DistributedExecutorServiceManager(this);
+	    	return new DistributedExecutorService(this);
 	    }
 	}
 	

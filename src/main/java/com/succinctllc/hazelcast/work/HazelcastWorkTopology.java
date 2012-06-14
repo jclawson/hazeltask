@@ -8,9 +8,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MembershipEvent;
+import com.hazelcast.core.MembershipListener;
 import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
-import com.succinctllc.hazelcast.work.executor.tasks.IsMemberReadyTimerTask;
 
 /**
  * The topology of the works system describes the different services and
@@ -57,6 +59,7 @@ public class HazelcastWorkTopology {
 	private final int localTopologyId;
 	private final ExecutorService workDistributor;
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
+	private final IMap<String, HazelcastWork>                               pendingWork;
 
 	private HazelcastWorkTopology(String topologyName, HazelcastInstance hazelcast) {
 		this.name = topologyName;
@@ -65,17 +68,25 @@ public class HazelcastWorkTopology {
 		communicationExecutorService = hazelcast.getExecutorService(createName("com"));
 		workDistributor =  hazelcast.getExecutorService(createName("work-distributor"));
 		readyMembers = new CopyOnWriteArrayListSet<Member>();
+		pendingWork = hazelcast.getMap(createName("pending-work"));
 	}
 	
 	private void startReadyMemberPing() {
 		Timer timer = new Timer(createName("ready-member-ping"), true);
         timer.schedule(new IsMemberReadyTimerTask(this), READY_MEMBER_PING_PERIOD, READY_MEMBER_PING_PERIOD);
+        
+        //this listener will keep our ready members up to date with who is online
+        this.hazelcast.getCluster().addMembershipListener(new MemberRemovedListener());
 	}
 	
 	public String createName(String name) {
         return this.name + "-" + name;
     }
 
+	public IMap<String, HazelcastWork> getPendingWork() {
+	    return pendingWork;
+	}
+	
 	public String getName() {
 		return name;
 	}
@@ -110,7 +121,16 @@ public class HazelcastWorkTopology {
 	 * 
 	 * @param members
 	 */
-	public void setReadyMembers(Collection<Member> members) {
+	protected void setReadyMembers(Collection<Member> members) {
 		readyMembers.addAll(members);
+	}
+	
+	private class MemberRemovedListener implements MembershipListener {
+        public void memberAdded(MembershipEvent membershipEvent) {}
+
+        public void memberRemoved(MembershipEvent membershipEvent) {
+            readyMembers.remove(membershipEvent.getMember());
+        }
+	    
 	}
 }

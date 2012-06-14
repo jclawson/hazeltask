@@ -6,24 +6,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.hazelcast.partition.Partition;
+import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkKeyable;
 import com.succinctllc.hazelcast.work.WorkReference;
 
 public class DistributedFuture<V> implements Future<V>, WorkKeyable {
 
 	private final WorkReference key;
-	private final DistributedWorkTopology topology;
+	private final HazelcastWorkTopology topology;
 	
-    public DistributedFuture(DistributedWorkTopology topology, WorkReference key) {
+    public DistributedFuture(HazelcastWorkTopology topology, WorkReference key) {
         this.key = key;
         this.topology = topology;
     }
     
     private Partition getHazelcastPartition() {
-    	return topology.hazelcast.getPartitionService().getPartition(key.getHazelcastPartition());
+    	//return topology.hazelcast.getPartitionService().getPartition(key.getHazelcastPartition());
+        return null;
     }
     
-    public DistributedFuture(DistributedWorkTopology topology, WorkReference key, V result) {
+    public DistributedFuture(HazelcastWorkTopology topology, WorkReference key, V result) {
     	this.key = key;
     	this.topology = topology;
     }

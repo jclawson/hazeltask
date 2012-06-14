@@ -4,7 +4,6 @@ import java.io.Serializable;
 
 import com.hazelcast.core.PartitionAware;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
 
 //TODO: make sure Runnable task is data serializable
 public class HazelcastWork implements Groupable, PartitionAware<String>, Runnable, WorkKeyable, Serializable {
@@ -66,10 +65,9 @@ public class HazelcastWork implements Groupable, PartitionAware<String>, Runnabl
 		    task.run();
 		} finally {
 		    //TODO: add task exceptions handling / retry logic
-		    //for now, just remove the work becaues its completed
-		    DistributedExecutorServiceManager
-		        .getDistributedExecutorServiceManager(topology)
-		        .getMap()
+		    //for now, just remove the work becaues its completed    
+		    HazelcastWorkTopology.get(topology)
+		        .getPendingWork()
 		        .remove(key.getId());
 		}
 	}

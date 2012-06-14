@@ -2,7 +2,6 @@ package com.succinctllc.hazelcast.work;
 
 import com.succinctllc.hazelcast.work.bundler.DeferredWorkBundler;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
 
 /**
  * This util class helps get at the work services created through their respective builders.  
@@ -19,9 +18,7 @@ public class HazelcastWorkManager {
 	 }
 	 
 	 public static DistributedExecutorService getDistributedExecutorService(String topologyName) {
-		 return DistributedExecutorServiceManager
-				 	.getDistributedExecutorServiceManager(topologyName)
-				 	.getDistributedExecutorService();
+		 return DistributedExecutorService.get(topologyName);
 	 }
 	 
 	 public static <T> DeferredWorkBundler<T> getDeferredWorkBundler(String topologyName) {

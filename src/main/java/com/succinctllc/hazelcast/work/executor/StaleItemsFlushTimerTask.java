@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.executor.tasks;
+package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -11,30 +11,31 @@ import com.hazelcast.query.SqlPredicate;
 import com.succinctllc.hazelcast.cluster.MemberTasks;
 import com.succinctllc.hazelcast.cluster.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
-import com.succinctllc.hazelcast.work.executor.LocalWorkExecutorService;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
+import com.succinctllc.hazelcast.work.HazelcastWorkManager;
+import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 
 public class StaleItemsFlushTimerTask extends TimerTask {
-    private DistributedExecutorServiceManager manager;
+    private DistributedExecutorService svc;
+    private HazelcastWorkTopology topology;
 
     public static Long HARD_EXPIRE_TIME_BUFFER = 60000L; //1 minute
     public static Long EXPIRE_TIME_BUFFER = 10000L; //30 seconds
     
-    protected StaleItemsFlushTimerTask(DistributedExecutorServiceManager manager) {
-        this.manager = manager;
+    protected StaleItemsFlushTimerTask(DistributedExecutorService svc) {
+        this.svc = svc;
+        this.topology = svc.getTopology();
     }
 
     public void run() {
-        IMap<String, HazelcastWork> map = manager.getMap();
+        IMap<String, HazelcastWork> map = topology.getPendingWork();
         // find out the oldest times in each partitioned queue
         // find Math.min() of those times (the oldest)
         // find all HazelcastWork in the map where createdAtMillis < oldestTime
         // remove and resubmit all of them (or rather... update them)
         // FIXME: replace this with hazelcast-lambdaj code
 
-        Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(manager.getCommunicationExecutorService(),
-                manager.getAvailableMembers(), new GetOldestTime(manager.getTopologyName()));
+        Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(topology.getCommunicationExecutorService(),
+                topology.getReadyMembers(), new GetOldestTime(topology.getName()));
 
         long min = Long.MAX_VALUE;
         for(MemberResponse<Long> result : results) {
@@ -65,7 +66,6 @@ public class StaleItemsFlushTimerTask extends TimerTask {
         if(works.size() > 0)
             System.out.println("Recovering "+works.size()+" works");
         
-        DistributedExecutorService svc = manager.getDistributedExecutorService();
         for(HazelcastWork work : works) {
             svc.execute(work, true);
         }
@@ -75,7 +75,7 @@ public class StaleItemsFlushTimerTask extends TimerTask {
         
         
         System.out.println("Local Queue Size: "+
-        manager.getLocalExecutorService().getQueueSize());
+        svc.getLocalExecutorService().getQueueSize());
     }
     
     private static class GetOldestTime implements Callable<Long>, Serializable {
@@ -86,9 +86,9 @@ public class StaleItemsFlushTimerTask extends TimerTask {
         }
         
         public Long call() throws Exception {
-            LocalWorkExecutorService svc = DistributedExecutorServiceManager
-                .getDistributedExecutorServiceManager(topologyName)
-                .getLocalExecutorService();            
+            LocalWorkExecutorService svc = HazelcastWorkManager
+                    .getDistributedExecutorService(topologyName)
+                    .getLocalExecutorService();           
             long result = svc.getOldestWorkCreatedTime();
             return result;
         }

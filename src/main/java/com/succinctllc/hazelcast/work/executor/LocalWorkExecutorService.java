@@ -10,24 +10,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
+import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 
 public class LocalWorkExecutorService {
 
-	private final DistributedExecutorServiceManager manager;
+	private final HazelcastWorkTopology topology;
 	private ExecutorService localExecutorService;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private HazelcastWorkGroupedQueue taskQueue;
 	
 	private final int maxThreads = 10;
 	
-	protected LocalWorkExecutorService(DistributedExecutorServiceManager distributedExecutorServiceManager) {
-		this.manager = distributedExecutorServiceManager;
+	protected LocalWorkExecutorService(HazelcastWorkTopology topology) {
+		this.topology = topology;
 		taskQueue = new HazelcastWorkGroupedQueue();
 	}
 
 	public void start(){
 		if(isStarted.compareAndSet(false, true)) {
-			DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",manager.getTopologyName());
+			DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",topology.getName());
 			
 			//note: if you don't write enough work to the linkedblockingqueue
 			//      new threads will not be created

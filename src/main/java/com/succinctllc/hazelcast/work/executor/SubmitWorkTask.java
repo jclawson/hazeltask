@@ -1,9 +1,9 @@
-package com.succinctllc.hazelcast.work.executor.tasks;
+package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
 
 import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
+import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 
 /**
  * This runnable simply carries a work item to a member and adds it to its local executor service
@@ -26,10 +26,11 @@ public class SubmitWorkTask implements Runnable, Serializable {
     
     public void run() {
         //TODO: do something with the future to track when its done
-        DistributedExecutorServiceManager
-            .getDistributedExecutorServiceManager(topology)
-            .getLocalExecutorService()
-            .execute(work);
+        LocalWorkExecutorService svc = HazelcastWorkManager
+                .getDistributedExecutorService(topology)
+                .getLocalExecutorService();
+        
+        svc.execute(work);
     }
 
 }
