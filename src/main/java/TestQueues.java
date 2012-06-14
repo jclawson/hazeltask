@@ -4,10 +4,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.succinctllc.executor.DistributedExecutorServiceManager;
-import com.succinctllc.executor.ExecutorServiceManagerBuilder;
-import com.succinctllc.executor.WorkKeyAdapter;
-import com.succinctllc.executor.WorkReference;
+import com.succinctllc.hazelcast.work.WorkKeyAdapter;
+import com.succinctllc.hazelcast.work.WorkReference;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
+import com.succinctllc.hazelcast.work.executor.ExecutorServiceManagerBuilder;
 
 
 public class TestQueues {
