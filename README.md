@@ -1,17 +1,18 @@
 hazelcast-work
 ==============
-NOTE: This is a work in progress... aka... nothing is currently working...
+NOTE: This is a work in progress... API changes drastically... Not quite ready yet
 
-This project encompasses an advanced distributed task library for Hazelcast.  
+This project encompasses an advanced distributed work library for Hazelcast.  
 It is modeled after the ExecutorService API but adds a lot of missing features 
 the built in Hazelcast executor service doesn't provide such as:
 - Failover capabilities when nodes go down.  No lost work!
-- Task loadbalancing
-- Partitioned queues for customizable task execution selection
-- No more MemberLeftExceptions when waiting on Futures!
-- Distribution of tasks done via Hazelcast Map
-- No cluster locking, or cluster wide contention on resources
-- VERY light on network
+- Work distribution loadbalancing with customizable routers (RoundRobin implementation provided)
+- Local Partitioned queues for customizable task execution selection
+- No more MemberLeftExceptions when waiting on Futures!  Work will be redistributed to another member and executed returning the result to your Future
+- Distribution of work done via push as work is added
+- No cluster locking.  Little contention on cluster wide resources.
+- Configurable to favor speed or redundancy
+- Work Bundling capabilities!  Sometimes its more efficient to combine several tasks into a single task.  This is now possible with the DistributedWorkBundler.
 
 Example Use Case:
 ==============
