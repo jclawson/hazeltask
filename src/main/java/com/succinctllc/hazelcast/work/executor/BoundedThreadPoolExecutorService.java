@@ -1,5 +1,7 @@
 package com.succinctllc.hazelcast.work.executor;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
@@ -22,6 +24,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 	private final Semaphore semaphore;
+	
+	public static interface ExecutorListener {
+	    public void afterExecute(Runnable runnable, Throwable exception);
+	}
+	
+	//private Collection<ExecutorListener> listeners = new ArrayList<ExecutorListener>();
 
 	public BoundedThreadPoolExecutorService(int corePoolSize,
 			int maximumPoolSize, long keepAliveTime, TimeUnit unit,
@@ -35,10 +43,26 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 		//I am not sure why I had to do - 2.  It should have just been -1
 		this.semaphore = new Semaphore(workQueue.remainingCapacity()+(maximumPoolSize-2));
 	}
+	
+//	/**
+//	 * This is not thread safe
+//	 * @param listener
+//	 */
+//	public void addListener(ExecutorListener listener) {
+//	    listeners.add(listener);
+//	}
 
 	@Override
-	protected void afterExecute(Runnable arg0, Throwable arg1) {
+	protected void afterExecute(Runnable runnable, Throwable exception) {
 		semaphore.release();
+//		for(ExecutorListener listener : listeners) {
+//		    try {
+//		        listener.afterExecute(runnable, exception);
+//		    } catch(RuntimeException e) {
+//		        //ignore
+//		    }
+//		}
+		
 	}
 	
 	public int getWaiterCount(){

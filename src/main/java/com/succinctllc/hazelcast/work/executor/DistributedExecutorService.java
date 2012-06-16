@@ -24,8 +24,8 @@ import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkKeyAdapter;
-import com.succinctllc.hazelcast.work.WorkReference;
+import com.succinctllc.hazelcast.work.WorkIdAdapter;
+import com.succinctllc.hazelcast.work.WorkId;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
 import com.succinctllc.hazelcast.work.router.ListRouter;
 import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
@@ -37,6 +37,11 @@ import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
  * 
  * TODO: a lot... most methods throw a not implemented exception
  * 
+ * TODO: should this be an ExecutorService that can handle Runnable / Callables?  Or should
+ * we define another type of object like Work?  This would help our generics a lot and ensuring
+ * its serializable. ... I actually like this better since it more expressive.  I don't think we 
+ * lose much giving up compatibility with ExecutorService
+ * 
  * @author jclawson
  *
  */
@@ -44,7 +49,7 @@ public class DistributedExecutorService implements ExecutorService {
     private static ConcurrentMap<String, DistributedExecutorService> servicesByTopology = new ConcurrentHashMap<String, DistributedExecutorService>();
 
     public static DistributedExecutorService get(String topology) {
-        return servicesByTopology.get(topology);
+        return (DistributedExecutorService) servicesByTopology.get(topology);
     }
     
     private static ILogger LOGGER = Logger.getLogger(DistributedExecutorService.class.getName());
@@ -52,7 +57,7 @@ public class DistributedExecutorService implements ExecutorService {
     
     private volatile boolean         isReady  = false;
     private final ListRouter<Member> memberRouter;
-    private final WorkKeyAdapter     partitionAdapter;
+    private final WorkIdAdapter     partitionAdapter;
     private final LocalWorkExecutorService                                  localExecutorService;
     private final HazelcastWorkTopology topology;
     private final ExecutorService                                           workDistributor;
@@ -63,7 +68,7 @@ public class DistributedExecutorService implements ExecutorService {
 		
 	}
 	
-	protected DistributedExecutorService(InternalBuilderStep2 internalBuilderStep1){
+	protected DistributedExecutorService(InternalBuilderStep2<?> internalBuilderStep1){
 		this.topology = internalBuilderStep1.topology;
 		this.partitionAdapter = internalBuilderStep1.partitionAdapter;
 		workDistributor = topology.getWorkDistributor();
@@ -126,15 +131,15 @@ public class DistributedExecutorService implements ExecutorService {
 		//TODO: make sure this command is hazelcast serializable
 		//IMap<String, HazelcastWork> map = this.map;
 		HazelcastWork wrapper;
-		WorkReference workKey;
+		WorkId workKey;
 		
 		//if resubmitting a HazelcastWork, we make sure not to double wrap
 		if(command instanceof HazelcastWork) {
 		    wrapper = (HazelcastWork) command;
 		    wrapper.updateCreatedTime();
-		    workKey = ((HazelcastWork) command).getKey();
+		    workKey = ((HazelcastWork) command).getWorkId();
 		} else {
-		    workKey = partitionAdapter.getWorkKey(command);
+		    workKey = partitionAdapter.getWorkId(command);
 		    wrapper = new HazelcastWork(topology.getName(), workKey, command);
 		}
 		
@@ -166,7 +171,7 @@ public class DistributedExecutorService implements ExecutorService {
 
 	public <T> Future<T> submit(Callable<T> task) {
 	    //TODO: make sure this task is hazelcast serializable
-	    WorkReference workKey = partitionAdapter.getWorkKey(task);
+	    WorkId workKey = partitionAdapter.getWorkId(task);
 	    //Future<T> future = new DistributedFuture<T>(topology.getName(), workKey);
 	    throw new RuntimeException("Not Implemented Yet");
 	}

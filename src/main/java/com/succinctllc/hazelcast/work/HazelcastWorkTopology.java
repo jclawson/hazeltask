@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
@@ -60,6 +61,12 @@ public class HazelcastWorkTopology {
 	private final ExecutorService workDistributor;
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
 	private final IMap<String, HazelcastWork>                               pendingWork;
+	
+	/**
+	 * This topic alerts all nodes to work completions.  Some nodes may have Futures
+	 * waiting on results.
+	 */
+	private final ITopic<WorkResponse>      workResponseTopic;
 
 	private HazelcastWorkTopology(String topologyName, HazelcastInstance hazelcast) {
 		this.name = topologyName;
@@ -69,14 +76,20 @@ public class HazelcastWorkTopology {
 		workDistributor =  hazelcast.getExecutorService(createName("work-distributor"));
 		readyMembers = new CopyOnWriteArrayListSet<Member>();
 		pendingWork = hazelcast.getMap(createName("pending-work"));
+		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
+		workResponseTopic = hazelcast.getTopic(createName("work-response"));
 	}
 	
 	private void startReadyMemberPing() {
 		Timer timer = new Timer(createName("ready-member-ping"), true);
-        timer.schedule(new IsMemberReadyTimerTask(this), READY_MEMBER_PING_PERIOD, READY_MEMBER_PING_PERIOD);
+        timer.schedule(new IsMemberReadyTimerTask(this), 0, READY_MEMBER_PING_PERIOD);
         
         //this listener will keep our ready members up to date with who is online
         this.hazelcast.getCluster().addMembershipListener(new MemberRemovedListener());
+	}
+	
+	public ITopic<WorkResponse> getWorkResponseTopic() {
+	    return this.workResponseTopic;
 	}
 	
 	public String createName(String name) {

@@ -11,6 +11,7 @@ import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
+import com.succinctllc.hazelcast.work.executor.BoundedThreadPoolExecutorService.ExecutorListener;
 
 public class LocalWorkExecutorService {
 
@@ -47,6 +48,14 @@ public class LocalWorkExecutorService {
 			t.start();
 		}
 	}
+
+	
+//NO-- lets do it from the work wrapper... its way easier	
+//	private class ResponseExecutorListener implements ExecutorListener {
+//        public void afterExecute(Runnable runnable, Throwable exception) {
+//            //we finished this work... lets tell everyone about it!
+//        }
+//	}
 	
 	/**
 	 * This synchronizes our partitioned queue with the blocking queue that backs the executor service.

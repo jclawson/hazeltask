@@ -7,15 +7,15 @@ import java.util.concurrent.TimeoutException;
 
 import com.hazelcast.partition.Partition;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkKeyable;
-import com.succinctllc.hazelcast.work.WorkReference;
+import com.succinctllc.hazelcast.work.WorkIdentifyable;
+import com.succinctllc.hazelcast.work.WorkId;
 
-public class DistributedFuture<V> implements Future<V>, WorkKeyable {
+public class DistributedFuture<V> implements Future<V>, WorkIdentifyable {
 
-	private final WorkReference key;
+	private final WorkId key;
 	private final HazelcastWorkTopology topology;
 	
-    public DistributedFuture(HazelcastWorkTopology topology, WorkReference key) {
+    public DistributedFuture(HazelcastWorkTopology topology, WorkId key) {
         this.key = key;
         this.topology = topology;
     }
@@ -25,7 +25,7 @@ public class DistributedFuture<V> implements Future<V>, WorkKeyable {
         return null;
     }
     
-    public DistributedFuture(HazelcastWorkTopology topology, WorkReference key, V result) {
+    public DistributedFuture(HazelcastWorkTopology topology, WorkId key, V result) {
     	this.key = key;
     	this.topology = topology;
     }
@@ -61,7 +61,7 @@ public class DistributedFuture<V> implements Future<V>, WorkKeyable {
 		throw new RuntimeException("Not implemented yet");
 	}
 
-	public WorkReference getKey() {
+	public WorkId getWorkId() {
 		return key;
 	}
 

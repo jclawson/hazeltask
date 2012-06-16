@@ -1,6 +1,5 @@
 package com.succinctllc.hazelcast.work.bundler;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,17 +8,17 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.MultiMap;
-import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.bundler.DeferredWorkBundlerBuilder.InternalBuilderStep3;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceManager;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 
 /**
@@ -30,17 +29,17 @@ import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
  *
  * @param <T>
  */
-public class DeferredWorkBundler<T> {
+public class DeferredWorkBundler<I> {
     
 	private static ConcurrentMap<String, DeferredWorkBundler<?>> workBundlersByTopology = new ConcurrentHashMap<String, DeferredWorkBundler<?>>();
 	
     private final AtomicBoolean isStarted = new AtomicBoolean();
-    private final SetMultimap<String, T> localMultiMap;
-    private final MultiMap<String, T> hcMultiMap;
-    private final InternalBuilderStep3<T> config;
+    private final SetMultimap<String, I> localMultiMap;
+    private final MultiMap<String, I> hcMultiMap;
+    private final InternalBuilderStep3<I> config;
     private final DistributedExecutorService executorService;
     private final HazelcastWorkTopology topology;
-    //private final ExecutorService asyncFlushExecutor;
+    private final IMap<String, Long> duplicatePreventionMap;
     
     /**
      * The flush TimerTask will run every FLUSH_TIMER_TASK_RATE milliseconds
@@ -51,13 +50,13 @@ public class DeferredWorkBundler<T> {
      */
     private static final long FLUSH_TIMER_TASK_RATE = 100L;
     
-    protected DeferredWorkBundler(InternalBuilderStep3<T> config) {
+    protected DeferredWorkBundler(InternalBuilderStep3<I> config, DistributedExecutorService svc) {
         this.config = config;
         this.topology = config.topology;
         
         if (workBundlersByTopology.putIfAbsent(topology.getName(), this) != null) { 
         	throw new IllegalArgumentException("A DistributedExecutorServiceManager already exists for the topology "
-                        + config.topology); 
+                        + topology); 
         }
         
         if(!config.localBuffering) {
@@ -65,14 +64,17 @@ public class DeferredWorkBundler<T> {
             localMultiMap = null;
         } else {
             hcMultiMap = null; 
-            localMultiMap = Multimaps.<String,T>synchronizedSetMultimap(HashMultimap.<String,T>create());
+            localMultiMap = Multimaps.<String,I>synchronizedSetMultimap(HashMultimap.<String,I>create());
+        }
+        
+        if(config.preventDuplicates) {
+            duplicatePreventionMap = topology.getHazelcast().getMap(topology.createName("bundler-items"));
+        } else {
+            duplicatePreventionMap = null;
         }
                 
-        executorService = HazelcastWorkManager.getDistributedExecutorService(config.topology.getName());
-        
-//        asyncFlushExecutor = new ThreadPoolExecutor(1, 1,
-//                        0L, TimeUnit.MILLISECONDS,
-//                        new SetLinkedBlockingQueue<Runnable>());        
+        executorService = svc;
+                
     }
     
     @SuppressWarnings("unchecked")
@@ -80,25 +82,30 @@ public class DeferredWorkBundler<T> {
         return (DeferredWorkBundler<U>) workBundlersByTopology.get(topology);
     }
     
-   
-//NOTE: I think i would rather have the FlushTask run more often to flush things
-//    private void checkAndDoFlush(String group, int size) {
-//    	if(size >= config.flushSize) {
-//    		asyncFlushExecutor.execute(new AsyncFlush<T>(config.topology, group));
-//    	}
-//    }
-    
-    public boolean add(T o) {
-        String group = config.partitioner.getGroup(o);
-        if(localMultiMap != null) {
-            boolean added = localMultiMap.put(group, o);
-            //checkAndDoFlush(group, localMultiMap.get(group).size());
-            return added;
-        } else {
-        	boolean added = hcMultiMap.put(group, o);
-        	//checkAndDoFlush(group, hcMultiMap.get(group).size());
-        	return added;
+    public boolean add(I o) {
+        String group = config.partitioner.getItemGroup(o);
+        boolean added = false; 
+        
+        if(duplicatePreventionMap != null) {
+            if(duplicatePreventionMap.putIfAbsent(
+                    config.partitioner.getItemId(o), 
+                    System.currentTimeMillis(), 
+                    this.config.maxDuplicatePreventionTTL, 
+                    TimeUnit.MILLISECONDS) 
+                != null) {
+                return false;
+            }
         }
+        
+        if(localMultiMap != null) {
+            added = localMultiMap.put(group, o);
+            //checkAndDoFlush(group, localMultiMap.get(group).size());
+        } else {
+        	added = hcMultiMap.put(group, o);
+        	//checkAndDoFlush(group, hcMultiMap.get(group).size());
+        }
+        
+        return added;
     }
     
     public long getFlushTTL() {
@@ -114,15 +121,20 @@ public class DeferredWorkBundler<T> {
      * must make sure to call start()
      * 
      */
-    public void start() {
+    public void startup() {
         if(!isStarted.getAndSet(true)) {
         	new Timer(buildName("bundle-flush-timer"), true)
-                .schedule(new DeferredBundleTask<T>(this), config.flushTTL, FLUSH_TIMER_TASK_RATE);
+                .schedule(new DeferredBundleTask<I>(this), config.flushTTL, FLUSH_TIMER_TASK_RATE);
+        	
+        	//if we are going to do work, startup the executor service
+        	if(config.doWork) {
+        	    executorService.startup();
+        	}
         }
     }
     
     private String buildName(String postfix) {
-        return config.topology + "-" + postfix;
+        return topology + "-" + postfix;
     }
     
     public Map<String, Integer> getNonZeroLocalGroupSizes() {
@@ -143,6 +155,16 @@ public class DeferredWorkBundler<T> {
         }
         return result;
     }
+    
+    protected void removePreventDuplicateItems(WorkBundle<I> work) {
+        if(this.duplicatePreventionMap != null) {
+            for(I item : work.getItems()) {
+                String id = config.partitioner.getItemId(item);
+                this.duplicatePreventionMap.remove(id);
+            }
+        }
+    }
+    
     /**
      * TODO: Could potentially want to create HUGE bundles.
      * 
@@ -151,18 +173,18 @@ public class DeferredWorkBundler<T> {
      * @return
      */
     protected int flush(String group) {
-        List<T> bundle;
+        List<I> bundle;
         if(localMultiMap != null) {
-            bundle = new ArrayList<T>(localMultiMap.get(group));
+            bundle = new ArrayList<I>(localMultiMap.get(group));
         } else {
-            bundle = new ArrayList<T>(hcMultiMap.get(group)); //this is actually a Set
+            bundle = new ArrayList<I>(hcMultiMap.get(group)); //this is actually a Set
         }
         
         if(bundle == null || bundle.size() == 0) {
             return 0;
         }
         
-        int numNodes = config.hazelcast.getCluster().getMembers().size();
+        int numNodes = topology.getHazelcast().getCluster().getMembers().size();
         int minBundleSize = Math.min(bundle.size(), config.minBundleSize);
         int numDividedBundles = bundle.size() / minBundleSize;
         numDividedBundles = Math.min(numDividedBundles, numNodes);
@@ -170,22 +192,27 @@ public class DeferredWorkBundler<T> {
         int targetDividedBundleSize = Math.max((int)(bundle.size() / numDividedBundles), minBundleSize);
         targetDividedBundleSize = Math.min(config.maxBundleSize, targetDividedBundleSize);
         
-        List<List<T>> partitionedBundles = Lists.partition(bundle, targetDividedBundleSize);        
+        List<List<I>> partitionedBundles = Lists.partition(bundle, targetDividedBundleSize);        
         
         //bundle the objects and submit them as work
         //config.bundler.bundle(items)
-        for(List<T> partitionedBundle : partitionedBundles) {
-            Runnable work = config.bundler.bundle(partitionedBundle);
+        for(List<I> partitionedBundle : partitionedBundles) {
+            WorkBundle<I> work = config.bundler.bundle(group, partitionedBundle);
+            if(this.duplicatePreventionMap != null) {
+                //if we are preventing duplicates, then we need to wrap it
+                work = new PreventDuplicatesWorkBundleWrapper<I>(topology.getName(), work);
+            }
+            
             executorService.execute(work);
             
             //TODO: is it better to just wait until the end and remove it all at once?
             //remove work from multimap since its safe in the distributed work system
             if(localMultiMap != null) {
-                for(T item : partitionedBundle) {
+                for(I item : partitionedBundle) {
                     localMultiMap.remove(group, item);
                 }
             } else {
-                for(T item : partitionedBundle) {
+                for(I item : partitionedBundle) {
                     hcMultiMap.remove(group, item);
                 }
             }
@@ -193,55 +220,5 @@ public class DeferredWorkBundler<T> {
         
         
         return bundle.size();
-    }
-    
-    public static class AsyncFlush<T> implements Runnable, Serializable {
-		private static final long serialVersionUID = 1L;
-		private String group;
-		private String topology;
-		
-		public AsyncFlush(String topology, String group) {
-			this.group = group;
-			this.topology = topology;
-		}
-		
-		public void run() {
-			DeferredWorkBundler<T> bundler = DeferredWorkBundler.getDeferredWorkBundler(topology);
-			bundler.flush(group);
-		}
-
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((group == null) ? 0 : group.hashCode());
-			result = prime * result
-					+ ((topology == null) ? 0 : topology.hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			AsyncFlush other = (AsyncFlush) obj;
-			if (group == null) {
-				if (other.group != null)
-					return false;
-			} else if (!group.equals(other.group))
-				return false;
-			if (topology == null) {
-				if (other.topology != null)
-					return false;
-			} else if (!topology.equals(other.topology))
-				return false;
-			return true;
-		}
-		
-		
     }
 }

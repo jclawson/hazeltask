@@ -1,27 +1,16 @@
 package com.succinctllc.hazelcast.work.executor;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkKeyAdapter;
+import com.succinctllc.hazelcast.work.WorkIdAdapter;
 
 public class DistributedExecutorServiceBuilder {
 	
-	public static DistributedExecutorService dInstance;
-	public static LocalWorkExecutorService lInstance;
-	public static AtomicInteger atomicServiceIndex = new AtomicInteger(1);
-	
-	public static enum DistributionType {
-	    MAP,
-	    TOPIC
-	};
-	
 	public static class InternalBuilderStep1 {
-	    private final HazelcastInstance hazelcast;
-	    public InternalBuilderStep1(HazelcastInstance hazelcast) {
-           this.hazelcast = hazelcast;
+	    private final HazelcastWorkTopology topology;
+	    public InternalBuilderStep1(HazelcastInstance hazelcast, String topologyName) {
+           this.topology = HazelcastWorkTopology.getOrCreate(topologyName, hazelcast);
         }
 
         /**
@@ -30,52 +19,35 @@ public class DistributedExecutorServiceBuilder {
 	     * @param adapter
 	     * @return
 	     */
-	    public InternalBuilderStep2 withWorkKeyAdapter(WorkKeyAdapter adapter){
-	        return new InternalBuilderStep2(hazelcast, adapter);
+	    public <W> InternalBuilderStep2<W> withWorkKeyAdapter(WorkIdAdapter<W> adapter){
+	        return new InternalBuilderStep2<W>(topology, adapter);
 	    }
 	}
 	
-	public static class InternalBuilderStep2 {
-	    protected final int serviceIndex;
+	public static class InternalBuilderStep2<W> {
 	    protected HazelcastWorkTopology topology;
-	    protected DistributionType type;
-	    protected WorkKeyAdapter partitionAdapter;
-	    protected final HazelcastInstance hazelcast;
+	    protected WorkIdAdapter<W> partitionAdapter;
 	    
-	    public InternalBuilderStep2(HazelcastInstance hazelcast, WorkKeyAdapter partitionAdapter){
-	        serviceIndex = atomicServiceIndex.getAndIncrement();
-	        type = DistributionType.TOPIC;
+	    public InternalBuilderStep2(HazelcastWorkTopology topology, WorkIdAdapter<W> partitionAdapter){
 	        this.partitionAdapter = partitionAdapter;
-	        this.hazelcast = hazelcast;
+	        this.topology = topology;
 	    }
 	    
-	    public InternalBuilderStep2 withWorkKeyAdapter(WorkKeyAdapter adapter){
+	    public InternalBuilderStep2<W> withWorkKeyAdapter(WorkIdAdapter<W> adapter){
 	        this.partitionAdapter = adapter;
 	        return this;
         }
 	    
-	    public InternalBuilderStep2 withTopology(HazelcastWorkTopology topology){
-	        this.topology = topology;
-	        return this;
-	    }
-	    
-//	    public InternalBuilderStep2 withDistributionType(DistributionType type) {
-//	        this.type = type;
-//	        return this;
-//	    }
-	    
 	    public DistributedExecutorService build() {
-	        if(this.topology == null)
-	        	this.topology = HazelcastWorkTopology.getDefault(hazelcast);
 	    	return new DistributedExecutorService(this);
 	    }
 	}
 	
-	public static InternalBuilderStep1 builder(){
-        return new InternalBuilderStep1(Hazelcast.getDefaultInstance());
+	public static InternalBuilderStep1 builder(String topologyName){
+        return builder(Hazelcast.getDefaultInstance(), topologyName);
     }
 	
-	public static InternalBuilderStep1 builder(HazelcastInstance hazelcast){
-	    return new InternalBuilderStep1(hazelcast);
+	public static InternalBuilderStep1 builder(HazelcastInstance hazelcast, String topologyName){
+	    return new InternalBuilderStep1(hazelcast, topologyName);
 	}
 }
