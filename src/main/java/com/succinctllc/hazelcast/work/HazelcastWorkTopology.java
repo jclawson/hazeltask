@@ -88,6 +88,14 @@ public class HazelcastWorkTopology {
         this.hazelcast.getCluster().addMembershipListener(new MemberRemovedListener());
 	}
 	
+	/**
+	 * If we start the local executor service, then lets let the local topology cache know
+	 * immediately so we don't have to wait for the READY_MEMBER_PING_PERIOD
+	 */
+	public void localExecutorServiceReady() {
+	    this.readyMembers.add(this.hazelcast.getCluster().getLocalMember());
+	}
+	
 	public ITopic<WorkResponse> getWorkResponseTopic() {
 	    return this.workResponseTopic;
 	}

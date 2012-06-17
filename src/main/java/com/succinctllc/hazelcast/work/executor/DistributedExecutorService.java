@@ -61,7 +61,7 @@ public class DistributedExecutorService implements ExecutorService {
     private final LocalWorkExecutorService                                  localExecutorService;
     private final HazelcastWorkTopology topology;
     private final ExecutorService                                           workDistributor;
-    
+    private final DistributedFutureTracker futureTracker;
     
     
 	public static interface RunnablePartitionable extends Runnable, Groupable {
@@ -86,11 +86,14 @@ public class DistributedExecutorService implements ExecutorService {
                 return topology.getReadyMembers();
             }
         });
+		
+		futureTracker = new DistributedFutureTracker(this);
 	}
 	
 	public void startup() {
 	    localExecutorService.start();
         isReady = true;
+        topology.localExecutorServiceReady();
 	    //flush items that got left behind in the map
 	    new Timer(topology.createName("flush-timer"), true)
             .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
@@ -125,23 +128,32 @@ public class DistributedExecutorService implements ExecutorService {
     public void execute(Runnable command) {
 	    execute(command, false);
 	}
+    
+    protected void execute(Runnable command, boolean isResubmitting) {
+        doExecute(createHazelcastWorkWrapper(command), isResubmitting);
+    }
+    
+    private HazelcastWork createHazelcastWorkWrapper(Runnable task){
+        if(task instanceof HazelcastWork) {
+            ((HazelcastWork) task).updateCreatedTime();
+            return (HazelcastWork) task;
+        } else {
+            return new HazelcastWork(topology.getName(), partitionAdapter.getWorkId(task), task);
+        }
+    }
+    
+    private HazelcastWork createHazelcastWorkWrapper(Callable<?> task){
+        if(task instanceof HazelcastWork) {
+            ((HazelcastWork) task).updateCreatedTime();
+            return (HazelcastWork) task;
+        } else {
+            return new HazelcastWork(topology.getName(), partitionAdapter.getWorkId(task), task);
+        }
+    }
 	
 	//TODO: make HazelcastWork package protected, detect if we are resubmitting if command instanceof HazelcastWork
-	protected void execute(Runnable command, boolean isResubmitting) {
-		//TODO: make sure this command is hazelcast serializable
-		//IMap<String, HazelcastWork> map = this.map;
-		HazelcastWork wrapper;
-		WorkId workKey;
-		
-		//if resubmitting a HazelcastWork, we make sure not to double wrap
-		if(command instanceof HazelcastWork) {
-		    wrapper = (HazelcastWork) command;
-		    wrapper.updateCreatedTime();
-		    workKey = ((HazelcastWork) command).getWorkId();
-		} else {
-		    workKey = partitionAdapter.getWorkId(command);
-		    wrapper = new HazelcastWork(topology.getName(), workKey, command);
-		}
+	protected void doExecute(HazelcastWork wrapper, boolean isResubmitting) {
+		WorkId workKey = wrapper.getWorkId();
 		
 		boolean executeTask = true;
 		
@@ -170,10 +182,11 @@ public class DistributedExecutorService implements ExecutorService {
 	}
 
 	public <T> Future<T> submit(Callable<T> task) {
-	    //TODO: make sure this task is hazelcast serializable
-	    WorkId workKey = partitionAdapter.getWorkId(task);
-	    //Future<T> future = new DistributedFuture<T>(topology.getName(), workKey);
-	    throw new RuntimeException("Not Implemented Yet");
+	    HazelcastWork work = createHazelcastWorkWrapper(task);
+	    DistributedFuture<T> future = new DistributedFuture<T>();
+        futureTracker.add(work.getUniqueIdentifier(), future);
+        doExecute(work, false);
+        return future;
 	}
 
 	public void shutdown() {
@@ -207,11 +220,14 @@ public class DistributedExecutorService implements ExecutorService {
 		}
 	}
 
+	
 
 	public Future<?> submit(Runnable task) {
-		//TODO: make sure this task is hazelcast serializable
-		// FIXME Implement this method
-		throw new RuntimeException("Not Implemented Yet");
+	    HazelcastWork work = createHazelcastWorkWrapper(task);
+	    DistributedFuture future = new DistributedFuture();
+	    futureTracker.add(work.getUniqueIdentifier(), future);
+	    doExecute(work, false);
+		return future;
 	}
 
 	public <T> Future<T> submit(Runnable task, T result) {

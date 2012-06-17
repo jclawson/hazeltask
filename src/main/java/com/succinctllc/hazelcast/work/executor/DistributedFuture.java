@@ -1,68 +1,176 @@
 package com.succinctllc.hazelcast.work.executor;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
-import com.hazelcast.partition.Partition;
-import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkIdentifyable;
-import com.succinctllc.hazelcast.work.WorkId;
+public class DistributedFuture<V> implements Future<V> {
+    private final Sync sync = new Sync();
+    
+    public DistributedFuture() {
+        
+    }
 
-public class DistributedFuture<V> implements Future<V>, WorkIdentifyable {
+    protected void done() { }
+    
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        throw new RuntimeException("Not Implemented yet");
+        //FIXME: send cancellation message
+        //return sync.innerCancel(mayInterruptIfRunning);
+    }
 
-	private final WorkId key;
-	private final HazelcastWorkTopology topology;
-	
-    public DistributedFuture(HazelcastWorkTopology topology, WorkId key) {
-        this.key = key;
-        this.topology = topology;
+    public boolean isCancelled() {
+        return sync.innerIsCancelled();
+    }
+
+    public boolean isDone() {
+        return sync.innerIsDone();
     }
     
-    private Partition getHazelcastPartition() {
-    	//return topology.hazelcast.getPartitionService().getPartition(key.getHazelcastPartition());
-        return null;
+    protected void set(Throwable t) {
+        sync.innerSetException(t);
     }
     
-    public DistributedFuture(HazelcastWorkTopology topology, WorkId key, V result) {
-    	this.key = key;
-    	this.topology = topology;
+    protected void set(V value) {
+        sync.innerSet(value);
+    }
+    
+    protected void setCancelled() {
+        sync.innerCancel(true);
     }
 
-	public boolean cancel(boolean mayInterruptIfRunning) {
-		throw new RuntimeException("Not implemented yet");
-	}
+    public V get() throws InterruptedException, ExecutionException {
+        return sync.innerGet();
+    }
 
-	public V get() throws InterruptedException, ExecutionException {
-		/* add to this node's, notification-request map
-		 * send a message to the member executing the work to let this node know when its done
-		 * other member will keep a map of key->member for notifications
-		 * 
-		 * this method will wait()
-		 * 
-		 * when this node gets a response, it will look through its notification-request map and notify() 
-		 * this future.
-		 * 
-		 */
-		throw new RuntimeException("Not implemented yet");
-	}
+    public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException,
+            TimeoutException {
+        return sync.innerGet(unit.toNanos(timeout));
+    }
+    
+    private final class Sync extends AbstractQueuedSynchronizer {
+        private static final long serialVersionUID = -7828117401763700385L;
 
-	public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-		//same as above but we will wait() with timeout
-		throw new RuntimeException("Not implemented yet");
-	}
+        /** State value representing that task is running */
+        //private static final int RUNNING   = 1;
+        /** State value representing that task ran */
+        private static final int RAN       = 2;
+        /** State value representing that task was cancelled */
+        private static final int CANCELLED = 4;
 
-	public boolean isCancelled() {
-		throw new RuntimeException("Not implemented yet");
-	}
+        /** The result to return from get() */
+        private V result;
+        /** The exception to throw from get() */
+        private Throwable exception;
 
-	public boolean isDone() {
-		throw new RuntimeException("Not implemented yet");
-	}
 
-	public WorkId getWorkId() {
-		return key;
-	}
+        private boolean ranOrCancelled(int state) {
+            return (state & (RAN | CANCELLED)) != 0;
+        }
 
+        /**
+         * Implements AQS base acquire to succeed if ran or cancelled
+         */
+        protected int tryAcquireShared(int ignore) {
+            return innerIsDone()? 1 : -1;
+        }
+
+        /**
+         * Implements AQS base release to always signal after setting
+         * final done status by nulling runner thread.
+         */
+        protected boolean tryReleaseShared(int ignore) {
+            return true;
+        }
+
+        boolean innerIsCancelled() {
+            return getState() == CANCELLED;
+        }
+
+        boolean innerIsDone() {
+            return ranOrCancelled(getState());
+        }
+
+        V innerGet() throws InterruptedException, ExecutionException {
+            acquireSharedInterruptibly(0);
+            if (getState() == CANCELLED)
+                throw new CancellationException();
+            if (exception != null)
+                throw new ExecutionException(exception);
+            return result;
+        }
+
+        V innerGet(long nanosTimeout) throws InterruptedException, ExecutionException, TimeoutException {
+            if (!tryAcquireSharedNanos(0, nanosTimeout))
+                throw new TimeoutException();
+            if (getState() == CANCELLED)
+                throw new CancellationException();
+            if (exception != null)
+                throw new ExecutionException(exception);
+            return result;
+        }
+
+        void innerSet(V v) {
+        for (;;) {
+        int s = getState();
+        if (s == RAN)
+            return;
+        if (s == CANCELLED) {
+            // aggressively release to set runner to null,
+            // in case we are racing with a cancel request
+            // that will try to interrupt runner
+                    releaseShared(0);
+                    return;
+        }
+        if (compareAndSetState(s, RAN)) {
+                    result = v;
+                    releaseShared(0);
+                    done();
+            return;
+                }
+            }
+        }
+
+        void innerSetException(Throwable t) {
+        for (;;) {
+        int s = getState();
+        if (s == RAN)
+            return;
+                if (s == CANCELLED) {
+            // aggressively release to set runner to null,
+            // in case we are racing with a cancel request
+            // that will try to interrupt runner
+                    releaseShared(0);
+                    return;
+                }
+        if (compareAndSetState(s, RAN)) {
+                    exception = t;
+                    result = null;
+                    releaseShared(0);
+                    done();
+            return;
+                }
+        }
+        }
+
+        boolean innerCancel(boolean mayInterruptIfRunning) {
+        for (;;) {
+        int s = getState();
+        if (ranOrCancelled(s))
+            return false;
+        if (compareAndSetState(s, CANCELLED))
+            break;
+        }
+            if (mayInterruptIfRunning) {
+                //send canceled message
+            }
+            releaseShared(0);
+            done();
+            return true;
+        }
+    }
+    
 }

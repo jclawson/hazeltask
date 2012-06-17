@@ -45,8 +45,9 @@ public class HazelcastWork implements Groupable, Runnable, Work {
         this.submissionCount = 1;
     }
 	
-	private static class CallableRunnable implements Runnable {
-	    private Callable<?> task;
+	private static class CallableRunnable implements Runnable, Serializable {
+        private static final long serialVersionUID = 1L;
+        private Callable<?> task;
 	    private Object result;
 	    private Exception e;
 	    
@@ -117,7 +118,7 @@ public class HazelcastWork implements Groupable, Runnable, Work {
     		        if(callRun.isSuccess()) {
     		            response = new WorkResponse(me, key.getId(), (Serializable)callRun.getResult(), WorkResponse.Status.SUCCESS);
     		        } else {
-    		            response = new WorkResponse(me, key.getId(), "HazelcastWork error: "+callRun.getException());
+    		            response = new WorkResponse(me, key.getId(), callRun.getException());
     		        }
     		    } else {
     		        response = new WorkResponse(me, key.getId(), null, WorkResponse.Status.SUCCESS);

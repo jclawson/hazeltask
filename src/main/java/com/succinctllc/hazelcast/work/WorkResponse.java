@@ -9,7 +9,7 @@ public class WorkResponse implements Serializable {
     private final Member from;
     private final String workId;
     private final Serializable response;
-    private final String error;
+    private final Throwable error;
     private final Status status;
     
     public static enum Status {
@@ -26,7 +26,7 @@ public class WorkResponse implements Serializable {
         this.status = status;
     }
     
-    public WorkResponse(Member from, String workId, String error) {
+    public WorkResponse(Member from, String workId, Throwable error) {
         this.from = from;
         this.workId = workId;        
         this.error = error;
@@ -46,7 +46,7 @@ public class WorkResponse implements Serializable {
         return response;
     }
 
-    public String getError() {
+    public Throwable getError() {
         return error;
     }
 
