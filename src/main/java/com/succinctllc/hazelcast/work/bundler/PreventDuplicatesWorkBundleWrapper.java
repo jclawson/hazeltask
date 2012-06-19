@@ -5,6 +5,7 @@ import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.WorkId;
 
@@ -53,5 +54,13 @@ public class PreventDuplicatesWorkBundleWrapper<I> implements WorkBundle<I> {
     public Collection<I> getItems() {
         return delegate.getItems();
     }
+
+	public String getGroup() {
+		return workRef.getGroup();
+	}
+
+	public String getUniqueIdentifier() {
+		return workRef.getId();
+	}
 
 }

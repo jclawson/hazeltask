@@ -5,8 +5,11 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 
 import com.hazelcast.core.IMap;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.query.SqlPredicate;
 import com.succinctllc.hazelcast.cluster.MemberTasks;
 import com.succinctllc.hazelcast.cluster.MemberTasks.MemberResponse;
@@ -15,6 +18,8 @@ import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 
 public class StaleItemsFlushTimerTask extends TimerTask {
+	private static ILogger LOGGER = Logger.getLogger(StaleItemsFlushTimerTask.class.getName());
+	
     private DistributedExecutorService svc;
     private HazelcastWorkTopology topology;
 
@@ -64,18 +69,15 @@ public class StaleItemsFlushTimerTask extends TimerTask {
         Collection<HazelcastWork> works = map.getAll(keys).values();
         
         if(works.size() > 0)
-            System.out.println("Recovering "+works.size()+" works");
+        	LOGGER.log(Level.INFO, "Recovering "+works.size()+" works");
         
         for(HazelcastWork work : works) {
             svc.execute(work, true);
         }
         
         if(works.size() > 0)
-            System.out.println("Done recovering "+works.size()+" works");
+        	LOGGER.log(Level.INFO, "Done recovering "+works.size()+" works");
         
-        
-        System.out.println("Local Queue Size: "+
-        svc.getLocalExecutorService().getQueueSize());
     }
     
     private static class GetOldestTime implements Callable<Long>, Serializable {

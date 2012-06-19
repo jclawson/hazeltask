@@ -16,7 +16,7 @@ import com.succinctllc.hazelcast.work.executor.BoundedThreadPoolExecutorService.
 public class LocalWorkExecutorService {
 
 	private final HazelcastWorkTopology topology;
-	private ExecutorService localExecutorService;
+	private BoundedThreadPoolExecutorService localExecutorService;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private HazelcastWorkGroupedQueue taskQueue;
 	
@@ -96,6 +96,13 @@ public class LocalWorkExecutorService {
 		}		
 	}
 	
+	/**
+	 * FIXME: this is not accurate because work will exist in the Executor blocking queue 
+	 * as well as the threads that are working on things.  Can we accurately fetch this time?
+	 * Perhaps we just have to push into a hashmap what we are currently working on so we 
+	 * can see it here.
+	 * @return
+	 */
 	public long getOldestWorkCreatedTime(){
 	    return this.taskQueue.getOldestWorkCreatedTime();	          
 	}
