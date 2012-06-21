@@ -21,6 +21,8 @@ import com.hazelcast.logging.Logger;
  * Even with a high number of threads and a single element in the list, the number 
  * of retries is very low: approx .00001 % of the time.
  * 
+ * TODO: return ((lastIndex++)) % size;
+ * 
  * @author jclawson
  *
  * @param <T>
@@ -53,9 +55,6 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         this.skipper = skipper;
     }
     
-    /* (non-Javadoc)
-     * @see com.succinctllc.executor.router.CollectionRouter#next()
-     */
     public T next(){
         return next(1, 0);
     }
@@ -73,34 +72,19 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
             return null;
         }
         
-        if(size > 0) {
-            int index = 0;
-            if(size > 1) {
-                lastIndex.compareAndSet(size-1, -1);
-                index = lastIndex.incrementAndGet();
-                if(index >= size) {
-                    //someone should win this race
-                    if(!lastIndex.compareAndSet(index, 0)) {
-                        return next(tries+1, numSkipped);
-                    } else 
-                        index = 0;
-                }
+        int index = lastIndex.incrementAndGet() % size;
+        
+        try {             
+            T result = list.get(index);
+            if(skipper != null && skipper.shouldSkip(result)) {
+                return next(1, numSkipped+1);
+            } else {
+                return result;
             }
-            
-            //the size might change out from under us here
-            try {             
-                T result = list.get(index);
-                if(skipper != null && skipper.shouldSkip(result)) {
-                    return next(1, numSkipped+1);
-                } else {
-                    return result;
-                }
-            } catch(IndexOutOfBoundsException e) {
-                //try again          
-                return next(tries+1, numSkipped);
-            }
+        } catch(IndexOutOfBoundsException e) {
+            //list changed under us... try again          
+            return next(tries+1, numSkipped);
         }
-        return null;
     }
     
     private List<T> getList(){
