@@ -54,7 +54,7 @@ public class TestQueues {
     
     public static class MyWorkAdapter implements WorkIdAdapter<WorkType1> {
 
-        public WorkId getWorkId(WorkType1 work) {
+        public WorkId createWorkId(WorkType1 work) {
             return new WorkId(Integer.toString(((WorkType1)work).i), ((WorkType1)work).part);
         }
         

@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.eventbus.EventBus;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
@@ -61,6 +62,7 @@ public class HazelcastWorkTopology {
 	private final ExecutorService workDistributor;
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
 	private final IMap<String, HazelcastWork>                               pendingWork;
+	
 	
 	/**
 	 * This topic alerts all nodes to work completions.  Some nodes may have Futures

@@ -16,7 +16,7 @@ public abstract class BundlerWorkKeyAdapter<I> implements WorkIdAdapter<Groupabl
     public abstract String getItemGroup(I o);
     public abstract String getItemId(I o);
     
-    public WorkId getWorkId(Groupable groupable) {
+    public WorkId createWorkId(Groupable groupable) {
         return new WorkId(groupable.getUniqueIdentifier(), groupable.getGroup());
     }
 }

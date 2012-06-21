@@ -72,7 +72,6 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 		String partition = e.getGroup();
 		Queue<E> q = getOrCreateGroupQueue(partition);
 		boolean result = q.offer(e);
-		notify();
 		return result;
 	}
 	

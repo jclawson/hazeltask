@@ -2,6 +2,8 @@ package com.succinctllc.hazelcast.work;
 
 import java.io.Serializable;
 
-public interface Work extends Runnable, WorkIdentifyable, Serializable {
+import com.succinctllc.core.concurrent.collections.grouped.Groupable;
+
+public interface Work extends Runnable, WorkIdentifyable, Groupable, Serializable {
     
 }

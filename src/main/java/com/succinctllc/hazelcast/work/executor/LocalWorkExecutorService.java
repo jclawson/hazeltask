@@ -1,22 +1,29 @@
 package com.succinctllc.hazelcast.work.executor;
 
+import java.io.Serializable;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 
+import com.hazelcast.core.Member;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
+import com.succinctllc.hazelcast.work.WorkResponse;
 import com.succinctllc.hazelcast.work.executor.BoundedThreadPoolExecutorService.ExecutorListener;
 
 public class LocalWorkExecutorService {
 
+    private static ILogger LOGGER = Logger.getLogger(LocalWorkExecutorService.class.getName());
+    
 	private final HazelcastWorkTopology topology;
-	private ExecutorService localExecutorService;
+	private BoundedThreadPoolExecutorService localExecutorService;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private HazelcastWorkGroupedQueue taskQueue;
 	
@@ -48,14 +55,34 @@ public class LocalWorkExecutorService {
 			t.start();
 		}
 	}
-
 	
-//NO-- lets do it from the work wrapper... its way easier	
-//	private class ResponseExecutorListener implements ExecutorListener {
-//        public void afterExecute(Runnable runnable, Throwable exception) {
-//            //we finished this work... lets tell everyone about it!
-//        }
-//	}
+	private class ResponseExecutorListener implements ExecutorListener {
+        public void afterExecute(Runnable runnable, Throwable exception) {
+            //we finished this work... lets tell everyone about it!
+            HazelcastWork work = (HazelcastWork)runnable;
+            
+            boolean success = exception == null && work.getException() == null;
+            
+            try {
+                Member me = topology.getHazelcast().getCluster().getLocalMember();
+                WorkResponse response;
+                if(success) {
+                    response = new WorkResponse(me, work.getUniqueIdentifier(), (Serializable)work.getResult(), WorkResponse.Status.SUCCESS);
+                } else {
+                    response = new WorkResponse(me, work.getUniqueIdentifier(), work.getException());
+                }
+                
+                topology.getWorkResponseTopic().publish(response);
+            } catch(RuntimeException e) {
+                LOGGER.log(Level.SEVERE, "An error occurred while attempting to notify members of completed work", e);
+            }
+            
+            //TODO: add task exceptions handling / retry logic
+            //for now, just remove the work because its completed
+            topology.getPendingWork()
+                .remove(work.getUniqueIdentifier());
+        }
+	}
 	
 	/**
 	 * This synchronizes our partitioned queue with the blocking queue that backs the executor service.
@@ -96,6 +123,13 @@ public class LocalWorkExecutorService {
 		}		
 	}
 	
+	/**
+	 * FIXME: this is not accurate because work will exist in the Executor blocking queue 
+	 * as well as the threads that are working on things.  Can we accurately fetch this time?
+	 * Perhaps we just have to push into a hashmap what we are currently working on so we 
+	 * can see it here.
+	 * @return
+	 */
 	public long getOldestWorkCreatedTime(){
 	    return this.taskQueue.getOldestWorkCreatedTime();	          
 	}
@@ -106,7 +140,6 @@ public class LocalWorkExecutorService {
 	
 	public void execute(HazelcastWork command) {
 	    taskQueue.add(command);
-	    //TODO: what about Futures?
 	}
 
 	public void shutdown() {

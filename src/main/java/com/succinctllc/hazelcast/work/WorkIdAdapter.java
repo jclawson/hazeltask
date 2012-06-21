@@ -2,5 +2,12 @@ package com.succinctllc.hazelcast.work;
 
 
 public interface WorkIdAdapter<W> {
-	public WorkId getWorkId(W work);
+	/**
+	 * The WorkId returned does not need to be equal for 
+	 * successive calls.
+	 * 
+	 * @param work
+	 * @return
+	 */
+    public WorkId createWorkId(W work);
 }

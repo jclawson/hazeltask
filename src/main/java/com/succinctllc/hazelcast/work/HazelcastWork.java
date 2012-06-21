@@ -23,14 +23,19 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 	private static final long serialVersionUID = 1L;
 	private static ILogger LOGGER = Logger.getLogger(HazelcastWork.class.getName());
 	
-	private Runnable task;
+	private Runnable runTask;
+	private Callable<?> callTask;
+	
 	private long createdAtMillis;
 	private WorkId key;
 	private String topology;
 	private int submissionCount;
 	
+	private volatile Object result;
+    private volatile Exception e;
+	
 	public HazelcastWork(String topology, WorkId key, Runnable task){
-		this.task = task;
+		this.runTask = task;
 		this.key = key;
 		this.topology = topology;
 		createdAtMillis = System.currentTimeMillis();
@@ -38,43 +43,12 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 	}
 	
 	public HazelcastWork(String topology, WorkId key, Callable<?> task){
-        this.task = new CallableRunnable(task);
+        this.callTask = task;
         this.key = key;
         this.topology = topology;
         createdAtMillis = System.currentTimeMillis();
         this.submissionCount = 1;
     }
-	
-	private static class CallableRunnable implements Runnable, Serializable {
-        private static final long serialVersionUID = 1L;
-        private Callable<?> task;
-	    private Object result;
-	    private Exception e;
-	    
-        public CallableRunnable(Callable<?> task) {
-            this.task = task;
-        }
-
-        public void run() {
-            try {
-                result = task.call();
-            } catch (Exception e) {
-                this.e = e;
-            }
-        }
-
-        public Object getResult() {
-            return result;
-        }
-
-        public Exception getException() {
-            return e;
-        }
-        
-        public boolean isSuccess() {
-            return e == null;
-        }
-	}
 	
 	public void setSubmissionCount(int submissionCount){
 	    this.submissionCount = submissionCount;
@@ -88,15 +62,25 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 	    this.createdAtMillis = System.currentTimeMillis();
 	}
 	
-	public Runnable getDelegate(){
-	    return task;
-	}
+//	public Runnable getDelegate(){
+//	    return task;
+//	}
+	
+	
 
 	public String getGroup() {
 		return key.getGroup();
 	}
 
-	public String getUniqueIdentifier() {
+	public Object getResult() {
+        return result;
+    }
+
+    public Exception getException() {
+        return e;
+    }
+
+    public String getUniqueIdentifier() {
 		return key.getId();
 	}
 	
@@ -105,34 +89,15 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 	}
 
     public void run() {
-		try {
-		    task.run();
-		} finally {
-		    HazelcastWorkTopology topology = HazelcastWorkTopology.get(this.topology);
-		    try {
-    		    Member me = topology.getHazelcast().getCluster().getLocalMember();
-    		    WorkResponse response;
-    		    //alert futures of completion
-    		    if(task instanceof CallableRunnable) {
-    		        CallableRunnable callRun = (CallableRunnable)task;
-    		        if(callRun.isSuccess()) {
-    		            response = new WorkResponse(me, key.getId(), (Serializable)callRun.getResult(), WorkResponse.Status.SUCCESS);
-    		        } else {
-    		            response = new WorkResponse(me, key.getId(), callRun.getException());
-    		        }
-    		    } else {
-    		        response = new WorkResponse(me, key.getId(), null, WorkResponse.Status.SUCCESS);
-    		    }
-    		    
-    		    topology.getWorkResponseTopic().publish(response);
-		    } catch(RuntimeException e) {
-		        LOGGER.log(Level.SEVERE, "An error occurred while attempting to notify members of completed work", e);
-		    }
-		    //TODO: add task exceptions handling / retry logic
-            //for now, just remove the work because its completed
-		    topology.getPendingWork()
-		        .remove(key.getId());
-		}
+        try {
+            if(callTask != null) {
+    		    this.result = callTask.call();
+    		} else {
+    		    runTask.run();
+    		}
+        } catch (Exception t) {
+            this.e = t;
+        }
 	}
 
 	public WorkId getWorkId() {

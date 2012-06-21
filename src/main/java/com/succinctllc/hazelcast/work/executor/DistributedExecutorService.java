@@ -138,7 +138,7 @@ public class DistributedExecutorService implements ExecutorService {
             ((HazelcastWork) task).updateCreatedTime();
             return (HazelcastWork) task;
         } else {
-            return new HazelcastWork(topology.getName(), partitionAdapter.getWorkId(task), task);
+            return new HazelcastWork(topology.getName(), partitionAdapter.createWorkId(task), task);
         }
     }
     
@@ -147,7 +147,7 @@ public class DistributedExecutorService implements ExecutorService {
             ((HazelcastWork) task).updateCreatedTime();
             return (HazelcastWork) task;
         } else {
-            return new HazelcastWork(topology.getName(), partitionAdapter.getWorkId(task), task);
+            return new HazelcastWork(topology.getName(), partitionAdapter.createWorkId(task), task);
         }
     }
 	

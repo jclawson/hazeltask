@@ -65,15 +65,20 @@ public class HazelcastWorkGroupedQueue extends GroupedQueue<HazelcastWork> {
                 findNewMin = lastModifiedSnapshot != lastModified;
             }
             
-            findNewMin = findNewMin || minTime.get() == item.getEntry().getTimeCreated();
+            long currentMin = minTime.get();            
+            findNewMin = findNewMin ||  currentMin == item.getEntry().getTimeCreated();
             
             if(findNewMin) {
                 //find new min
                 for(Iterator<TrackedItem<HazelcastWork>> it = q.iterator(); it.hasNext();) {
                     TrackedItem<HazelcastWork> w = it.next();
                     long currentTime = w.getEntry().getTimeCreated();
-                    setMin(min);
+                    if(currentTime < min) {
+                        min = currentTime;
+                    }
+                    //setMin(min);
                 }
+                setMin(min);
             }
             
             lastModified = System.currentTimeMillis();

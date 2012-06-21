@@ -29,7 +29,7 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 	    public void afterExecute(Runnable runnable, Throwable exception);
 	}
 	
-	//private Collection<ExecutorListener> listeners = new ArrayList<ExecutorListener>();
+	private Collection<ExecutorListener> listeners = new ArrayList<ExecutorListener>();
 
 	public BoundedThreadPoolExecutorService(int corePoolSize,
 			int maximumPoolSize, long keepAliveTime, TimeUnit unit,
@@ -44,24 +44,24 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 		this.semaphore = new Semaphore(workQueue.remainingCapacity()+(maximumPoolSize-2));
 	}
 	
-//	/**
-//	 * This is not thread safe
-//	 * @param listener
-//	 */
-//	public void addListener(ExecutorListener listener) {
-//	    listeners.add(listener);
-//	}
+	/**
+	 * This is not thread safe
+	 * @param listener
+	 */
+	public void addListener(ExecutorListener listener) {
+	    listeners.add(listener);
+	}
 
 	@Override
 	protected void afterExecute(Runnable runnable, Throwable exception) {
 		semaphore.release();
-//		for(ExecutorListener listener : listeners) {
-//		    try {
-//		        listener.afterExecute(runnable, exception);
-//		    } catch(RuntimeException e) {
-//		        //ignore
-//		    }
-//		}
+		for(ExecutorListener listener : listeners) {
+		    try {
+		        listener.afterExecute(runnable, exception);
+		    } catch(RuntimeException e) {
+		        //ignore
+		    }
+		}
 		
 	}
 	
