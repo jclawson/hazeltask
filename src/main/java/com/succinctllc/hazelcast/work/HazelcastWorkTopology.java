@@ -7,7 +7,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.eventbus.EventBus;
+import com.hazelcast.config.ExecutorConfig;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MapIndexConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
@@ -21,8 +23,6 @@ import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
  * properties that are used to connect, and distribute work throughout the
  * cluster. It keeps track of - topology name - the hazelcast instance -
  * communication executor service - local topology index (for naming threads)
- * 
- * TODO: move stuff from DistributedExecutorServiceManager to here.
  * 
  * @author Jason Clawson
  * 
@@ -75,8 +75,25 @@ public class HazelcastWorkTopology {
 		this.hazelcast = hazelcast;
 		this.localTopologyId = atomicIndex.getAndIncrement();
 		communicationExecutorService = hazelcast.getExecutorService(createName("com"));
-		workDistributor =  hazelcast.getExecutorService(createName("work-distributor"));
+		
+		String workDistributorName = createName("work-distributor");
+		
+		//limit the threads on the distributor
+		hazelcast.getConfig()
+		    .addExecutorConfig(new ExecutorConfig()
+		        .setName(workDistributorName)
+		        .setMaxPoolSize(5)
+		        .setCorePoolSize(1)
+		    );
+		
+		workDistributor =  hazelcast.getExecutorService(workDistributorName);
 		readyMembers = new CopyOnWriteArrayListSet<Member>();
+		
+		//add the createdAtMillis index to our pending-work map
+		hazelcast.getConfig()
+		    .addMapConfig(new MapConfig()
+		        .addMapIndexConfig(new MapIndexConfig("createdAtMillis", false)));
+		
 		pendingWork = hazelcast.getMap(createName("pending-work"));
 		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
 		workResponseTopic = hazelcast.getTopic(createName("work-response"));
