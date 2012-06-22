@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import com.hazelcast.core.Member;
 import com.succinctllc.hazelcast.cluster.MemberTasks;
 import com.succinctllc.hazelcast.cluster.MemberTasks.MemberResponse;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 
 /**
  * TODO: we can turn this into a heart beat task that monitors the state of the members
@@ -57,7 +58,8 @@ public class IsMemberReadyTimerTask extends TimerTask {
         }
 
         public Boolean call() throws Exception {
-            return HazelcastWorkManager.getDistributedExecutorService(topology).isReady();
+            DistributedExecutorService svc = HazelcastWorkManager.getDistributedExecutorService(topology);
+            return svc != null && svc.isReady();
         }
     }
 }

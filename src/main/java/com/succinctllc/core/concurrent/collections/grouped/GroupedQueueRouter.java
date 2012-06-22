@@ -4,41 +4,43 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
+import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
+import com.succinctllc.core.concurrent.collections.tracked.TrackedQueue;
 import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
 import com.succinctllc.hazelcast.work.router.RouteSkipAdapter;
 
 public class GroupedQueueRouter {
 	public static interface GroupedRouter<E extends Groupable> {
-		public TrackedQueue<E> nextPartition();
-		public TrackedQueue<E> peekPartition();
-		public void setPartitionedQueueue(GroupedQueue<E> queue);
+		public ITrackedQueue<E> nextPartition();
+		public ITrackedQueue<E> peekPartition();
+		public void setPartitionedQueueue(IGroupedQueue<E> queue);
 	}
 	
 	public static class InOrderRouter<E extends Groupable> implements GroupedRouter<E> {
-		private GroupedQueue<E> queue;
+		private IGroupedQueue<E> queue;
 		
-		public TrackedQueue<E> peekPartition() {
+		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
 		}
 		
-		public TrackedQueue<E> nextPartition() {
+		public ITrackedQueue<E> nextPartition() {
 			return getOldestQueue();
 		}
 		
-		protected TrackedQueue<E> getOldestQueue(){
+		protected ITrackedQueue<E> getOldestQueue(){
 			long oldest = Long.MAX_VALUE;
-			TrackedQueue<E> oldestQueue = null;
-			for(Entry<String, TrackedQueue<E>> partitionQueue : this.queue.getQueuesByGroup().entrySet()) {
-				TrackedQueue<E> queue = partitionQueue.getValue();
-				if(queue.getOldestTime() < oldest) {
-					oldest = queue.getOldestTime();
+			ITrackedQueue<E> oldestQueue = null;
+			for(Entry<String, ITrackedQueue<E>> partitionQueue : this.queue.getQueuesByGroup().entrySet()) {
+				ITrackedQueue<E> queue = partitionQueue.getValue();
+				if(queue.getOldestItemTime() < oldest) {
+					oldest = queue.getOldestItemTime();
 					oldestQueue = queue;
 				}
 			}
 			return oldestQueue;
 		}
 
-        public void setPartitionedQueueue(GroupedQueue<E> queue) {
+        public void setPartitionedQueueue(IGroupedQueue<E> queue) {
             this.queue = queue;
         }
 		
@@ -47,12 +49,12 @@ public class GroupedQueueRouter {
 	
 	public static class RoundRobinPartition<E extends Groupable> implements GroupedRouter<E> {
 		//private final AtomicReference lastPartition = new AtomicReference();
-		private GroupedQueue<E> queue;
+		private IGroupedQueue<E> queue;
 		
 		private RoundRobinRouter<String> router;
 		
 		
-		public TrackedQueue<E> nextPartition() {
+		public ITrackedQueue<E> nextPartition() {
 		    String partition = router.next();
 		    if(partition == null)
 		        return null;
@@ -60,11 +62,11 @@ public class GroupedQueueRouter {
 		}	
 		
 		//TODO: it would be nice if peek really worked... but not necessary
-		public TrackedQueue<E> peekPartition() {
+		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
 		}
 
-        public void setPartitionedQueueue(final GroupedQueue<E> queue) {
+        public void setPartitionedQueueue(final IGroupedQueue<E> queue) {
             this.queue = queue;
             router = new RoundRobinRouter<String>(new Callable<List<String>>(){
                 public List<String> call() throws Exception {
@@ -87,16 +89,16 @@ public class GroupedQueueRouter {
 			this.weigher = weigher;
 		}
 		
-		public TrackedQueue<E> nextPartition() {
+		public ITrackedQueue<E> nextPartition() {
 			// TODO Auto-generated method stub
 			return null;
 		}
 		
-		public TrackedQueue<E> peekPartition() {
+		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
 		}
 
-        public void setPartitionedQueueue(GroupedQueue<E> queue) {
+        public void setPartitionedQueueue(IGroupedQueue<E> queue) {
            
         }
 		

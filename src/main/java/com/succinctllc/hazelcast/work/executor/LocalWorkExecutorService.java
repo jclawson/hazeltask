@@ -1,8 +1,11 @@
 package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,12 +29,23 @@ public class LocalWorkExecutorService {
 	private BoundedThreadPoolExecutorService localExecutorService;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private HazelcastWorkGroupedQueue taskQueue;
+	private final BlockingQueue<Runnable> localExecutorQueue;
+	private final Map<String, HazelcastWork> worksInProgress;
 	
 	private final int maxThreads = 10;
 	
 	protected LocalWorkExecutorService(HazelcastWorkTopology topology) {
 		this.topology = topology;
 		taskQueue = new HazelcastWorkGroupedQueue();
+
+//FIXME: why doesn't this work????
+//		this.localExecutorQueue = new TrackedPriorityBlockingQueue<Runnable>(new TimeCreatedAdapter<Runnable>(){
+//            public long getTimeCreated(Runnable item) {
+//                return ((HazelcastWork)item).getTimeCreated();
+//            }		    
+//		});
+		this.localExecutorQueue = new LinkedBlockingQueue<Runnable>(maxThreads);
+		worksInProgress = new ConcurrentHashMap<String, HazelcastWork>();
 	}
 
 	public void start(){
@@ -41,14 +55,15 @@ public class LocalWorkExecutorService {
 			//note: if you don't write enough work to the linkedblockingqueue
 			//      new threads will not be created
 			//      you must exceed the queue size to see new threads
-			int blockingQueueSize = maxThreads*2;
+			//int blockingQueueSize = maxThreads*2;
 			localExecutorService = new BoundedThreadPoolExecutorService(
-						0, maxThreads,
-		                60L, TimeUnit.SECONDS,
-		                new LinkedBlockingQueue<Runnable>(blockingQueueSize), //limit 
-		                factory		                
-		            );
+			    0, maxThreads,
+		        60L, TimeUnit.SECONDS,
+		        localExecutorQueue,
+		        factory		                
+		    );
 			
+			localExecutorService.addListener(new ResponseExecutorListener());
 			//start copy queue thread
 			Thread t = factory.newNamedThread("QueueSync", new QueueSyncRunnable());
 			t.setDaemon(true);
@@ -60,6 +75,10 @@ public class LocalWorkExecutorService {
         public void afterExecute(Runnable runnable, Throwable exception) {
             //we finished this work... lets tell everyone about it!
             HazelcastWork work = (HazelcastWork)runnable;
+            
+            //remove from our local in-progress list
+            //System.out.println("  -"+work.getUniqueIdentifier());
+            worksInProgress.remove(work.getUniqueIdentifier());
             
             boolean success = exception == null && work.getException() == null;
             
@@ -107,7 +126,11 @@ public class LocalWorkExecutorService {
 			    HazelcastWork work = taskQueue.poll();
 				if(work != null) {
 					interval = minInterval;
-					Future<?> future = localExecutorService.submit(work);
+					
+					//System.out.println("  +"+work.getUniqueIdentifier());
+					worksInProgress.put(work.getUniqueIdentifier(), work);
+					//make sure we use execute so the work doesn't get wrapped
+					localExecutorService.execute(work);
 					
 					//System.out.println("   "+(System.currentTimeMillis()-start));
 					//do something with the future
@@ -124,14 +147,41 @@ public class LocalWorkExecutorService {
 	}
 	
 	/**
-	 * FIXME: this is not accurate because work will exist in the Executor blocking queue 
-	 * as well as the threads that are working on things.  Can we accurately fetch this time?
-	 * Perhaps we just have to push into a hashmap what we are currently working on so we 
-	 * can see it here.
+	 * There are some race condition scenarios here.  The point is we want to get the most accurate time possible.
+	 * We do some iterations, but the number of iterations is at most: (3 * number of threads) so its not that bad.
+	 * 
+	 * A race happens in the QueueSyncRunnable where we might not see the TRUE oldest time between when we poll() and put()
+	 * into the worksInProgressMap.
+	 * 
+	 * An inaccurate result here may cause us to resubmit a work more than once if we think we lost it.  This isn't that bad.
+	 * 
+	 * TODO: investigate other options for keeping track of "oldest work time" in the local system so we know accurately what
+	 * to recover.
+	 * 
 	 * @return
 	 */
-	public long getOldestWorkCreatedTime(){
-	    return this.taskQueue.getOldestWorkCreatedTime();	          
+	public Long getOldestWorkCreatedTime(){
+	    Iterator<Runnable> localExecutorIt = localExecutorQueue.iterator();
+	    long oldest = Long.MAX_VALUE;
+	    while(localExecutorIt.hasNext()) {
+	        HazelcastWork w = (HazelcastWork)localExecutorIt.next();
+	        if(w.getTimeCreated() < oldest) {
+	            oldest = w.getTimeCreated();
+	        }
+	    }
+	    
+	    for(HazelcastWork w : worksInProgress.values()) {
+	        if(w.getTimeCreated() < oldest) {
+	            oldest = w.getTimeCreated();
+	        }
+	    }
+	    
+	    Long oldestQueueTime = this.taskQueue.getOldestQueueTime();
+	    
+	    if(oldestQueueTime != null && oldestQueueTime < oldest)
+	        oldest = oldestQueueTime;
+	    
+	    return oldest;
 	}
 	
 	public long getQueueSize() {

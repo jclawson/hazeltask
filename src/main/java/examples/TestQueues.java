@@ -1,3 +1,4 @@
+package examples;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -26,23 +27,23 @@ public class TestQueues {
         svc.startup();
         //ExecutorService svc = mgr.getDistributedExecutorService();
         
-        Future<Integer> f = submitWork(svc, 1);
-        System.out.println("getting");
+        //Future<Integer> f = submitWork(svc, 1);
+        //System.out.println("getting");
         
         
         
-        System.out.println("done: "+f.get());
+        //System.out.println("done: "+f.get());
         
-        /*if(true) {
+        if(true) {
             int customerId = 0;
-            for(int i = 0; i<50000; i++) {
-                if(i%10 == 0)
+            for(int i = 0; i<10000; i++) {
+                if(i%1000 == 0)
                     customerId++;
                 submitWork(svc, customerId);
             }
             System.out.println("done adding..");
             System.exit(1);
-        }*/
+        }
         
     }
     
@@ -52,13 +53,7 @@ public class TestQueues {
         return svc.submit(new WorkType1(i.incrementAndGet(), "customer-"+customerId));
     }
     
-    public static class MyWorkAdapter implements WorkIdAdapter<WorkType1> {
-
-        public WorkId createWorkId(WorkType1 work) {
-            return new WorkId(Integer.toString(((WorkType1)work).i), ((WorkType1)work).part);
-        }
-        
-    }
+    
     
     public static class WorkType1 implements Serializable, Callable<Integer> {
         private static final long serialVersionUID = 1L;
@@ -72,9 +67,9 @@ public class TestQueues {
             this.part = part;
         }
         public Integer call() throws Exception {
-            System.out.println("Going to to work on "+i+" for customer "+part);
+            //System.out.println("Going to to work on "+i+" for customer "+part);
             try {
-                Thread.sleep(5000);
+                Thread.sleep(4);
             } catch (InterruptedException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();

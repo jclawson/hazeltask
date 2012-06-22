@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -18,6 +19,13 @@ import java.util.concurrent.TimeUnit;
  * time, may have been blocked longer than it should have been. This also
  * prevents possible CPU overload where you can't really control the number of
  * threads doing the work as the callers may all be consumed doing the work.
+ * 
+ * TODO: lets implement a new executor service that supports an unbounded
+ * or very large blockingqueue.  It also takes a threshold.  If the queue
+ * size is > than this threshold, new threads will be created up to max 
+ * threads.  This differs from how ThreadPoolExecutor works where it depends
+ * on the queue to be full before it adds new threads, and then ultimately
+ * runs its Rejection handler.
  * 
  * @author jclawson
  * 
@@ -37,12 +45,36 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 
 		super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue,
 				threadFactory, 
-				new CallerRunsPolicy() //<- this policy should actually never go into affect because of our BoundedExecutorService
+				new AbortPolicy()
+				//new CallerRunsPolicy() //<- this policy should actually never go into affect because of our BoundedExecutorService
 		);
+		
+		this.setRejectedExecutionHandler(new BetterCallerRunsPolicy());
 		
 		//I am not sure why I had to do - 2.  It should have just been -1
 		this.semaphore = new Semaphore(workQueue.remainingCapacity()+(maximumPoolSize-2));
 	}
+	
+	private class BetterCallerRunsPolicy implements RejectedExecutionHandler {
+        public BetterCallerRunsPolicy() { }
+
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
+            if (!e.isShutdown()) {
+                boolean offered = false;
+                try {
+                    offered = e.getQueue().offer(r, 10, TimeUnit.SECONDS);
+                } catch (InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                if(!offered) {
+                    System.out.println("!_!_!_!_!_!_!_!_!_!");
+                    r.run();
+                    afterExecute(r, null);
+                }
+            }
+        }
+    }
 	
 	/**
 	 * This is not thread safe

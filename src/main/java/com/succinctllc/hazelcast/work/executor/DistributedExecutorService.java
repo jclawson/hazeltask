@@ -88,15 +88,18 @@ public class DistributedExecutorService implements ExecutorService {
         });
 		
 		futureTracker = new DistributedFutureTracker(this);
+		
+		//flush items that got left behind in the local map
+		//this must always be started on every single node!
+        new Timer(topology.createName("flush-timer"), true)
+            .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
 	}
 	
 	public void startup() {
 	    localExecutorService.start();
         isReady = true;
         topology.localExecutorServiceReady();
-	    //flush items that got left behind in the map
-	    new Timer(topology.createName("flush-timer"), true)
-            .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
+	    
 	}
 	
 	public HazelcastWorkTopology getTopology(){

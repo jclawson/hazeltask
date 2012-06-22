@@ -3,18 +3,23 @@ package com.succinctllc.core.concurrent.collections.grouped;
 import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import com.google.common.collect.ImmutableMap;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter.GroupedRouter;
+import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
+import com.succinctllc.core.concurrent.collections.tracked.TrackedQueue;
 
-public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
-	private final ConcurrentMap<String, TrackedQueue<E>> queuesByGroup;
+public class GroupedQueue<E extends Groupable> extends AbstractQueue<E> implements IGroupedQueue<E>  {
+	private final ConcurrentMap<String, ITrackedQueue<E>> queuesByGroup;
 	private final CopyOnWriteArrayList<String> groups = new CopyOnWriteArrayList<String>();
 	private final GroupedRouter<E> groupRouter;
 	
@@ -34,20 +39,20 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
         this(null);
     }
 	
-	protected ConcurrentMap<String, TrackedQueue<E>> getQueuesByGroup() {
-		return this.queuesByGroup;
+	public Map<String, ITrackedQueue<E>> getQueuesByGroup() {
+		return Collections.unmodifiableMap(this.queuesByGroup);
 	}
 	
-	protected TrackedQueue<E> getQueueByGroup(String group){
+	public ITrackedQueue<E> getQueueByGroup(String group){
 	    return this.queuesByGroup.get(group);
 	}
 	
-	protected List<String> getGroups() {
+	public List<String> getGroups() {
 		return groups;
 	}
 	
-	private ConcurrentMap<String, TrackedQueue<E>> createQueuesByGroupMap() {
-		return new ConcurrentHashMap<String, TrackedQueue<E>>();
+	private ConcurrentMap<String, ITrackedQueue<E>> createQueuesByGroupMap() {
+		return new ConcurrentHashMap<String, ITrackedQueue<E>>();
 	}
 	
 	protected TrackedQueue<E> createQueue(){
@@ -57,7 +62,7 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 	private Queue<E> getOrCreateGroupQueue(String group) {
 		Queue<E> q = queuesByGroup.get(group);
 		if(q == null) {
-			TrackedQueue<E> newQ = createQueue();
+			ITrackedQueue<E> newQ = createQueue();
 			if(queuesByGroup.putIfAbsent(group, newQ) == null) {
 				q = newQ;
 				groups.add(group);
@@ -78,7 +83,7 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 	
 	//FIXME: guarantee that it will return non-null if queue is not empty (up to router?)
 	public E peek() {
-		TrackedQueue<E> oldestQueue = groupRouter.peekPartition();
+		ITrackedQueue<E> oldestQueue = groupRouter.peekPartition();
 		if(oldestQueue != null)
 			return oldestQueue.peek();
 		else
@@ -87,7 +92,7 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 
 	//FIXME: guarantee that it will return non-null if queue is not empty (up to router?)
 	public E poll() {
-		TrackedQueue<E> oldestQueue = groupRouter.nextPartition();
+		ITrackedQueue<E> oldestQueue = groupRouter.nextPartition();
 		if(oldestQueue != null)
 			return oldestQueue.poll();
 		else
@@ -111,7 +116,7 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 		
 		public FastPartitionedQueueIterator(){
 			queueIterators = new ArrayList<Iterator<E>>(queuesByGroup.size());
-			for(TrackedQueue<E> q : queuesByGroup.values()) {
+			for(ITrackedQueue<E> q : queuesByGroup.values()) {
 				queueIterators.add(q.iterator());
 			}
 		}
@@ -166,13 +171,16 @@ public class GroupedQueue<E extends Groupable> extends AbstractQueue<E>  {
 		
 	}
 	
-	public long getOldestQueueTime() {
+	public Long getOldestQueueTime() {
 	    long oldestTime = Long.MAX_VALUE;
-	    for(Entry<String, TrackedQueue<E>> entry : this.queuesByGroup.entrySet()) {
-	        long oldest = entry.getValue().getOldestTime();
-	        if(oldest < oldestTime)
-	            oldestTime = oldest;
-	    }
+	    for(Entry<String, ITrackedQueue<E>> entry : this.queuesByGroup.entrySet()) {
+	        Long oldest = entry.getValue().getOldestItemTime();
+	        if(oldest != null && oldest < oldestTime)
+                oldestTime = oldest;
+        }
+        
+        if(oldestTime == Long.MAX_VALUE)
+            return null;
 	    
 	    return oldestTime;
 	}

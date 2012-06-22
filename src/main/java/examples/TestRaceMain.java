@@ -1,3 +1,4 @@
+package examples;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
@@ -29,12 +30,16 @@ public class TestRaceMain {
         Thread t3 = new Thread(new MyInc());
         Thread t4 = new Thread(new MyRun());
         Thread t5 = new Thread(new MyRun());
+        Thread t6 = new Thread(new MyRun());
+        Thread t7 = new Thread(new MyRun());
         
         t1.start();
         t2.start();
         t3.start();
         t4.start();
         t5.start();
+        t6.start();
+        t7.start();
         
         Thread.currentThread().sleep(1000);
         
@@ -51,7 +56,7 @@ public class TestRaceMain {
         }
     }
     
-    List<String> list = new Vector(Arrays.asList("Jason", "Jenny", "Gizmo"));
+    List<String> list = new Vector(Arrays.asList("Jason", "Jenny", "Gizmo", "Steve"));
     ListRouter<String> router = new RoundRobinRouter(list);
     
     public class MyInc  implements Runnable {
@@ -59,12 +64,12 @@ public class TestRaceMain {
             int i = 0;
             while(i++ < 10) {
                if(i % 3 == 0) {
-                    list.add("new-"+i);
+                   // list.add("new-"+i);
                }
                
-               if(i % 7 == 0) {
-                   list.remove(1);
-               }
+//               if(i % 7 == 0) {
+//                   list.remove(1);
+//               }
                
                try {
                 Thread.sleep(5);

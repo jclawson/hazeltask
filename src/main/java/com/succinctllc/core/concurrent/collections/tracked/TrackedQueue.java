@@ -1,13 +1,18 @@
-package com.succinctllc.core.concurrent.collections.grouped;
+package com.succinctllc.core.concurrent.collections.tracked;
 
 import java.util.AbstractQueue;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class TrackedQueue<E> extends AbstractQueue<E>  {
+import com.succinctllc.core.concurrent.collections.grouped.QueueListener;
+
+public class TrackedQueue<E> extends AbstractQueue<E> implements ITrackedQueue<E>  {
 	
 	protected final Queue<TrackedItem<E>> delegate;
+	
+	private volatile Long lastAddedTime = null;
+    private volatile Long lastRemovedTime = null;
 	
 	/**
 	 * This must be volatile so that reads are always reading the 
@@ -41,10 +46,13 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 		//newestTimestamp = System.currentTimeMillis();
 	    TrackedItem<E> wrappedElem = wrap(e);
 	    if(delegate.offer(wrappedElem)) {
+	        lastAddedTime = System.currentTimeMillis();
 	        if(listener != null)
 	            listener.onAdd(wrappedElem);
 	        return true;
 	    }
+	    
+	    lastAddedTime = System.currentTimeMillis();
 	    return false;
 	}
 
@@ -57,6 +65,7 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 
 	public E poll() {
 		TrackedItem<E> tItem = delegate.poll();
+		lastRemovedTime = System.currentTimeMillis();
 		if(tItem == null)
 		    return null;
 		
@@ -64,8 +73,8 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 		onRemove(tItem);
 		return result;
 	}
-	
-	private void onRemove(TrackedItem<E> tItem){
+
+    private void onRemove(TrackedItem<E> tItem){
 		//if(this.size() == 0)
 		//	this.newestTimestamp = 0;
 	    if(listener != null)
@@ -100,12 +109,6 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 //		inSync = true;
 	}
 	
-	public long getOldestTime(){
-		TrackedItem<E> entry = delegate.peek();
-		if(entry == null)
-			return Long.MAX_VALUE;
-		return entry.getTimestamp();
-	}
 	
 	public static class TrackedQueueIterator<I> implements Iterator<I> {
 		
@@ -136,6 +139,7 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 //			}
 		    trackedQueue.onRemove(lastEntry);
 			delegate.remove();
+			trackedQueue.lastRemovedTime = System.currentTimeMillis();
 		}
 		
 	}
@@ -144,6 +148,21 @@ public class TrackedQueue<E> extends AbstractQueue<E>  {
 	protected Queue<TrackedItem<E>> createQueue(){
 		return new ConcurrentLinkedQueue<TrackedItem<E>>();
 	}
+
+    public Long getOldestItemTime() {
+        TrackedItem<E> entry = delegate.peek();
+        if(entry == null)
+            return null;
+        return entry.getTimestamp();
+    }
+
+    public Long getLastAddedTime() {
+        return lastAddedTime;
+    }
+
+    public Long getLastRemovedTime() {
+        return lastRemovedTime;
+    }
 
 	
 }

@@ -39,18 +39,19 @@ public class HazelcastWorkGroupedQueueTest {
     
     @Test
     public void testOldestWorkCreatedTime() {
-        Assert.assertEquals(1, taskQueue.getOldestWorkCreatedTime());
+        Assert.assertEquals(1L, (long)taskQueue.getOldestQueueTime());
     }
     
     @Test
     public void testOldestWorkCreatedTimePop() {
+        Assert.assertEquals(1L, (long)taskQueue.getOldestQueueTime());
         taskQueue.poll();
-        Assert.assertEquals(1, taskQueue.getOldestWorkCreatedTime());
+        Assert.assertEquals(2L, (long)taskQueue.getOldestQueueTime());
         taskQueue.poll();
-        Assert.assertEquals(2, taskQueue.getOldestWorkCreatedTime());
+        Assert.assertEquals(3L, (long)taskQueue.getOldestQueueTime());
         taskQueue.poll();
-        Assert.assertEquals(2, taskQueue.getOldestWorkCreatedTime());
+        Assert.assertEquals(4L, (long)taskQueue.getOldestQueueTime());
         taskQueue.poll();
-        Assert.assertEquals(Long.MAX_VALUE, taskQueue.getOldestWorkCreatedTime());
+        Assert.assertNull(taskQueue.getOldestQueueTime());
     }
 }

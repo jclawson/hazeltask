@@ -23,8 +23,8 @@ public class StaleItemsFlushTimerTask extends TimerTask {
     private DistributedExecutorService svc;
     private HazelcastWorkTopology topology;
 
-    public static Long HARD_EXPIRE_TIME_BUFFER = 60000L; //1 minute
-    public static Long EXPIRE_TIME_BUFFER = 10000L; //30 seconds
+    public static long EXPIRE_TIME_BUFFER = 5000L; //5 seconds
+    public static long EMPTY_EXPIRE_TIME_BUFFER = 10000L; //10 seconds
     
     protected StaleItemsFlushTimerTask(DistributedExecutorService svc) {
         this.svc = svc;
@@ -44,26 +44,20 @@ public class StaleItemsFlushTimerTask extends TimerTask {
 
         long min = Long.MAX_VALUE;
         for(MemberResponse<Long> result : results) {
-            if(result.getValue() < min) {
+            if(result.getValue() != null && result.getValue() < min) {
                 min = result.getValue();
             }
         }
         
         SqlPredicate pred;
         if(min == Long.MAX_VALUE) {
-            //FIXME: just get everything that is left in the map, and ask all the members if they are working on them
-            //we need to do this because think about the case when a work takes 10 minutes to do and the last one is
-            //sitting there being worked on... perhaps we can ALSO keep track of stats of items being worked on so
-            //we can return a more accurate GetOldestTime and then get rid of this if block.  There is still likely to
-            //be a race condition, so lets add in a buffer
-            pred = new SqlPredicate("createdAtMillis < "+(System.currentTimeMillis()-HARD_EXPIRE_TIME_BUFFER));
+            pred = new SqlPredicate("createdAtMillis < "+(System.currentTimeMillis()-EMPTY_EXPIRE_TIME_BUFFER));
         } else {
-            //this EXPIRE_TIME_BUFFER should really be equal to the mean work time
-            //because its pretty likely the min work created time is being worked on right now
-            //which would put it out of reach for our metrics
             pred = new SqlPredicate("createdAtMillis < "+(min-EXPIRE_TIME_BUFFER));
         }
         
+        System.out.println("Map Size: "+map.size()+" "+map.values().size());
+        System.out.println("Local Size: "+map.localKeySet().size());
         
         Set<String> keys = (Set<String>) map.localKeySet(pred);
         Collection<HazelcastWork> works = map.getAll(keys).values();
@@ -91,7 +85,7 @@ public class StaleItemsFlushTimerTask extends TimerTask {
             LocalWorkExecutorService svc = HazelcastWorkManager
                     .getDistributedExecutorService(topologyName)
                     .getLocalExecutorService();           
-            long result = svc.getOldestWorkCreatedTime();
+            Long result = svc.getOldestWorkCreatedTime();
             return result;
         }
     }

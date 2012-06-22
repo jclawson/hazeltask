@@ -3,6 +3,7 @@ package com.succinctllc.hazelcast.cluster;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -11,10 +12,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
+import com.google.common.collect.Lists;
 import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.MultiTask;
+import com.hazelcast.impl.InnerFutureTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 
@@ -78,8 +81,9 @@ public class MemberTasks {
         Collection<MemberResponse<T>> result = new ArrayList<MemberResponse<T>>(members.size());
         Collection<DistributedTask<MemberResponse<T>>> futures = new ArrayList<DistributedTask<MemberResponse<T>>>(members.size());
         
-        for(Member m : members) {
-        	DistributedTask<MemberResponse<T>> futureTask = new DistributedTask<MemberResponse<T>>(new MemberResponseCallable<T>(callable, m), m);
+        //we copy the member set because it could change under us and throw a NoSuchElementException
+        for(Member m : Lists.newArrayList(members)) {
+          	DistributedTask<MemberResponse<T>> futureTask = new DistributedTask<MemberResponse<T>>(new MemberResponseCallable<T>(callable, m), m);
             futures.add(futureTask);
             execSvc.execute(futureTask);
         }
@@ -95,21 +99,32 @@ public class MemberTasks {
             	Thread.currentThread().interrupt(); //restore interrupted status and return what we have
             	return result;
             } catch (MemberLeftException e) {
-            	Member targetMember = ((MemberResponseCallable<T>)future.getInner()).getMember();            	
-            	LOGGER.log(Level.INFO, "Unable to execute task on "+targetMember+". It has left the cluster.", e);
+            	//ignore that this member left....
+                //Member targetMember = getFutureInner(future).getMember();            	
+            	//LOGGER.log(Level.INFO, "Unable to execute task on "+targetMember+". It has left the cluster.", e);
             } catch (ExecutionException e) {
-            	Member targetMember = ((MemberResponseCallable<T>)future.getInner()).getMember();
+            	Member targetMember = getFutureInner(future).getMember();
             	LOGGER.log(Level.WARNING, "Unable to execute task on "+targetMember+". There was an error.", e);
             } catch (TimeoutException e) {
-            	Member targetMember = ((MemberResponseCallable<T>)future.getInner()).getMember();
+            	Member targetMember = getFutureInner(future).getMember();
             	LOGGER.log(Level.SEVERE, "Unable to execute task on "+targetMember+" within 10 seconds.");
             } catch (RuntimeException e) {
-            	Member targetMember = ((MemberResponseCallable<T>)future.getInner()).getMember();
+            	Member targetMember = getFutureInner(future).getMember();
             	LOGGER.log(Level.SEVERE, "Unable to execute task on "+targetMember+". An unexpected error occurred.", e);
             }
         }
         
         return result;
+    }
+    
+    private static <T> MemberResponseCallable<T> getFutureInner(DistributedTask<MemberResponse<T>> future) {
+        Object o = future.getInner();
+        if(o instanceof InnerFutureTask) {
+            return (MemberResponseCallable<T>) ((InnerFutureTask) o).getCallable();
+        } else if (o instanceof MemberResponseCallable) {
+            return (MemberResponseCallable<T>) o;
+        }
+        return null;
     }
     
     public static class MemberResponseCallable<T> implements Callable<MemberResponse<T>>, Serializable {

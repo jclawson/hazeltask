@@ -1,11 +1,17 @@
-package com.succinctllc.core.concurrent.collections;
+package com.succinctllc.core.concurrent.collections.tracked;
 
 import java.util.Comparator;
 import java.util.concurrent.PriorityBlockingQueue;
 
+
+
 public class TrackedPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> implements ITrackedQueue<E> {
     private static final long serialVersionUID = 1L;
     private final TimeCreatedAdapter<E> timeAdapter;
+    private volatile Long lastAddedTime = null;
+    private volatile Long lastRemovedTime = null;
+    
+    private static final int DEFAULT_INITIAL_SIZE = 50;
     
     public static interface TimeCreatedAdapter<E> {
         public long getTimeCreated(E item);
@@ -26,26 +32,45 @@ public class TrackedPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> im
     }
     
     public TrackedPriorityBlockingQueue(TimeCreatedAdapter<E> timeAdapter) {        
-        super(Integer.MAX_VALUE, new TimeCreatedComparator<E>(timeAdapter));
+        super(DEFAULT_INITIAL_SIZE, new TimeCreatedComparator<E>(timeAdapter));
         this.timeAdapter = timeAdapter;
     }
     
-    public long getOldestItemTime() {
+    public Long getOldestItemTime() {
         E elem = this.peek();
         if(elem != null)
             return timeAdapter.getTimeCreated(elem);
         else
-            return Long.MAX_VALUE;
+            return null;
     }
 
-    public long getLastAddedTime() {
-        // TODO Auto-generated method stub
-        return 0;
+    @Override
+    public boolean offer(E e) {
+        boolean r = super.offer(e);
+        lastAddedTime = System.currentTimeMillis();
+        return r;
     }
 
-    public long getLastRemovedTime() {
-        // TODO Auto-generated method stub
-        return 0;
+    @Override
+    public E poll() {
+        E e = super.poll();
+        lastRemovedTime = System.currentTimeMillis();
+        return e;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        boolean r = super.remove(o);
+        lastRemovedTime = System.currentTimeMillis();
+        return r;
+    }
+
+    public Long getLastAddedTime() {
+        return lastAddedTime;
+    }
+
+    public Long getLastRemovedTime() {
+        return lastRemovedTime;
     }
 
 }
