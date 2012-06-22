@@ -89,12 +89,14 @@ public class HazelcastWorkTopology {
 		workDistributor =  hazelcast.getExecutorService(workDistributorName);
 		readyMembers = new CopyOnWriteArrayListSet<Member>();
 		
+		String pendingWorkMapName = createName("pending-work");
 		//add the createdAtMillis index to our pending-work map
 		hazelcast.getConfig()
 		    .addMapConfig(new MapConfig()
+		    	.setName(workDistributorName)
 		        .addMapIndexConfig(new MapIndexConfig("createdAtMillis", false)));
 		
-		pendingWork = hazelcast.getMap(createName("pending-work"));
+		pendingWork = hazelcast.getMap(pendingWorkMapName);
 		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
 		workResponseTopic = hazelcast.getTopic(createName("work-response"));
 	}
