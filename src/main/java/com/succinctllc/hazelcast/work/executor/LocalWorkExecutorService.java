@@ -15,12 +15,10 @@ import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
-import com.succinctllc.core.concurrent.executor.QueueExecutor;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkResponse;
-import com.succinctllc.hazelcast.work.executor.BoundedThreadPoolExecutorService.ExecutorListener;
 
 public class LocalWorkExecutorService {
 

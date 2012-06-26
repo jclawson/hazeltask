@@ -1,4 +1,4 @@
-package com.succinctllc.core.concurrent.executor;
+package com.succinctllc.hazelcast.work.executor;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -7,7 +7,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.succinctllc.hazelcast.work.executor.BoundedThreadPoolExecutorService.ExecutorListener;
 
 public class QueueExecutor<T extends Runnable> {
     private final BlockingQueue<T> queue;

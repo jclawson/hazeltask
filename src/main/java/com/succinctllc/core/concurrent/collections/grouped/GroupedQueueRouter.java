@@ -5,7 +5,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
 import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
-import com.succinctllc.core.concurrent.collections.tracked.TrackedQueue;
 import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
 import com.succinctllc.hazelcast.work.router.RouteSkipAdapter;
 
@@ -81,7 +80,7 @@ public class GroupedQueueRouter {
 	
 	public static class WeightedPartitionRouter<E extends Groupable> implements GroupedRouter<E> {
 		public static interface PartitionWeigher<E extends Groupable> {
-			public long getWeight(String partition, GroupedQueue<E> queue);
+			public long getWeight(String partition, IGroupedQueue<E> queue);
 		}
 		
 		private final PartitionWeigher<E> weigher;
