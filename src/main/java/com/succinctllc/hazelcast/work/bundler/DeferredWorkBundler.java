@@ -126,10 +126,7 @@ public class DeferredWorkBundler<I> {
         	new Timer(buildName("bundle-flush-timer"), true)
                 .schedule(new DeferredBundleTask<I>(this), config.flushTTL, FLUSH_TIMER_TASK_RATE);
         	
-        	//if we are going to do work, startup the executor service
-        	if(config.doWork) {
-        	    executorService.startup();
-        	}
+        	executorService.startup();
         }
     }
     

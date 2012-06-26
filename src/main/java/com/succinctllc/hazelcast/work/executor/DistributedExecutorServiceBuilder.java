@@ -72,6 +72,15 @@ public class DistributedExecutorServiceBuilder {
             return this;
         }
 	    
+	    /**
+	     * disableWorkers if you do not want this node to execute any work
+	     * @return
+	     */
+	    public InternalBuilderStep2<W> withDisabledWorkers(boolean disableWorkers) {
+            this.disableWorkers = disableWorkers;
+            return this;
+        }
+	    
 	    public InternalBuilderStep2<W> withThreadCount(int numberOfThreads) {
 	        this.threadCount = numberOfThreads;
 	        return this;

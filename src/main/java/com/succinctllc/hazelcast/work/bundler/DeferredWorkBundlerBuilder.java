@@ -7,6 +7,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder;
+import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
 
 /**
  * Many times its more efficient to do work if they are grouped into a small
@@ -91,6 +92,7 @@ public class DeferredWorkBundlerBuilder {
         protected boolean           preventDuplicates;
         protected long              maxDuplicatePreventionTTL;
         protected boolean           doWork;
+        protected int 				threadCount;
 
         public InternalBuilderStep3(InternalBuilderStep2<I> step2, BundlerWorkKeyAdapter<I> partitioner, Bundler<I> bundler) {
             this.step2              = step2;
@@ -107,6 +109,7 @@ public class DeferredWorkBundlerBuilder {
             this.maxDuplicatePreventionTTL = 1800000; // 30 Minutes
             this.topology = step2.step1.topology;
             this.doWork = true;
+            this.threadCount 		= 4;
         }
 
         public InternalBuilderStep3<I> withFlushSize(int flushSize) {
@@ -181,6 +184,11 @@ public class DeferredWorkBundlerBuilder {
             this.maxDuplicatePreventionTTL = time;
             return this;
         }
+        
+        public InternalBuilderStep3<I> withThreadCount(int numberOfThreads) {
+	        this.threadCount = numberOfThreads;
+	        return this;
+	    }
 
 //          We need Future support on the DistributedExecutorService before we can do this
 //          Use a completion service to process this
@@ -195,6 +203,8 @@ public class DeferredWorkBundlerBuilder {
             //build our distributed executor service
             DistributedExecutorService svc = DistributedExecutorServiceBuilder.builder(topology.getHazelcast(), topology.getName())
                 .withWorkKeyAdapter(step2.partitioner)
+                .withDisabledWorkers(!this.doWork)
+                .withThreadCount(threadCount)
                 .build();
             
         	return new DeferredWorkBundler<I>(this, svc);
