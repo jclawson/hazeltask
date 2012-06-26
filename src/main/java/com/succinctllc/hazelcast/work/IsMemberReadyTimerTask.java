@@ -41,7 +41,9 @@ public class IsMemberReadyTimerTask extends TimerTask {
                 // we need to make sure the member thinks its local if it is
                 // hazelcast is dumb
                 if (m.equals(thisMember)) m = thisMember;
-                members.add(m);
+                
+                if(!m.isLiteMember())
+                	members.add(m);
             }
         }
         

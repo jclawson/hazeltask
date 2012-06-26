@@ -2,6 +2,7 @@ package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
@@ -341,9 +342,12 @@ public class DistributedExecutorService implements ExecutorService {
 		}
 		
 		public List<Runnable> call() throws Exception {
-			LocalWorkExecutorService svc = HazelcastWorkManager
-			                                  .getDistributedExecutorService(topology)
-			                                  .getLocalExecutorService();
+			DistributedExecutorService dsvc = HazelcastWorkManager
+					.getDistributedExecutorService(topology);
+			
+			if(dsvc == null) return Collections.emptyList();			
+			LocalWorkExecutorService svc = dsvc.getLocalExecutorService();
+			if(svc == null) return Collections.emptyList();			
 			
 			switch(this.type) {
 			case SHUTDOWN_NOW:

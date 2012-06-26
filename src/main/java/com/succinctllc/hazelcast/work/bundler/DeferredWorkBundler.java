@@ -181,7 +181,7 @@ public class DeferredWorkBundler<I> {
             return 0;
         }
         
-        int numNodes = topology.getHazelcast().getCluster().getMembers().size();
+        int numNodes = topology.getReadyMembers().size();
         int minBundleSize = Math.min(bundle.size(), config.minBundleSize);
         int numDividedBundles = bundle.size() / minBundleSize;
         numDividedBundles = Math.min(numDividedBundles, numNodes);
