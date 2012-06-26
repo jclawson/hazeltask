@@ -10,18 +10,13 @@ import com.hazelcast.logging.Logger;
 
 /**
  * This round robin router is concurrency safe.  It is not guaranteed to be
- * perfectly accurate under high concurrency, but it will be pretty close. It 
- * will show more errors if the list is changing out from underneath it, or if
- * the number of threads vs number of entries in the list is very high.  It will 
+ * perfectly accurate if the list is changing out from underneath it.  It will 
  * never throw an exception.  It will only return null if the list is known to be
  * empty.
  * 
- * If an unexpected condition occurs, it will retry its execution keeping track of 
- * the number of retries.  Currently it doesn't do anything with this information.
- * Even with a high number of threads and a single element in the list, the number 
- * of retries is very low: approx .00001 % of the time.
- * 
- * TODO: return ((lastIndex++)) % size;
+ * If an unexpected condition occurs(the list gets smaller such that it would try to 
+ * select an index that no longer exists), it will retry its execution 
+ * keeping track of the number of retries.  It will retry a max of 100 times
  * 
  * @author jclawson
  *
@@ -55,9 +50,6 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         this.skipper = skipper;
     }
     
-    /* (non-Javadoc)
-     * @see com.succinctllc.executor.router.CollectionRouter#next()
-     */
     public T next(){
         return next(1, 0);
     }
@@ -75,34 +67,19 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
             return null;
         }
         
-        if(size > 0) {
-            int index = 0;
-            if(size > 1) {
-                lastIndex.compareAndSet(size-1, -1);
-                index = lastIndex.incrementAndGet();
-                if(index >= size) {
-                    //someone should win this race
-                    if(!lastIndex.compareAndSet(index, 0)) {
-                        return next(tries+1, numSkipped);
-                    } else 
-                        index = 0;
-                }
+        int index = lastIndex.incrementAndGet() % size;
+        
+        try {             
+            T result = list.get(index);
+            if(skipper != null && skipper.shouldSkip(result)) {
+                return next(1, numSkipped+1);
+            } else {
+                return result;
             }
-            
-            //the size might change out from under us here
-            try {             
-                T result = list.get(index);
-                if(skipper != null && skipper.shouldSkip(result)) {
-                    return next(1, numSkipped+1);
-                } else {
-                    return result;
-                }
-            } catch(IndexOutOfBoundsException e) {
-                //try again          
-                return next(tries+1, numSkipped);
-            }
+        } catch(IndexOutOfBoundsException e) {
+            //list changed under us... try again          
+            return next(tries+1, numSkipped);
         }
-        return null;
     }
     
     private List<T> getList(){

@@ -78,11 +78,11 @@ public class HazelcastWorkTopology {
 		
 		String workDistributorName = createName("work-distributor");
 		
-		//limit the threads on the distributor
+		//limit the threads on the distributor to 1 thread
 		hazelcast.getConfig()
 		    .addExecutorConfig(new ExecutorConfig()
 		        .setName(workDistributorName)
-		        .setMaxPoolSize(5)
+		        .setMaxPoolSize(1)
 		        .setCorePoolSize(1)
 		    );
 		

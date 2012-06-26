@@ -35,6 +35,7 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
 	
 	public static interface ExecutorListener {
 	    public void afterExecute(Runnable runnable, Throwable exception);
+	    public void beforeExecute(Runnable runnable);
 	}
 	
 	private Collection<ExecutorListener> listeners = new ArrayList<ExecutorListener>();
@@ -68,7 +69,6 @@ public class BoundedThreadPoolExecutorService extends ThreadPoolExecutor {
                 }
                 
                 if(!offered) {
-                    System.out.println("!_!_!_!_!_!_!_!_!_!");
                     r.run();
                     afterExecute(r, null);
                 }

@@ -9,9 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter.GroupedRouter;
 import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
@@ -27,15 +31,26 @@ import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlocki
  * TODO: lets refactor this so its not based on a specific "time created" and instead
  * base it on "weight" or perhaps just specify the comparator instead
  * 
+ * I have made this a BlockingQueue.  Only 1 thread is allowed to write at a time.
+ * Multiple threads are allowed to read if using poll() or peek().  If using poll(timeout)
+ * or take(), it will block writers and wait until the queue is non-empty.
+ * 
  * @author jclawson
  *
  * @param <E>
  */
-public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> implements IGroupedQueue<E> {
+public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> implements IGroupedQueue<E>, BlockingQueue<E> {
     private final ConcurrentMap<String, ITrackedQueue<E>> queuesByGroup;
     private final CopyOnWriteArrayList<String> groups = new CopyOnWriteArrayList<String>();
     private GroupedRouter<E> groupRouter;
     private final TimeCreatedAdapter<E> timeAdapter;
+    
+    /**
+     * Here we use a non-fair lock to prevent starvation if a bunch of threads get in
+     * line first.
+     */
+    private final ReentrantLock lock = new ReentrantLock(false);
+    private final Condition notEmpty = lock.newCondition();
     
     public GroupedPriorityQueue(GroupedRouter<E> partitionRouter, TimeCreatedAdapter<E> timeAdapter){
         queuesByGroup = new ConcurrentHashMap<String, ITrackedQueue<E>>();
@@ -73,11 +88,24 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return q;
     }
     
+    /**
+     * Only 1 thread can write an element at a time... but multiple threads 
+     * can read as long as they are using poll() or peek()
+     * 
+     * Using poll(timeout) or take() will block writers and wait if the queue
+     * is empty
+     */
     public boolean offer(E e) {
         String partition = e.getGroup();
         Queue<E> q = getOrCreateGroupQueue(partition);
-        boolean result = q.offer(e);
-        return result;
+        lock.lock();
+        try {
+            boolean result = q.offer(e);
+            notEmpty.signal();
+            return result;
+        } finally {
+            lock.unlock();
+        }
     }
     
     public E peek() {
@@ -219,5 +247,71 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
             num++;
         }
         return num;
+    }
+
+    public void put(E e) throws InterruptedException {
+        this.offer(e);
+    }
+
+    public boolean offer(E e, long timeout, TimeUnit unit) throws InterruptedException {
+        return this.offer(e);
+    }
+
+    public E take() throws InterruptedException {
+        lock.lockInterruptibly();
+        try {
+            E el;
+            do {
+               el = this.poll();
+               if(el == null) {
+                   notEmpty.await();
+               }               
+            } while(el == null);
+            return el;  
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public E poll(long timeout, TimeUnit unit) throws InterruptedException {
+        lock.lockInterruptibly();
+        try {
+            E el;
+            do {
+               el = this.poll();
+               if(el == null) {
+                   if(!notEmpty.await(timeout, unit)) {
+                       return null;
+                   }
+               }               
+            } while(el == null);
+            return el;  
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int remainingCapacity() {
+        return Integer.MAX_VALUE - size();
+    }
+
+    public int drainTo(Collection<? super E> c) {
+        Iterator<E> it = iterator();
+        int i =0;
+        while(it.hasNext()) {
+            c.add(it.next());
+            i++;
+        }
+        return i;
+    }
+
+    public int drainTo(Collection<? super E> c, int maxElements) {
+        Iterator<E> it = iterator();
+        int i =0;
+        while(it.hasNext() && i < maxElements) {
+            c.add(it.next());
+            i++;
+        }
+        return i;
     }
 }

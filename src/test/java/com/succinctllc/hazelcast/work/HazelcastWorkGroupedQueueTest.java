@@ -1,18 +1,28 @@
 package com.succinctllc.hazelcast.work;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import junit.framework.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Mockito.*;
+
+import com.succinctllc.core.concurrent.collections.grouped.GroupedPriorityQueue;
+import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
+import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 
 public class HazelcastWorkGroupedQueueTest {
     
-    private HazelcastWorkGroupedQueue taskQueue;
+    private GroupedPriorityQueue<HazelcastWork> taskQueue;
     
     @Before
     public void setupData() {
-        taskQueue = new HazelcastWorkGroupedQueue();
+        taskQueue = new GroupedPriorityQueue<HazelcastWork>(new GroupedQueueRouter.RoundRobinPartition<HazelcastWork>(),
+                new TimeCreatedAdapter<HazelcastWork>(){
+            public long getTimeCreated(HazelcastWork item) {
+                return item.getTimeCreated();
+            }            
+        });
         
         HazelcastWork work1 = mock(HazelcastWork.class);
         HazelcastWork work2 = mock(HazelcastWork.class);

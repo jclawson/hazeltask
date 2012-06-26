@@ -17,6 +17,7 @@ import java.util.logging.Level;
 
 import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -24,8 +25,8 @@ import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.WorkId;
+import com.succinctllc.hazelcast.work.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
 import com.succinctllc.hazelcast.work.router.ListRouter;
 import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
@@ -62,7 +63,11 @@ public class DistributedExecutorService implements ExecutorService {
     private final HazelcastWorkTopology topology;
     private final ExecutorService                                           workDistributor;
     private final DistributedFutureTracker futureTracker;
+    private final boolean acknowledgeWorkSubmittion;
+    private final boolean disableWorkers;
     
+    //max number of times to try and submit a work before giving up
+    private final int MAX_SUBMIT_TRIES = 10; 
     
 	public static interface RunnablePartitionable extends Runnable, Groupable {
 		
@@ -71,6 +76,9 @@ public class DistributedExecutorService implements ExecutorService {
 	protected DistributedExecutorService(InternalBuilderStep2<?> internalBuilderStep1){
 		this.topology = internalBuilderStep1.topology;
 		this.partitionAdapter = internalBuilderStep1.partitionAdapter;
+		this.acknowledgeWorkSubmittion = internalBuilderStep1.acknowlegeWorkSubmission;
+		this.disableWorkers = internalBuilderStep1.disableWorkers;
+		
 		workDistributor = topology.getWorkDistributor();
 		
 		if (servicesByTopology.putIfAbsent(topology.getName(), this) != null) { 
@@ -80,7 +88,7 @@ public class DistributedExecutorService implements ExecutorService {
 		}
 		
 		
-		this.localExecutorService = new LocalWorkExecutorService(topology);		
+		this.localExecutorService = new LocalWorkExecutorService(topology, internalBuilderStep1.threadCount);		
 		memberRouter = new RoundRobinRouter<Member>(new Callable<List<Member>>() {
             public List<Member> call() throws Exception {
                 return topology.getReadyMembers();
@@ -89,16 +97,20 @@ public class DistributedExecutorService implements ExecutorService {
 		
 		futureTracker = new DistributedFutureTracker(this);
 		
-		//flush items that got left behind in the local map
-		//this must always be started on every single node!
-        new Timer(topology.createName("flush-timer"), true)
-            .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
+		
 	}
 	
 	public void startup() {
-	    localExecutorService.start();
-        isReady = true;
-        topology.localExecutorServiceReady();
+	    if(!disableWorkers) {
+    	    localExecutorService.start();
+    	    isReady = true;
+            topology.localExecutorServiceReady();
+	    }
+        
+        //flush items that got left behind in the local map
+        //this must always be started on every single node!
+        new Timer(topology.createName("flush-timer"), true)
+            .schedule(new StaleItemsFlushTimerTask(this), 6000, 6000);
 	    
 	}
 	
@@ -160,27 +172,56 @@ public class DistributedExecutorService implements ExecutorService {
 		
 		boolean executeTask = true;
 		
-		if(isResubmitting) {
-		    wrapper.setSubmissionCount(wrapper.getSubmissionCount()+1);
-		    topology.getPendingWork().put(workKey.getId(), wrapper);
-		} else {
-		    executeTask = topology.getPendingWork().putIfAbsent(workKey.getId(), wrapper) == null;
+		/*
+		 * with acknowledgeWorkSubmition, we will sit in this loop until a 
+		 * node accepts our work item.  Currently, a node will accept as long as
+		 * a MemberLeftException is not thrown
+		 */
+		int tries = 0;
+		while(++tries <= MAX_SUBMIT_TRIES) {		
+    		if(isResubmitting) {
+    		    wrapper.setSubmissionCount(wrapper.getSubmissionCount()+1);
+    		    topology.getPendingWork().put(workKey.getId(), wrapper);
+    		} else {
+    		    executeTask = topology.getPendingWork().putIfAbsent(workKey.getId(), wrapper) == null;
+    		}
+    		
+    		
+    		if(executeTask) {
+    		    Member m = memberRouter.next();
+    	        if(m == null) {
+    	            LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
+    	            return;
+    	        }
+    	        
+    	        DistributedTask<Boolean> task = new DistributedTask<Boolean>(new SubmitWorkTask(wrapper, topology.getName()), m);
+    	        workDistributor.execute(task);
+    	        
+    	        if(this.acknowledgeWorkSubmittion) {
+        	        try {
+                        if(task.get())
+                            return;
+                        else
+                            isResubmitting = true;
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        LOGGER.log(Level.WARNING, "Thread was interrupted waiting for work to be submitted", e);
+                        return;
+                    } catch (MemberLeftException e) {
+                        //resubmit the work to another node
+                        isResubmitting = true;
+                    } catch (ExecutionException e) {
+                        //TODO: improve this - we may need to retry here... for example if a node indicated it doesn't want to do the work
+                        throw new RuntimeException("An error ocurred while distributing work", e);
+                    }
+    	        } else {
+    	            return;
+    	        }
+    		}
 		}
 		
-		
-		if(executeTask) {
-		    Member m = memberRouter.next();
-	        if(m == null) {
-	            LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
-	            return;
-	        }
-	        
-	        //NOTE: its possible to get into a loop of resubmitting things to be worked on, updating their
-	        //created dates, if no members to do work are online.  We do keep track of the submission count
-	        //so we could just eventually expire the work altogether
-	        
-	        DistributedTask<Object> task = new DistributedTask<Object>(new SubmitWorkTask(wrapper, topology.getName()), m);
-	        workDistributor.execute(task);
+		if(tries > MAX_SUBMIT_TRIES) {
+		    throw new RuntimeException("Unable to submit work to nodes. I tried "+MAX_SUBMIT_TRIES+" times.");
 		}
 	}
 

@@ -1,6 +1,7 @@
 package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
+import java.util.concurrent.Callable;
 
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
@@ -13,7 +14,7 @@ import com.succinctllc.hazelcast.work.HazelcastWorkManager;
  * @author Jason Clawson
  *
  */
-public class SubmitWorkTask implements Runnable, Serializable {
+public class SubmitWorkTask implements Callable<Boolean>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private HazelcastWork work;
@@ -24,13 +25,13 @@ public class SubmitWorkTask implements Runnable, Serializable {
         this.topology = topology;
     }
     
-    public void run() {
-        //TODO: do something with the future to track when its done
+    public Boolean call() throws Exception {
         LocalWorkExecutorService svc = HazelcastWorkManager
                 .getDistributedExecutorService(topology)
                 .getLocalExecutorService();
         
         svc.execute(work);
+        return true;
     }
 
 }

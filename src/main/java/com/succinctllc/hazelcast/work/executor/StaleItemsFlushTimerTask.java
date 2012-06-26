@@ -49,21 +49,24 @@ public class StaleItemsFlushTimerTask extends TimerTask {
             }
         }
         
+        String sql;
         SqlPredicate pred;
         if(min == Long.MAX_VALUE) {
-            pred = new SqlPredicate("createdAtMillis < "+(System.currentTimeMillis()-EMPTY_EXPIRE_TIME_BUFFER));
+            sql = "createdAtMillis < "+(System.currentTimeMillis()-EMPTY_EXPIRE_TIME_BUFFER);
+            pred = new SqlPredicate(sql);
         } else {
-            pred = new SqlPredicate("createdAtMillis < "+(min-EXPIRE_TIME_BUFFER));
+            sql = "createdAtMillis < "+(min-EXPIRE_TIME_BUFFER);
+            pred = new SqlPredicate(sql);
         }
         
-        System.out.println("Map Size: "+map.size()+" "+map.values().size());
-        System.out.println("Local Size: "+map.localKeySet().size());
+        //System.out.println("Map Size: "+map.size()+" "+map.values().size());
+        //System.out.println("Local Size: "+map.localKeySet().size());
         
         Set<String> keys = (Set<String>) map.localKeySet(pred);
         Collection<HazelcastWork> works = map.getAll(keys).values();
         
         if(works.size() > 0)
-        	LOGGER.log(Level.INFO, "Recovering "+works.size()+" works");
+        	LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
         
         for(HazelcastWork work : works) {
             svc.execute(work, true);
