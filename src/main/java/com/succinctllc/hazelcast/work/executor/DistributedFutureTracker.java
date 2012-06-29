@@ -48,5 +48,9 @@ public class DistributedFutureTracker implements MessageListener<WorkResponse> {
         }
     }
     
+    public int size() {
+    	return futures.size();
+    }
+    
     
 }

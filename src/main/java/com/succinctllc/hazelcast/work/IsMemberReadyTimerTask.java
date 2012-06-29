@@ -7,8 +7,8 @@ import java.util.TimerTask;
 import java.util.concurrent.Callable;
 
 import com.hazelcast.core.Member;
-import com.succinctllc.hazelcast.cluster.MemberTasks;
-import com.succinctllc.hazelcast.cluster.MemberTasks.MemberResponse;
+import com.succinctllc.hazelcast.util.MemberTasks;
+import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 
 /**

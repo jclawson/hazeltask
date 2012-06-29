@@ -17,6 +17,13 @@ import com.hazelcast.partition.MigrationEvent;
 import com.hazelcast.partition.MigrationListener;
 import com.hazelcast.partition.Partition;
 
+/**
+ * This is not currently used but its a neat idea to keep track of
+ * what partitions are migrating to what members since hazelcast doesn't
+ * really tell us all the needed info... for example when a node goes down
+ * and a backup comes online... there is no migration event
+ *
+ */
 public class ClusterState implements MigrationListener, MembershipListener {
 	private HazelcastInstance hazelcast;
 	

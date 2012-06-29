@@ -1,6 +1,5 @@
 package com.succinctllc.hazelcast.work.bundler;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,16 +9,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
 import com.hazelcast.core.IMap;
-import com.hazelcast.core.MultiMap;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
+import com.succinctllc.core.metrics.MetricNamer;
+import com.succinctllc.hazelcast.util.MultiMapProxy;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.bundler.DeferredWorkBundlerBuilder.InternalBuilderStep3;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
+import com.succinctllc.hazelcast.work.metrics.PercentDuplicateRateGuage;
+import com.succinctllc.hazelcast.work.metrics.TotalPercentDuplicateGuage;
+import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * 
@@ -30,29 +39,35 @@ import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
  * @param <T>
  */
 public class DeferredWorkBundler<I> {
-    
+	private static ILogger LOGGER = Logger.getLogger(DeferredWorkBundler.class.getName());
+	
+	
 	private static ConcurrentMap<String, DeferredWorkBundler<?>> workBundlersByTopology = new ConcurrentHashMap<String, DeferredWorkBundler<?>>();
 	
     private final AtomicBoolean isStarted = new AtomicBoolean();
-    private final SetMultimap<String, I> localMultiMap;
-    private final MultiMap<String, I> hcMultiMap;
+//    private final SetMultimap<String, I> localMultiMap;
+//    private final MultiMap<String, I> hcMultiMap;
+    
+    private final MultiMapProxy<String, I> groupItemBuffer;
+    
     private final InternalBuilderStep3<I> config;
     private final DistributedExecutorService executorService;
     private final HazelcastWorkTopology topology;
     private final IMap<String, Long> duplicatePreventionMap;
+    private final MetricNamer metricNamer;
+    private final MetricsRegistry metrics;
     
-    /**
-     * The flush TimerTask will run every FLUSH_TIMER_TASK_RATE milliseconds
-     * to check if any of the groups need to be flushed.
-     * 
-     * TODO: lets put in an exponential backoff so if the bundler is getting hammered
-     * it runs more often, but if its idle it runs less often
-     */
-    private static final long FLUSH_TIMER_TASK_RATE = 100L;
+    private com.yammer.metrics.core.Timer itemAddTimer;
+    private Meter itemActuallyAddedMeter;
+    private Histogram bundleSizeHistogram;
+    private Histogram flushSizeHistogram;
+    private Counter numDuplicates;
     
-    protected DeferredWorkBundler(InternalBuilderStep3<I> config, DistributedExecutorService svc) {
+    protected DeferredWorkBundler(InternalBuilderStep3<I> config, DistributedExecutorService svc, MetricNamer metricNamer, MetricsRegistry metrics) {
         this.config = config;
         this.topology = config.topology;
+        this.metricNamer = metricNamer;
+        this.metrics = metrics;
         
         if (workBundlersByTopology.putIfAbsent(topology.getName(), this) != null) { 
         	throw new IllegalArgumentException("A DistributedExecutorServiceManager already exists for the topology "
@@ -60,11 +75,9 @@ public class DeferredWorkBundler<I> {
         }
         
         if(!config.localBuffering) {
-            hcMultiMap = topology.getHazelcast().getMultiMap(topology.createName("bundler"));
-            localMultiMap = null;
+        	groupItemBuffer = MultiMapProxy.<String, I>clusteredMultiMap(topology.getHazelcast().<String, I>getMultiMap(topology.createName("group-item-buffer")));
         } else {
-            hcMultiMap = null; 
-            localMultiMap = Multimaps.<String,I>synchronizedSetMultimap(HashMultimap.<String,I>create());
+        	groupItemBuffer = MultiMapProxy.<String, I>localMultiMap(HashMultimap.<String,I>create());
         }
         
         if(config.preventDuplicates) {
@@ -74,38 +87,75 @@ public class DeferredWorkBundler<I> {
         }
                 
         executorService = svc;
+        
+        if(metrics != null) {
+        	itemAddTimer 			   = metrics.newTimer(createName("[add] Call timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+        	itemActuallyAddedMeter     = metrics.newMeter(createName("[add] Added to buffer"), "items added", TimeUnit.MINUTES);        	
+        	bundleSizeHistogram = metrics.newHistogram(createName("[flush] Bundle size"), true);
+        	flushSizeHistogram = metrics.newHistogram(createName("[flush] Flush size"), true);
+        	metrics.newGauge(createName("[add] Percent duplicate rate"), new PercentDuplicateRateGuage(itemActuallyAddedMeter, itemAddTimer));
+        	metrics.newGauge(createName("[add] Percent duplicates"), new TotalPercentDuplicateGuage(itemActuallyAddedMeter, itemAddTimer));
+        	numDuplicates = metrics.newCounter(createName("[add] Duplicate count"));
+        }
                 
     }
     
-    @SuppressWarnings("unchecked")
+    private MetricName createName(String name) {
+		return metricNamer.createMetricName(
+			"bundler", 
+			topology.getName(), 
+			"DeferredWorkBundler", 
+			name
+		);
+	}
+    
+    
+    
+    public HazelcastWorkTopology getTopology() {
+		return topology;
+	}
+
+	@SuppressWarnings("unchecked")
 	public static <U> DeferredWorkBundler<U> getDeferredWorkBundler(String topology) {
         return (DeferredWorkBundler<U>) workBundlersByTopology.get(topology);
     }
     
     public boolean add(I o) {
-        String group = config.partitioner.getItemGroup(o);
-        boolean added = false; 
-        
-        if(duplicatePreventionMap != null) {
-            if(duplicatePreventionMap.putIfAbsent(
-                    config.partitioner.getItemId(o), 
-                    System.currentTimeMillis(), 
-                    this.config.maxDuplicatePreventionTTL, 
-                    TimeUnit.MILLISECONDS) 
-                != null) {
-                return false;
-            }
+    	TimerContext tCtx = null;
+        if(itemAddTimer != null) {
+        	tCtx = itemAddTimer.time();
         }
-        
-        if(localMultiMap != null) {
-            added = localMultiMap.put(group, o);
-            //checkAndDoFlush(group, localMultiMap.get(group).size());
-        } else {
-        	added = hcMultiMap.put(group, o);
-        	//checkAndDoFlush(group, hcMultiMap.get(group).size());
+        try {
+        	boolean added = tryAdd(o);
+        	if(added && itemActuallyAddedMeter != null) 
+        		itemActuallyAddedMeter.mark();
+        	
+        	if(!added && numDuplicates != null)
+        		numDuplicates.inc();        	
+        	
+        	return added;
+        } finally {
+        	if(tCtx != null)
+        		tCtx.stop();
         }
-        
-        return added;
+    }
+    
+    private boolean tryAdd(I o) {
+    	String group = config.partitioner.getItemGroup(o);
+    	boolean added = false; 
+
+    	if(duplicatePreventionMap != null) {
+    		if(duplicatePreventionMap.putIfAbsent(
+    				config.partitioner.getItemId(o), 
+    				System.currentTimeMillis(), 
+    				this.config.maxDuplicatePreventionTTL, 
+    				TimeUnit.MILLISECONDS) 
+    				!= null) {
+    			return false;
+    		}
+    	}
+
+    	return groupItemBuffer.put(group, o);
     }
     
     public long getFlushTTL() {
@@ -123,8 +173,11 @@ public class DeferredWorkBundler<I> {
      */
     public void startup() {
         if(!isStarted.getAndSet(true)) {
+        	//TODO: this timer sucks... is there a better way to flush (maybe with an exponential backoff?)
+        	//it would be cool to have a timer task that we can tell to run immediately with a min-limit to how often it can 
+        	//be run in a period manually
         	new Timer(buildName("bundle-flush-timer"), true)
-                .schedule(new DeferredBundleTask<I>(this), config.flushTTL, FLUSH_TIMER_TASK_RATE);
+                .schedule(new DeferredBundleTask<I>(this, metrics, metricNamer), config.flushTTL, Math.max(config.flushTTL/4, Math.min(4000, config.flushTTL)));
         	
         	executorService.startup();
         }
@@ -135,18 +188,11 @@ public class DeferredWorkBundler<I> {
     }
     
     public Map<String, Integer> getNonZeroLocalGroupSizes() {
-        Set<String> localKeys;
-        if(localMultiMap != null) {
-            localKeys = localMultiMap.keySet();            
-        } else {
-            localKeys = hcMultiMap.localKeySet();
-        }
+        Set<String> localKeys = groupItemBuffer.keySet();
         
         Map<String, Integer> result =  new HashMap<String, Integer>(localKeys.size());
         for(String key : localKeys) {
-            int size = (localMultiMap != null) 
-                        ? localMultiMap.get(key).size() 
-                        : hcMultiMap.get(key).size();
+            int size = groupItemBuffer.get(key).size();
             if(size > 0)
                 result.put(key, size);
         }
@@ -162,6 +208,7 @@ public class DeferredWorkBundler<I> {
         }
     }
     
+    
     /**
      * TODO: Could potentially want to create HUGE bundles.
      * 
@@ -170,18 +217,22 @@ public class DeferredWorkBundler<I> {
      * @return
      */
     protected int flush(String group) {
-        List<I> bundle;
-        if(localMultiMap != null) {
-            bundle = new ArrayList<I>(localMultiMap.get(group));
-        } else {
-            bundle = new ArrayList<I>(hcMultiMap.get(group)); //this is actually a Set
+    	int numNodes = topology.getReadyMembers().size();
+        if(numNodes == 0) {
+        	LOGGER.log(Level.WARNING, "I want to flush the deferred item set but no members are online to do the work!");
+        	return 0;
         }
+    	
+    	List<I> bundle = groupItemBuffer.getAsList(group);
         
-        if(bundle == null || bundle.size() == 0) {
+        if(bundle.size() == 0) {
             return 0;
         }
         
-        int numNodes = topology.getReadyMembers().size();
+        //only track flushes that actually have something in them
+        if(flushSizeHistogram != null)
+        	flushSizeHistogram.update(bundle.size());
+                
         int minBundleSize = Math.min(bundle.size(), config.minBundleSize);
         int numDividedBundles = bundle.size() / minBundleSize;
         numDividedBundles = Math.min(numDividedBundles, numNodes);
@@ -194,7 +245,11 @@ public class DeferredWorkBundler<I> {
         //bundle the objects and submit them as work
         //config.bundler.bundle(items)
         for(List<I> partitionedBundle : partitionedBundles) {
-            WorkBundle<I> work = config.bundler.bundle(group, partitionedBundle);
+        	
+        	if(bundleSizeHistogram != null)
+        		bundleSizeHistogram.update(partitionedBundle.size());
+        	
+        	WorkBundle<I> work = config.bundler.bundle(group, partitionedBundle);
             if(this.duplicatePreventionMap != null) {
                 //if we are preventing duplicates, then we need to wrap it
                 work = new PreventDuplicatesWorkBundleWrapper<I>(topology.getName(), work);
@@ -203,18 +258,15 @@ public class DeferredWorkBundler<I> {
             executorService.execute(work);
             
             //TODO: is it better to just wait until the end and remove it all at once?
-            //remove work from multimap since its safe in the distributed work system
-            if(localMultiMap != null) {
-                for(I item : partitionedBundle) {
-                    localMultiMap.remove(group, item);
-                }
-            } else {
-                for(I item : partitionedBundle) {
-                    hcMultiMap.remove(group, item);
-                }
+            //Remove work from multimap since its safe in the distributed work system
+            for(I item : partitionedBundle) {
+            	groupItemBuffer.remove(group, item);
             }
+            
+            
         }
         
+        //System.out.println("Processed group "+group+".  Total flushed: "+totalFlushed.addAndGet(bundle.size()));
         
         return bundle.size();
     }

@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.cluster;
+package com.succinctllc.hazelcast.util;
 
 import java.io.Serializable;
 import java.util.ArrayList;

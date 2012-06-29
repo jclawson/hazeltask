@@ -3,7 +3,15 @@ package com.succinctllc.hazelcast.work.bundler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.TimerTask;
+
+import com.succinctllc.core.metrics.MetricNamer;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * This TimerTask runs every <code>flushTTL</code> milliseconds in order 
@@ -18,10 +26,28 @@ public class DeferredBundleTask<T> extends TimerTask {
     private final DeferredWorkBundler<T> deferredWorkBundler;
     
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
+    private final MetricNamer metricNamer;
     
-    public DeferredBundleTask(DeferredWorkBundler<T> deferredWorkBundler) {
+    private Timer bundlerTimer;
+   
+    
+    public DeferredBundleTask(DeferredWorkBundler<T> deferredWorkBundler, MetricsRegistry metrics, MetricNamer metricNamer) {
         this.deferredWorkBundler = deferredWorkBundler;
+        this.metricNamer = metricNamer;
+        
+        if(metrics != null) {
+        	bundlerTimer = metrics.newTimer(createName("Bundle timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);        	
+        }        
     }
+    
+    private MetricName createName(String name) {
+		return metricNamer.createMetricName(
+			"bundler", 
+			deferredWorkBundler.getTopology().getName(), 
+			"DeferredBundleTask", 
+			name
+		);
+	}
     
     private boolean shouldTTLFlush(String group) {
         Long lastFlushed = lastFlushedTimes.get(group);
@@ -34,18 +60,28 @@ public class DeferredBundleTask<T> extends TimerTask {
         }
     }
 
+    
     @Override
     public void run() {
-        Map<String, Integer> sizes = this.deferredWorkBundler.getNonZeroLocalGroupSizes();
-        int flushSize = this.deferredWorkBundler.getFlushSize();
-        for(Entry<String, Integer> entry : sizes.entrySet()) {
-            if(entry.getValue() >= flushSize) {
-                String group = entry.getKey();
-                lastFlushedTimes.put(group, System.currentTimeMillis());
-                deferredWorkBundler.flush(group);
-            } else if (shouldTTLFlush(entry.getKey())) {
-                deferredWorkBundler.flush(entry.getKey());
-            }
+        TimerContext tCtx = null;
+        if(bundlerTimer != null)
+        	tCtx = bundlerTimer.time();
+    	
+        try {
+	    	Map<String, Integer> sizes = this.deferredWorkBundler.getNonZeroLocalGroupSizes();
+	        int flushSize = this.deferredWorkBundler.getFlushSize();
+	        for(Entry<String, Integer> entry : sizes.entrySet()) {
+	            if(entry.getValue() >= flushSize) {
+	                String group = entry.getKey();
+	                lastFlushedTimes.put(group, System.currentTimeMillis());
+	                deferredWorkBundler.flush(group);
+	            } else if (shouldTTLFlush(entry.getKey())) {
+	                deferredWorkBundler.flush(entry.getKey());
+	            }
+	        }
+        } finally {
+        	if(tCtx != null)
+        		tCtx.stop();
         }
     }
 }

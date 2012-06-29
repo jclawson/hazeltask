@@ -1,10 +1,7 @@
 package com.succinctllc.hazelcast.work;
 
-import java.io.Serializable;
 import java.util.concurrent.Callable;
-import java.util.logging.Level;
 
-import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;

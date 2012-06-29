@@ -1,11 +1,5 @@
 package com.succinctllc.core.concurrent.collections.grouped;
 
-@Deprecated
-/**
- * I think we should replace this with WorkIdentifyable
- * @author jclawson
- *
- */
 public interface Groupable {
 	/**
 	 * Return the group this object belongs to

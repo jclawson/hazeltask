@@ -7,6 +7,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
+
 
 public class QueueExecutor<T extends Runnable> {
     private final BlockingQueue<T> queue;
@@ -14,13 +17,15 @@ public class QueueExecutor<T extends Runnable> {
     private volatile int coreThreads;
     private volatile boolean isShutdown;
     private Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
+    private Timer workExecutedTimer;
     
     private final HashSet<Worker> workers = new HashSet<Worker>();
     
-    public QueueExecutor(BlockingQueue<T> queue, int coreThreads, ThreadFactory threadFactory) {
+    public QueueExecutor(BlockingQueue<T> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
         this.coreThreads = coreThreads;
         this.queue = queue;
         this.threadFactory = threadFactory;
+        this.workExecutedTimer = workExecutedTimer;
     }
     
     /**
@@ -111,7 +116,12 @@ public class QueueExecutor<T extends Runnable> {
         }
         
         private void runTask(Runnable task) {
-            final ReentrantLock runLock = this.runLock;
+        	TimerContext tCtx = null;
+        	if(workExecutedTimer != null) {
+        		 tCtx = workExecutedTimer.time();
+        	}
+        	
+        	final ReentrantLock runLock = this.runLock;
             runLock.lock();
             try {
                 boolean ran = false;
@@ -127,7 +137,9 @@ public class QueueExecutor<T extends Runnable> {
                     throw ex;
                 }
             } finally {
-                runLock.unlock();
+            	if(tCtx != null)
+            		tCtx.stop();
+            	runLock.unlock();
             }
         }
         

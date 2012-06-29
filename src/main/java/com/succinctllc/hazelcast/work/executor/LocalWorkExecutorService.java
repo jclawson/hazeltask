@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
@@ -15,18 +16,31 @@ import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
+import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkResponse;
+import com.succinctllc.hazelcast.work.metrics.CollectionSizeGauge;
+import com.succinctllc.hazelcast.work.metrics.WorkThroughputGauge;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
+/**
+ * 
+ * @author Jason Clawson
+ *
+ */
 public class LocalWorkExecutorService {
 
     private static ILogger LOGGER = Logger.getLogger(LocalWorkExecutorService.class.getName());
     
 	private final HazelcastWorkTopology topology;
 	//private BoundedThreadPoolExecutorService localExecutorService;
-	private QueueExecutor localExecutorPool;
+	private QueueExecutor<HazelcastWork> localExecutorPool;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	//private HazelcastWorkGroupedQueue taskQueue;
 	private GroupedPriorityQueue<HazelcastWork> taskQueue;
@@ -35,18 +49,16 @@ public class LocalWorkExecutorService {
 	
 	private final int maxThreads;
 	
-	protected LocalWorkExecutorService(HazelcastWorkTopology topology, int threadCount) {
+	private MetricNamer metricNamer;
+	private Timer workSubmittedTimer;
+	private Timer workExecutedTimer;
+	
+	protected LocalWorkExecutorService(HazelcastWorkTopology topology, int threadCount, MetricsRegistry metrics, MetricNamer metricNamer) {
 		this.topology = topology;
 		taskQueue = new HazelcastWorkGroupedQueue();
 		this.maxThreads = threadCount;
+		this.metricNamer = metricNamer;
 
-//FIXME: why doesn't this work????
-//		this.localExecutorQueue = new TrackedPriorityBlockingQueue<Runnable>(new TimeCreatedAdapter<Runnable>(){
-//            public long getTimeCreated(Runnable item) {
-//                return ((HazelcastWork)item).getTimeCreated();
-//            }		    
-//		});
-		//this.localExecutorQueue = new LinkedBlockingQueue<Runnable>(maxThreads);
 		DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",topology.getName());     
 		worksInProgress = new ConcurrentHashMap<String, HazelcastWork>();
 		
@@ -57,30 +69,29 @@ public class LocalWorkExecutorService {
             }            
         });
 		
-		localExecutorPool = new QueueExecutor<HazelcastWork>(taskQueue, maxThreads, factory);
+		if(metrics != null) {
+			workSubmittedTimer = metrics.newTimer(createName("Work submitted"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+			workExecutedTimer = metrics.newTimer(createName("Work executed"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+			metrics.newGauge(createName("Throughput"), new WorkThroughputGauge(workSubmittedTimer, workExecutedTimer));
+			metrics.newGauge(createName("Queue size"), new CollectionSizeGauge(taskQueue));
+		}
+		
+		localExecutorPool = new QueueExecutor<HazelcastWork>(taskQueue, maxThreads, factory, workExecutedTimer);
+	}
+	
+	private MetricName createName(String name) {
+		return metricNamer.createMetricName(
+			"executor", 
+			topology.getName(), 
+			"LocalWorkExecutor", 
+			name
+		);
 	}
 
 	public void start(){
 		if(isStarted.compareAndSet(false, true)) {
-			
-			//note: if you don't write enough work to the linkedblockingqueue
-			//      new threads will not be created
-			//      you must exceed the queue size to see new threads
-			//int blockingQueueSize = maxThreads*2;
-//			localExecutorService = new BoundedThreadPoolExecutorService(
-//			    0, maxThreads,
-//		        60L, TimeUnit.SECONDS,
-//		        localExecutorQueue,
-//		        factory		                
-//		    );
-			
-		    
 		    localExecutorPool.addListener(new ResponseExecutorListener());
 		    localExecutorPool.startup();
-			//start copy queue thread
-//			Thread t = factory.newNamedThread("QueueSync", new QueueSyncRunnable());
-//			t.setDaemon(true);
-//			t.start();
 		}
 	}
 	
@@ -121,72 +132,15 @@ public class LocalWorkExecutorService {
         }
 	}
 	
-	/**
-	 * This synchronizes our partitioned queue with the blocking queue that backs the executor service.
-	 * It ensures that the blocking queue is never empty, and that enqueue operations into the partitioned
-	 * queue remain fast
-	 * 
-	 * This runnable will poll from the partitioned queue and submit it to the executor service.  If the 
-	 * partitioned queue is empty, it will wait 100ms to poll again with an exponential back off up to 15 seconds
-	 * 
-	 * @author jclawson
-	 *
-	 */
-//	private class QueueSyncRunnable implements Runnable {
-//		public void run() {
-//			long minInterval = 100; 	//100 milliseconds
-//			long interval = minInterval;
-//			long exponent = 2;
-//			int maxInterval = 10000;   //10 seconds
-//			
-//			while(!localExecutorService.isShutdown()) {
-//				//long start = System.currentTimeMillis();
-//			    HazelcastWork work = taskQueue.poll();
-//				if(work != null) {
-//					interval = minInterval;
-//					
-//					//System.out.println("  +"+work.getUniqueIdentifier());
-//					worksInProgress.put(work.getUniqueIdentifier(), work);
-//					//make sure we use execute so the work doesn't get wrapped
-//					localExecutorService.execute(work);
-//					
-//					//System.out.println("   "+(System.currentTimeMillis()-start));
-//					//do something with the future
-//				} else { //there was no work in the taskQueue so lets wait a little
-//					try {
-//						Thread.sleep(interval);
-//						interval = Math.min(maxInterval, interval * exponent);
-//					} catch (InterruptedException e) {
-//						Thread.currentThread().interrupt();
-//					}
-//				}
-//			}
-//		}		
-//	}
 	
 	/**
-	 * There are some race condition scenarios here.  The point is we want to get the most accurate time possible.
-	 * We do some iterations, but the number of iterations is at most: (3 * number of threads) so its not that bad.
-	 * 
-	 * A race happens in the QueueSyncRunnable where we might not see the TRUE oldest time between when we poll() and put()
-	 * into the worksInProgressMap.
-	 * 
-	 * An inaccurate result here may cause us to resubmit a work more than once if we think we lost it.  This isn't that bad.
-	 * 
-	 * TODO: investigate other options for keeping track of "oldest work time" in the local system so we know accurately what
-	 * to recover.
+	 * There is a race condition scenario here.  We want to get the best result possible as this value
+	 * is used to determine what work needs to be recovered.
 	 * 
 	 * @return
 	 */
 	public Long getOldestWorkCreatedTime(){
-//	    Iterator<Runnable> localExecutorIt = localExecutorQueue.iterator();
 	    long oldest = Long.MAX_VALUE;
-//	    while(localExecutorIt.hasNext()) {
-//	        HazelcastWork w = (HazelcastWork)localExecutorIt.next();
-//	        if(w.getTimeCreated() < oldest) {
-//	            oldest = w.getTimeCreated();
-//	        }
-//	    }
 	    
 	    //there is a little racecondition here where the item is polled from the queue
 	    //but hasn't yet made it into the worksInProgress hashmap
@@ -209,7 +163,15 @@ public class LocalWorkExecutorService {
 	}
 	
 	public void execute(HazelcastWork command) {
-	    taskQueue.add(command);
+		TimerContext tCtx = null;
+		if(workSubmittedTimer != null)
+			tCtx = workSubmittedTimer.time();
+		try {
+			taskQueue.add(command);
+		} finally {
+			if(tCtx != null)
+				tCtx.stop();
+		}
 	}
 
 	//FIXME: fix this

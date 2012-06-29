@@ -11,7 +11,8 @@ public class TrackedPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> im
     private volatile Long lastAddedTime = null;
     private volatile Long lastRemovedTime = null;
     
-    private static final int DEFAULT_INITIAL_SIZE = 50;
+    //TODO: make this size configurable to prevent a lot of resizes
+    private static final int DEFAULT_INITIAL_SIZE = 100;
     
     public static interface TimeCreatedAdapter<E> {
         public long getTimeCreated(E item);

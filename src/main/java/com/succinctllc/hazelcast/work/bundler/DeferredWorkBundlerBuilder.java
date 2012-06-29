@@ -4,10 +4,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.succinctllc.core.metrics.MetricNamer;
+import com.succinctllc.core.metrics.ScopeFirstMetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder;
-import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricsRegistry;
 
 /**
  * Many times its more efficient to do work if they are grouped into a small
@@ -93,6 +96,8 @@ public class DeferredWorkBundlerBuilder {
         protected long              maxDuplicatePreventionTTL;
         protected boolean           doWork;
         protected int 				threadCount;
+        protected MetricNamer 		metricNamer;
+	    protected MetricsRegistry 	metricsRegistry;
 
         public InternalBuilderStep3(InternalBuilderStep2<I> step2, BundlerWorkKeyAdapter<I> partitioner, Bundler<I> bundler) {
             this.step2              = step2;
@@ -190,13 +195,30 @@ public class DeferredWorkBundlerBuilder {
 	        return this;
 	    }
 
-//          We need Future support on the DistributedExecutorService before we can do this
-//          Use a completion service to process this
-//
-//        public InternalBuilderStep3<T, W> withDuplicatePrevention() {
-//            this.preventDuplicates = true;
-//            return this;
-//        } 
+        /**
+	     * Enables statistics with Yammer Metrics.  Make sure you include the yammer metrics
+	     * optional library!
+	     * 
+	     * @param namer - Helper for naming metrics according to custom specifications
+	     * @return
+	     */
+	    public InternalBuilderStep3<I> enableStatisics(MetricNamer namer, MetricsRegistry metrics) {
+	        this.metricNamer = namer;
+	        this.metricsRegistry = metrics;
+	        return this;
+	    }
+	    
+	    public InternalBuilderStep3<I> enableStatisics(MetricsRegistry metrics) {
+	        this.metricNamer = new ScopeFirstMetricNamer();
+	        this.metricsRegistry = metrics;
+	        return this;
+	    }
+	    
+	    public InternalBuilderStep3<I> enableStatisics() {
+	        this.metricNamer = new ScopeFirstMetricNamer();
+	        this.metricsRegistry = Metrics.defaultRegistry();
+	        return this;
+	    }
         
         public DeferredWorkBundler<I> build() {
             
@@ -205,9 +227,10 @@ public class DeferredWorkBundlerBuilder {
                 .withWorkKeyAdapter(step2.partitioner)
                 .withDisabledWorkers(!this.doWork)
                 .withThreadCount(threadCount)
+                .enableStatisics(metricNamer, metricsRegistry)
                 .build();
             
-        	return new DeferredWorkBundler<I>(this, svc);
+        	return new DeferredWorkBundler<I>(this, svc, metricNamer, metricsRegistry);
         }
     }
 }

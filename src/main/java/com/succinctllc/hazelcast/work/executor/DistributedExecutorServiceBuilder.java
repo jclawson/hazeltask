@@ -2,8 +2,12 @@ package com.succinctllc.hazelcast.work.executor;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.succinctllc.core.metrics.MetricNamer;
+import com.succinctllc.core.metrics.ScopeFirstMetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkIdAdapter;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricsRegistry;
 
 public class DistributedExecutorServiceBuilder {
 	
@@ -30,6 +34,8 @@ public class DistributedExecutorServiceBuilder {
 	    protected boolean acknowlegeWorkSubmission = false;
 	    protected boolean disableWorkers = false;
 	    protected int threadCount = 4;
+	    protected MetricNamer metricNamer;
+	    protected MetricsRegistry metricsRegistry;
 	    
 	    public InternalBuilderStep2(HazelcastWorkTopology topology, WorkIdAdapter<W> partitionAdapter){
 	        this.partitionAdapter = partitionAdapter;
@@ -83,6 +89,31 @@ public class DistributedExecutorServiceBuilder {
 	    
 	    public InternalBuilderStep2<W> withThreadCount(int numberOfThreads) {
 	        this.threadCount = numberOfThreads;
+	        return this;
+	    }
+	    
+	    /**
+	     * Enables statistics with Yammer Metrics.  Make sure you include the yammer metrics
+	     * optional library!
+	     * 
+	     * @param namer - Helper for naming metrics according to custom specifications
+	     * @return
+	     */
+	    public InternalBuilderStep2<W> enableStatisics(MetricNamer namer, MetricsRegistry metrics) {
+	        this.metricNamer = namer;
+	        this.metricsRegistry = metrics;
+	        return this;
+	    }
+	    
+	    public InternalBuilderStep2<W> enableStatisics(MetricsRegistry metrics) {
+	        this.metricNamer = new ScopeFirstMetricNamer();
+	        this.metricsRegistry = metrics;
+	        return this;
+	    }
+	    
+	    public InternalBuilderStep2<W> enableStatisics() {
+	        this.metricNamer = new ScopeFirstMetricNamer();
+	        this.metricsRegistry = Metrics.defaultRegistry();
 	        return this;
 	    }
 	}
