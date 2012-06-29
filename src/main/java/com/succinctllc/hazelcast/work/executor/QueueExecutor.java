@@ -56,7 +56,7 @@ public class QueueExecutor<T extends Runnable> {
     }
     
     public boolean isShutdown() {
-        return false;
+        return isShutdown;
     }
     
     private Runnable getTask() {

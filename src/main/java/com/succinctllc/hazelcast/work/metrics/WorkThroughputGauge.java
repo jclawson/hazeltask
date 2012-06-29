@@ -1,7 +1,6 @@
 package com.succinctllc.hazelcast.work.metrics;
 
 import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;
 
 /**

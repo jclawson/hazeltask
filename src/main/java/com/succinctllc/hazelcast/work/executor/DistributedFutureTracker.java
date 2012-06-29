@@ -31,7 +31,8 @@ public class DistributedFutureTracker implements MessageListener<WorkResponse> {
         this.futures.put(id, future);
     }
     
-    public void onMessage(Message<WorkResponse> message) {
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+	public void onMessage(Message<WorkResponse> message) {
         WorkResponse response = message.getMessageObject();
         String workId = response.getWorkId();
         Collection<DistributedFuture<?>> workFutures = futures.removeAll(workId);

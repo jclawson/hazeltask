@@ -78,30 +78,30 @@ public class GroupedQueueRouter {
         }
 	}
 	
-	public static class WeightedPartitionRouter<E extends Groupable> implements GroupedRouter<E> {
-		public static interface PartitionWeigher<E extends Groupable> {
-			public long getWeight(String partition, IGroupedQueue<E> queue);
-		}
-		
-		private final PartitionWeigher<E> weigher;
-		public WeightedPartitionRouter(PartitionWeigher<E> weigher){
-			this.weigher = weigher;
-		}
-		
-		public ITrackedQueue<E> nextPartition() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-		
-		public ITrackedQueue<E> peekPartition() {
-			return nextPartition();
-		}
-
-        public void setPartitionedQueueue(IGroupedQueue<E> queue) {
-           
-        }
-		
-	}
+//	public static class WeightedPartitionRouter<E extends Groupable> implements GroupedRouter<E> {
+//		public static interface PartitionWeigher<E extends Groupable> {
+//			public long getWeight(String partition, IGroupedQueue<E> queue);
+//		}
+//		
+//		private final PartitionWeigher<E> weigher;
+//		public WeightedPartitionRouter(PartitionWeigher<E> weigher){
+//			this.weigher = weigher;
+//		}
+//		
+//		public ITrackedQueue<E> nextPartition() {
+//			// TODO Auto-generated method stub
+//			return null;
+//		}
+//		
+//		public ITrackedQueue<E> peekPartition() {
+//			return nextPartition();
+//		}
+//
+//        public void setPartitionedQueueue(IGroupedQueue<E> queue) {
+//           
+//        }
+//		
+//	}
 	
 //	public static class WeightedFairRouter<E extends Partitionable & Weighted> implements PartitionRouter<E> {
 //		public TrackedQueue<E> nextPartition(PartitionedQueue<E> queue) {

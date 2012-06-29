@@ -5,7 +5,6 @@ import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.WorkId;
 

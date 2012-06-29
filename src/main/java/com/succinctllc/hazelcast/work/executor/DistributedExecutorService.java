@@ -35,7 +35,6 @@ import com.succinctllc.hazelcast.work.metrics.LocalIMapSizeGauge;
 import com.succinctllc.hazelcast.work.metrics.PercentDuplicateRateGuage;
 import com.succinctllc.hazelcast.work.router.ListRouter;
 import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
-import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
@@ -81,8 +80,6 @@ public class DistributedExecutorService implements ExecutorService {
     
     private com.yammer.metrics.core.Timer workAddedTimer;
     private Meter worksAdded;
-    private Gauge<Double> submittedVsAddedGuage;
-    private Gauge<Integer> localFuturesWaiting;
     
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10; 
@@ -122,8 +119,8 @@ public class DistributedExecutorService implements ExecutorService {
 		if(statisticsEnabled) {
 			workAddedTimer = metrics.newTimer(createName("[submit] Call timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 			worksAdded     = metrics.newMeter(createName("[submit] Work submitted"), "work added", TimeUnit.MINUTES);
-			submittedVsAddedGuage = metrics.newGauge(createName("[submit] Percent duplicate rate"), new PercentDuplicateRateGuage(worksAdded, workAddedTimer));
-			localFuturesWaiting = metrics.newGauge(createName("Pending futures count"), new LocalFuturesWaitingGauge(futureTracker));
+			metrics.newGauge(createName("[submit] Percent duplicate rate"), new PercentDuplicateRateGuage(worksAdded, workAddedTimer));
+			metrics.newGauge(createName("Pending futures count"), new LocalFuturesWaitingGauge(futureTracker));
 			metrics.newGauge(createName("Pending work map size (local)"), new LocalIMapSizeGauge(topology.getPendingWork()));
 		}
 		

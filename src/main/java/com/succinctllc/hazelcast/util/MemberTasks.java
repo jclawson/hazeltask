@@ -3,7 +3,6 @@ package com.succinctllc.hazelcast.util;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -117,7 +116,8 @@ public class MemberTasks {
         return result;
     }
     
-    private static <T> MemberResponseCallable<T> getFutureInner(DistributedTask<MemberResponse<T>> future) {
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+	private static <T> MemberResponseCallable<T> getFutureInner(DistributedTask<MemberResponse<T>> future) {
         Object o = future.getInner();
         if(o instanceof InnerFutureTask) {
             return (MemberResponseCallable<T>) ((InnerFutureTask) o).getCallable();

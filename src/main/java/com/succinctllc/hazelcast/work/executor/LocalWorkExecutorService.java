@@ -18,12 +18,10 @@ import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.HazelcastWorkGroupedQueue;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkResponse;
 import com.succinctllc.hazelcast.work.metrics.CollectionSizeGauge;
 import com.succinctllc.hazelcast.work.metrics.WorkThroughputGauge;
-import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
@@ -55,7 +53,7 @@ public class LocalWorkExecutorService {
 	
 	protected LocalWorkExecutorService(HazelcastWorkTopology topology, int threadCount, MetricsRegistry metrics, MetricNamer metricNamer) {
 		this.topology = topology;
-		taskQueue = new HazelcastWorkGroupedQueue();
+		
 		this.maxThreads = threadCount;
 		this.metricNamer = metricNamer;
 

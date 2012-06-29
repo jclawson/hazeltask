@@ -2,8 +2,6 @@ package com.succinctllc.hazelcast.work;
 
 import java.util.concurrent.Callable;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 
 /**
@@ -18,7 +16,6 @@ import com.succinctllc.core.concurrent.collections.grouped.Groupable;
  */
 public class HazelcastWork implements Groupable, Runnable, Work {
 	private static final long serialVersionUID = 1L;
-	private static ILogger LOGGER = Logger.getLogger(HazelcastWork.class.getName());
 	
 	private Runnable runTask;
 	private Callable<?> callTask;
@@ -63,7 +60,9 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 //	    return task;
 //	}
 	
-	
+	public String getTopologyName() {
+		return topology;
+	}
 
 	public String getGroup() {
 		return key.getGroup();

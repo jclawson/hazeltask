@@ -17,7 +17,6 @@ import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;

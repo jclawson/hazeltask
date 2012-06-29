@@ -3,11 +3,10 @@ package com.succinctllc.hazelcast.work.bundler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 import com.succinctllc.core.metrics.MetricNamer;
-import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
