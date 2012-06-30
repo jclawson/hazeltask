@@ -18,6 +18,8 @@ import com.succinctllc.hazelcast.work.WorkId;
  * a Google Guava Event Bus instead.  Then, we can have event listeners
  * deal with the issue and optionally make the bus async.
  * 
+ * FIXME: implement DeferredWorkBundlerAware interface for getting rid of HazelcastWorkManager statics
+ * 
  * @author jclawson
  *
  */

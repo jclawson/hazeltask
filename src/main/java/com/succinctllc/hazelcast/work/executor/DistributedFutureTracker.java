@@ -11,7 +11,18 @@ import com.hazelcast.core.MessageListener;
 import com.succinctllc.hazelcast.work.WorkResponse;
 import com.succinctllc.hazelcast.work.WorkResponse.Status;
 
-
+/**
+ * TODO: move the listener binding to DistributedExecutorService so that 
+ * this class will be more easily testable.  Or we can pass in an ITopic
+ * that does NoOp
+ * 
+ * TODO: instead of taking String id, take a HazelcastWork
+ * 
+ * TODO: instead of add(id, future) make it createFuture(hazelcastWork)
+ * 
+ * @author jclawson
+ *
+ */
 public class DistributedFutureTracker implements MessageListener<WorkResponse> {
     private DistributedExecutorService service;
     

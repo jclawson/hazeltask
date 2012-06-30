@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.router;
+package com.succinctllc.core.concurrent.collections.router;
 
 import java.util.List;
 import java.util.concurrent.Callable;

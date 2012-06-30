@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
+import com.succinctllc.core.concurrent.collections.router.RoundRobinRouter;
+import com.succinctllc.core.concurrent.collections.router.RouteSkipAdapter;
 import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
-import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
-import com.succinctllc.hazelcast.work.router.RouteSkipAdapter;
 
 public class GroupedQueueRouter {
 	public static interface GroupedRouter<E extends Groupable> {

@@ -37,12 +37,9 @@ public class LocalWorkExecutorService {
     private static ILogger LOGGER = Logger.getLogger(LocalWorkExecutorService.class.getName());
     
 	private final HazelcastWorkTopology topology;
-	//private BoundedThreadPoolExecutorService localExecutorService;
 	private QueueExecutor<HazelcastWork> localExecutorPool;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
-	//private HazelcastWorkGroupedQueue taskQueue;
 	private GroupedPriorityQueue<HazelcastWork> taskQueue;
-	//private final BlockingQueue<Runnable> localExecutorQueue;
 	private final Map<String, HazelcastWork> worksInProgress;
 	
 	private final int maxThreads;

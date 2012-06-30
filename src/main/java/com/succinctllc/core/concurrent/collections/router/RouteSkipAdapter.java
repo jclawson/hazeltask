@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.router;
+package com.succinctllc.core.concurrent.collections.router;
 
 /**
  * Allows you to specify custom logic in order to skip an item

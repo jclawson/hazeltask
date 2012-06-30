@@ -23,6 +23,8 @@ import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;
+import com.succinctllc.core.concurrent.collections.router.ListRouter;
+import com.succinctllc.core.concurrent.collections.router.RoundRobinRouter;
 import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
@@ -33,8 +35,6 @@ import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder
 import com.succinctllc.hazelcast.work.metrics.LocalFuturesWaitingGauge;
 import com.succinctllc.hazelcast.work.metrics.LocalIMapSizeGauge;
 import com.succinctllc.hazelcast.work.metrics.PercentDuplicateRateGuage;
-import com.succinctllc.hazelcast.work.router.ListRouter;
-import com.succinctllc.hazelcast.work.router.RoundRobinRouter;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
