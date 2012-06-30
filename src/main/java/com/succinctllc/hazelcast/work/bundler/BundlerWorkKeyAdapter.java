@@ -5,6 +5,11 @@ import com.succinctllc.hazelcast.work.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.WorkId;
 
 /**
+ * This class identifies the group and item belongs to and its unique id.  Items 
+ * of the same group will be bundled and submitted for execution.  The item id is 
+ * used to prevent the same item from being submitted twice before the previous 
+ * submission is processed (if that option is enabled)
+ * 
  * This will work as both the bundler adapter and the DistributedExecutorService 
  * adapter to fetch the group & id.
  *   

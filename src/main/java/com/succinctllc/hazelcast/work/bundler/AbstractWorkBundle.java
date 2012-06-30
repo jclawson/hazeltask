@@ -11,6 +11,11 @@ public abstract class AbstractWorkBundle<I> implements WorkBundle<I> {
 	private final List<I> items;
 	private final WorkId workId;
 	
+	/**
+	 * @param id - typically UUID.randomUUID().toString()
+	 * @param group
+	 * @param items
+	 */
 	public AbstractWorkBundle(String id, String group, Collection<I> items) {
 		//this ensures our list is serializable
 		this.items = new ArrayList<I>(items);

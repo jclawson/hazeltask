@@ -18,21 +18,21 @@ import com.yammer.metrics.core.MetricsRegistry;
  * efficient to SELECT 100 items 1 time than it is to SELECT 1 item 100 times.
  * 
  * This abstraction to the Partitioned Executor Service will help you do this
- * bundling
+ * bundling.
  * 
- * If you are using bundling, do not add Runnables/Callables to the 
+ * By default it will queue up items into a MultiMap backed by hazelcast.  This 
+ * will prevent you from submitting the same item more than once... before its
+ * flushed, bundled, and submitted for execution.  If you want to prevent submitting
+ * the same item up to the point of its execution, use the withDuplicatePrevention
+ * option.
+ * 
+ * If add() operations are too slow, you can opt to use withLocalBufferingOnly which
+ * will use a localMultiMap instead of a hazelcast backed version.  This will be much
+ * faster, but you risk losing items if the node goes down.
+ * 
+ * Note: If you are using bundling, do not add Runnables/Callables to the 
  * DistributedExecutorService by hand.
- * TODO:  allow adding runnables / callables directly... perhaps even through the
- * bundler so it can wrap it and track it.
  * 
- * FIXME: require providing an instance of DistributedExecutorServiceManager
- * because this is a dependency that must be created before creating this guy
- * 
- * TODO: add option for preventing duplicate work items.  We have to keep a
- * hazelcast map of the items to prevent duplicates.  This will slow things
- * down a lot, so it should be a choice.
- * 
- * FIXME: build bundler first, then build executor service as part of bundler
  * 
  * @author jclawson
  * 
