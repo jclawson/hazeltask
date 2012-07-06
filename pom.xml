@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.succinctllc</groupId>
   <artifactId>hazelcast-work</artifactId>
-  <version>0.0.4-SNAPSHOT</version>
+  <version>0.0.5-SNAPSHOT</version>
   <name>Hazelcast Work</name>
   <description>Hazelcast Work</description>
   
