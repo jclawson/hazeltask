@@ -12,6 +12,7 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.query.SqlPredicate;
+import com.succinctllc.core.concurrent.BackoffTimer.BackoffTask;
 import com.succinctllc.hazelcast.util.MemberTasks;
 import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.HazelcastWork;
@@ -21,7 +22,7 @@ import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
-public class StaleWorkFlushTimerTask extends TimerTask {
+public class StaleWorkFlushTimerTask extends BackoffTask {
 	private static ILogger LOGGER = Logger.getLogger(StaleWorkFlushTimerTask.class.getName());
 	
     private DistributedExecutorService svc;
@@ -42,8 +43,10 @@ public class StaleWorkFlushTimerTask extends TimerTask {
         }
     }
 
-    public void run() {
-    	TimerContext timerCtx = null;
+    @Override
+    public boolean execute() {
+    	boolean flushed = false;
+        TimerContext timerCtx = null;
     	if(flushTimer != null)
     		timerCtx = flushTimer.time();
     	
@@ -82,8 +85,10 @@ public class StaleWorkFlushTimerTask extends TimerTask {
 	        Set<String> keys = (Set<String>) map.localKeySet(pred);
 	        Collection<HazelcastWork> works = map.getAll(keys).values();
 	        
-	        if(works.size() > 0)
-	        	LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
+	        if(works.size() > 0) {
+	            flushed = true;
+	            LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
+	        }
 	        
 	        for(HazelcastWork work : works) {
 	            svc.execute(work, true);
@@ -101,7 +106,8 @@ public class StaleWorkFlushTimerTask extends TimerTask {
     		if(timerCtx != null)
     			timerCtx.stop();
     	}
-        
+    	
+    	return flushed;
     }
     
     private static class GetOldestTime implements Callable<Long>, Serializable {

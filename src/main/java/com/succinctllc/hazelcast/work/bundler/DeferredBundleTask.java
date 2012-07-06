@@ -3,9 +3,9 @@ package com.succinctllc.hazelcast.work.bundler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
+import com.succinctllc.core.concurrent.BackoffTimer.BackoffTask;
 import com.succinctllc.core.metrics.MetricNamer;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
@@ -21,7 +21,7 @@ import com.yammer.metrics.core.TimerContext;
  *
  * @param <T>
  */
-public class DeferredBundleTask<T> extends TimerTask {
+public class DeferredBundleTask<T> extends BackoffTask {
     private final DeferredWorkBundler<T> deferredWorkBundler;
     
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
@@ -61,7 +61,8 @@ public class DeferredBundleTask<T> extends TimerTask {
 
     
     @Override
-    public void run() {
+    public boolean execute() {
+        boolean flushed = false;
         TimerContext tCtx = null;
         if(bundlerTimer != null)
         	tCtx = bundlerTimer.time();
@@ -74,13 +75,17 @@ public class DeferredBundleTask<T> extends TimerTask {
 	                String group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
 	                deferredWorkBundler.flush(group);
+	                flushed = true;
 	            } else if (shouldTTLFlush(entry.getKey())) {
 	                deferredWorkBundler.flush(entry.getKey());
+	                flushed = true;
 	            }
 	        }
         } finally {
         	if(tCtx != null)
         		tCtx.stop();
         }
+        
+        return flushed;
     }
 }

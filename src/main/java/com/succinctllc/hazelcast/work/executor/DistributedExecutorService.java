@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Timer;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -22,6 +21,7 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.succinctllc.core.concurrent.BackoffTimer;
 import com.succinctllc.core.concurrent.collections.grouped.Groupable;
 import com.succinctllc.core.concurrent.collections.router.ListRouter;
 import com.succinctllc.core.concurrent.collections.router.RoundRobinRouter;
@@ -47,10 +47,14 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * TODO: a lot... most methods throw a not implemented exception
  * 
- * TODO: should this be an ExecutorService that can handle Runnable / Callables?  Or should
- * we define another type of object like Work?  This would help our generics a lot and ensuring
- * its serializable. ... I actually like this better since it more expressive.  I don't think we 
- * lose much giving up compatibility with ExecutorService
+ * TODO: add functionality to do further load balancing by adding more members into the
+ * ready member list and shuffling the list for example.  Or another type of router that 
+ * is aware of how backed up members are.
+ * 
+ * TODO: implement work stealing.  Because we push work to members, it is possible for 
+ * one member to go slower than the others.  In which case we should do 2 things:
+ * 1) allocate less work to this member and 2) allow other members to steal work from 
+ * it if they don't have much to do. 
  * 
  * @author jclawson
  *
@@ -144,8 +148,15 @@ public class DistributedExecutorService implements ExecutorService {
         
         //flush items that got left behind in the local map
         //this must always be started on every single node!
-        new Timer(topology.createName("flush-timer"), true)
-            .schedule(new StaleWorkFlushTimerTask(this), 6000, 6000);
+        //new Timer(topology.createName("flush-timer"), true)
+        //    .schedule(new StaleWorkFlushTimerTask(this), 6000, 6000);
+	    
+	    //using the backoff timer instead from 1 second - 30 seconds
+	    //typical usage patterns will note that it will recover more items
+	    //after the first execution so a backoff makes sense
+	    BackoffTimer timer = new BackoffTimer(topology.createName("flush-timer"));
+        timer.schedule(new StaleWorkFlushTimerTask(this), 1000, 30000, 2);
+        timer.start();
 	    
 	}
 	

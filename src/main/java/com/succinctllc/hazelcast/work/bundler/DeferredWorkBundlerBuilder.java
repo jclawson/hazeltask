@@ -33,6 +33,9 @@ import com.yammer.metrics.core.MetricsRegistry;
  * Note: If you are using bundling, do not add Runnables/Callables to the 
  * DistributedExecutorService by hand.
  * 
+ * TODO: implement a configuration verification process... send a message out to other nodes,
+ * get their configurations.  Compare with this one.... log incompatibilities.  For example:
+ * if 1 node uses preventDuplicates, all nodes must use it... or it won't work.
  * 
  * @author jclawson
  * 

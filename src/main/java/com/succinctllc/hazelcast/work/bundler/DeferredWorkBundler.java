@@ -16,6 +16,7 @@ import com.google.common.collect.Lists;
 import com.hazelcast.core.IMap;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.succinctllc.core.concurrent.BackoffTimer;
 import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.util.MultiMapProxy;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
@@ -176,9 +177,13 @@ public class DeferredWorkBundler<I> {
         	//TODO: this timer sucks... is there a better way to flush (maybe with an exponential backoff?)
         	//it would be cool to have a timer task that we can tell to run immediately with a min-limit to how often it can 
         	//be run in a period manually
-        	new Timer(buildName("bundle-flush-timer"), true)
-                .schedule(new DeferredBundleTask<I>(this, metrics, metricNamer), config.flushTTL, Math.max(config.flushTTL/4, Math.min(4000, config.flushTTL)));
+        	//new Timer(buildName("bundle-flush-timer"), true)
+            //    .schedule(new DeferredBundleTask<I>(this, metrics, metricNamer), config.flushTTL, Math.max(config.flushTTL/4, Math.min(4000, config.flushTTL)));
         	
+            BackoffTimer timer = new BackoffTimer(buildName("bundle-flush-timer"));
+            timer.schedule(new DeferredBundleTask<I>(this, metrics, metricNamer), 200, 20000, 2);
+            timer.start();
+            
         	executorService.startup();
         }
     }
