@@ -65,14 +65,14 @@ public class MultiMapProxy<K, V> /*implements MultiMap<K, V>*/ {
 			synchronized (guavaMultiMap) {
 				Collection<V> c = guavaMultiMap.get(key);
 				if(c != null)
-					return new ArrayList<V>();
+					return new ArrayList<V>(c);
 				else
 					return null;
 			}			
 		} else {
 			Collection<V> c = hcMultiMap.get(key);
 			if(c != null)
-				return new ArrayList<V>();
+				return new ArrayList<V>(c);
 			else
 				return null;
 		}
