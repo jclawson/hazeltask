@@ -103,7 +103,7 @@ public class DeferredWorkBundler<I> {
     
     private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"bundler", 
+			"hazelcast-work", 
 			topology.getName(), 
 			"DeferredWorkBundler", 
 			name

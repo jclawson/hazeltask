@@ -76,7 +76,7 @@ public class LocalWorkExecutorService {
 	
 	private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"executor", 
+			"hazelcast-work", 
 			topology.getName(), 
 			"LocalWorkExecutor", 
 			name

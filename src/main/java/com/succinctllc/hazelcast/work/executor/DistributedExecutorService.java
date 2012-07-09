@@ -132,7 +132,7 @@ public class DistributedExecutorService implements ExecutorService {
 	
 	private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"executor", 
+			"hazelcast-work", 
 			topology.getName(), 
 			"DistributedExecutorService", 
 			name
