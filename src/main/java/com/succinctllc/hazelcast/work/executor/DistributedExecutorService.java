@@ -242,6 +242,7 @@ public class DistributedExecutorService implements ExecutorService {
 	                        		worksAdded.mark();
 	                        	return;
 	                        } else {
+	                            LOGGER.log(Level.INFO, "The member "+m+" did not accept the work.  Trying to resubmit to another node");
 	                            isResubmitting = true;
 	                        }
 	                    } catch (InterruptedException e) {
@@ -250,6 +251,7 @@ public class DistributedExecutorService implements ExecutorService {
 	                        return;
 	                    } catch (MemberLeftException e) {
 	                        //resubmit the work to another node
+	                        LOGGER.log(Level.WARNING, "Member left, trying to resubmit work to another node");
 	                        isResubmitting = true;
 	                    } catch (ExecutionException e) {
 	                        //TODO: improve this - we may need to retry here... for example if a node indicated it doesn't want to do the work
@@ -260,6 +262,9 @@ public class DistributedExecutorService implements ExecutorService {
 	    	        		worksAdded.mark();
 	    	        	return;
 	    	        }
+	    		} else {
+	    		    LOGGER.log(Level.FINE, workKey.getId()+" is already in the system to be worked on. I will not resubmit it");
+	    		    return;
 	    		}
 			}
 			
