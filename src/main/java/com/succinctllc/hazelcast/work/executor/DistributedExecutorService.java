@@ -232,33 +232,12 @@ public class DistributedExecutorService implements ExecutorService {
 	    	            return;
 	    	        }
 	    	        
-	    	        DistributedTask<Boolean> task = new DistributedTask<Boolean>(new SubmitWorkTask(wrapper, topology.getName()), m);
-	    	        workDistributor.execute(task);
-	    	        
-	    	        if(this.acknowledgeWorkSubmittion) {
-	        	        try {
-	                        if(task.get()) {
-	                        	if(worksAdded != null)
-	                        		worksAdded.mark();
-	                        	return;
-	                        } else {
-	                            isResubmitting = true;
-	                        }
-	                    } catch (InterruptedException e) {
-	                        Thread.currentThread().interrupt();
-	                        LOGGER.log(Level.WARNING, "Thread was interrupted waiting for work to be submitted", e);
-	                        return;
-	                    } catch (MemberLeftException e) {
-	                        //resubmit the work to another node
-	                        isResubmitting = true;
-	                    } catch (ExecutionException e) {
-	                        //TODO: improve this - we may need to retry here... for example if a node indicated it doesn't want to do the work
-	                        throw new RuntimeException("An error ocurred while distributing work", e);
-	                    }
-	    	        } else {
+	    	        if(topology.getClusterServices().submitWork(wrapper, m, acknowledgeWorkSubmittion)) {
 	    	        	if(worksAdded != null)
-	    	        		worksAdded.mark();
+                    		worksAdded.mark();
 	    	        	return;
+	    	        } else {
+	    	        	isResubmitting = true;
 	    	        }
 	    		}
 			}

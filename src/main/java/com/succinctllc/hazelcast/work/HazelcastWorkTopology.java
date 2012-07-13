@@ -17,6 +17,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
+import com.succinctllc.hazelcast.work.executor.ClusterServices;
 
 /**
  * The topology of the works system describes the different services and
@@ -62,6 +63,7 @@ public class HazelcastWorkTopology {
 	private final ExecutorService workDistributor;
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
 	private final IMap<String, HazelcastWork>                               pendingWork;
+	private final ClusterServices clusterServices;
 	
 	
 	/**
@@ -99,6 +101,10 @@ public class HazelcastWorkTopology {
 		pendingWork = hazelcast.getMap(pendingWorkMapName);
 		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
 		workResponseTopic = hazelcast.getTopic(createName("work-response"));
+		
+		hazelcast.getConfig().setManagedContext(HazelcastWorkManagedContext.wrap(hazelcast.getConfig().getManagedContext()));
+		
+		clusterServices = new ClusterServices(this);
 	}
 	
 	private void startReadyMemberPing() {
@@ -107,6 +113,10 @@ public class HazelcastWorkTopology {
         
         //this listener will keep our ready members up to date with who is online
         this.hazelcast.getCluster().addMembershipListener(new MemberRemovedListener());
+	}
+	
+	public ClusterServices getClusterServices() {
+		return clusterServices;
 	}
 	
 	/**
