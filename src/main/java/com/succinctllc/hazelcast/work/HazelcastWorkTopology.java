@@ -102,7 +102,7 @@ public class HazelcastWorkTopology {
 		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
 		workResponseTopic = hazelcast.getTopic(createName("work-response"));
 		
-		hazelcast.getConfig().setManagedContext(HazelcastWorkManagedContext.wrap(hazelcast.getConfig().getManagedContext()));
+		HazelcastWorkManagedContext.apply(hazelcast);		
 		
 		clusterServices = new ClusterServices(this);
 	}

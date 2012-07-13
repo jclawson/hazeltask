@@ -239,6 +239,9 @@ public class DistributedExecutorService implements ExecutorService {
                     } else {
                         isResubmitting = true;
                     }
+                } else {
+                    //do not submit
+                    return;
                 }
             }
             

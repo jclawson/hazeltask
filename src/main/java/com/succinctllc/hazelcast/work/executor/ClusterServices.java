@@ -64,7 +64,7 @@ public class ClusterServices {
 		}		
 	}
 	
-	public class SubmitWorkTask extends AbstractCallable<Boolean> {
+	public static class SubmitWorkTask extends AbstractCallable<Boolean> {
 	    private static final long serialVersionUID = 1L;
 	    private HazelcastWork work;
 	    
