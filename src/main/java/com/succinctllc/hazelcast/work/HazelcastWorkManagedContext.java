@@ -6,6 +6,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.impl.FactoryImpl;
 import com.hazelcast.impl.FactoryImpl.HazelcastInstanceProxy;
+import com.succinctllc.hazelcast.util.MemberTasks.MemberResponseCallable;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceAware;
 
 public class HazelcastWorkManagedContext implements ManagedContext {
@@ -17,6 +18,10 @@ public class HazelcastWorkManagedContext implements ManagedContext {
 	
 	public void initialize(Object obj) {
 		delegate.initialize(obj);
+		
+		if(obj instanceof MemberResponseCallable) {
+		    obj = ((MemberResponseCallable<?>) obj).getDelegate();
+		}
 		
 		if(obj instanceof DistributedExecutorServiceAware) {
 			DistributedExecutorServiceAware aware = (DistributedExecutorServiceAware) obj;

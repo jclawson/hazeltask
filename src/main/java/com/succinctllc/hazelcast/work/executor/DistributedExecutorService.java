@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -15,9 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
-import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.Member;
-import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -144,6 +143,8 @@ public class DistributedExecutorService implements ExecutorService {
             localExecutorService.start();
             isReady = true;
             topology.localExecutorServiceReady();
+            new Timer(topology.createName("rebalance-timer"), true)
+                .schedule(new WorkRebalanceTimerTask(this), 10000, 120000);
         }
         
         //flush items that got left behind in the local map

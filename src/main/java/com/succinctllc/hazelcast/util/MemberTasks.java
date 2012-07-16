@@ -144,6 +144,10 @@ public class MemberTasks {
         	return this.member;
         }
         
+        public Callable<T> getDelegate() {
+            return delegate;
+        }
+        
         public MemberResponse<T> call() throws Exception {
             return new MemberResponse<T>(member, delegate.call());
         }        

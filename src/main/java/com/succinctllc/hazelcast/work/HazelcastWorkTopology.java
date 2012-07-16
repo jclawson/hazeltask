@@ -11,6 +11,7 @@ import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapIndexConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
@@ -64,7 +65,7 @@ public class HazelcastWorkTopology {
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
 	private final IMap<String, HazelcastWork>                               pendingWork;
 	private final ClusterServices clusterServices;
-	
+	private final ILock rebalanceTasksLock;
 	
 	/**
 	 * This topic alerts all nodes to work completions.  Some nodes may have Futures
@@ -105,6 +106,8 @@ public class HazelcastWorkTopology {
 		HazelcastWorkManagedContext.apply(hazelcast);		
 		
 		clusterServices = new ClusterServices(this);
+		
+		rebalanceTasksLock = hazelcast.getLock(createName("RebalanceTasks"));
 	}
 	
 	private void startReadyMemberPing() {
@@ -117,6 +120,10 @@ public class HazelcastWorkTopology {
 	
 	public ClusterServices getClusterServices() {
 		return clusterServices;
+	}
+	
+	public ILock getRebalanceTasksLock() {
+	    return rebalanceTasksLock;
 	}
 	
 	/**

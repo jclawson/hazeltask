@@ -2,88 +2,132 @@ package com.succinctllc.hazelcast.work.executor;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.TimerTask;
+import java.util.logging.Level;
 
+import com.hazelcast.core.ILock;
 import com.hazelcast.core.Member;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
+import com.succinctllc.hazelcast.data.MemberValuePair;
 import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
+import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
  * TODO: for this, lets lock the cluster down so we can figure out exactly 
- * what members, should take how much work exactly and then tell them about it
+ * what to do without other memebers running this task and altering the metrics
+ * what would happen if we didn't lock?
+ * 
+ * We will only take work if we find a node that has PERCENT_THRESHOLD more work than 
+ * this node.
+ * 
+ * We lock these tasks with a cluster wide lock so that only one per node may run
  * 
  * @author jclawson
  */
 public class WorkRebalanceTimerTask extends TimerTask {
-	private final DistributedExecutorService distributedExecutorService;
+    private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
+    private final DistributedExecutorService distributedExecutorService;
 	
 	/**
 	 * If a member has this percent MORE works than the current member, steal them
 	 */
-	private static final double PERCENT_THRESHOLD = 0.30;
+	private static final double THRESHOLD = 0.30;
+	
+	private final ILock LOCK;
 	
 	public WorkRebalanceTimerTask(DistributedExecutorService distributedExecutorService) {
 		this.distributedExecutorService = distributedExecutorService;
-	}
-	
-	private static class MemberValuePair {
-		Member member;
-		long value;
-		public MemberValuePair(Member member, long value) {
-			this.member = member;
-			this.value = value;
-		}
+		LOCK = distributedExecutorService.getTopology().getRebalanceTasksLock();
 	}
 	
 	@Override
 	public void run() {
-		ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
-		Collection<MemberResponse<Long>> queueSizes = clusterServices.getLocalQueueSizes();
-		long totalSize = 0;
-		for(MemberResponse<Long> response : queueSizes) {
-			totalSize += response.getValue();
-		}
+	    LOGGER.log(Level.INFO, "Running Rebalance Task");
+	    LOCK.lock();
+	    /*
+	     * NOTE: because we are locking here, we need to make ABSOLUTELY sure all our waits are bounded
+	     * ----> Comment on any external calls to note that they are bounded
+	     */
+	    try {
+    	    ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
+    		
+    	    //BOUNDED: MemberTasks.executeOptimistic waits a max of 60 seconds
+    	    Collection<MemberResponse<Long>> queueSizes = clusterServices.getLocalQueueSizes();
+    	    if(queueSizes.size() == 0) {
+    	        LOGGER.log(Level.INFO, "No data");
+    	        return;
+    	    }
+    		
+    	    //TODO: check if response.getMember().localMember() works below so we don't have to do this
+    	    Member localMember = this.distributedExecutorService.getTopology().getHazelcast().getCluster().getLocalMember();
+            long localQueueSize = -1;        
+    		long totalSize = 0;
+    	
+    		for(MemberResponse<Long> response : queueSizes) {
+    			totalSize += response.getValue();
+    			if(response.getMember().equals(localMember)) {
+    			    localQueueSize = response.getValue();
+    			}
+    		}
+    		
+    		final long optimalSize = totalSize / queueSizes.size();
+    		
+    		if(localQueueSize == -1) {
+    		    //the localQueueSize was not fetched for some reason... 
+    		    //TODO: throw exception
+    		    LOGGER.log(Level.SEVERE, "Cannot get localQueueSize");
+    		    return;
+    		}	
+    		
+    		if(localQueueSize >= optimalSize || (optimalSize * THRESHOLD) <= localQueueSize) {
+    		    //nothing to do
+    		    //TODO: log
+    		    LOGGER.log(Level.INFO, "No rebalance needed");
+    		    return;
+    		}
+    		
+    		//------------------------
+    		// Figure out how much is available to take.. (sum of those that exceed the average size)
+    		//------------------------
+    		long totalExceedingIdeal = 0;
+    		for(MemberResponse<Long> response : queueSizes) {
+    		    if(response.getValue() > optimalSize)
+    		        totalExceedingIdeal += response.getValue();
+    		}
+    		
+    		final long needToTake =  optimalSize - localQueueSize;
+    		LinkedList<MemberValuePair<Long>> numToTake = new LinkedList<MemberValuePair<Long>>();
+    		
+    		//------------------------
+    		// Take a percentage according to the total available to take
+    		//------------------------
+    		for(MemberResponse<Long> response : queueSizes) {
+    		    if(response.getValue() > optimalSize) {
+    		        numToTake.add(new MemberValuePair<Long>(response.getMember(), 
+    		                (long) Math.round(needToTake * (response.getValue() / totalExceedingIdeal))));
+    		    }
+    		}
 		
-		long optimalSize = totalSize / queueSizes.size();
-		
-		
-		Member member = this.distributedExecutorService.getTopology().getHazelcast().getCluster().getLocalMember();
-		long localQueueSize = distributedExecutorService.getLocalExecutorService().getQueueSize();
-		List<MemberValuePair> adjustements = new LinkedList<MemberValuePair>();
-		long totalToSteal = 0;
-		long returnAdjustmentNotMeetingThreshold = 0;
-		
-		for(MemberResponse<Long> response : queueSizes) {
-//			if(!member.equals(response.getMember())) {
-//				long numToSteal = Math.round(response.getValue() * PERCENT_THRESHOLD);
-//				if((response.getValue() - numToSteal) >= localQueueSize) {				
-//					steals.add(new MemberStealCount(response.getMember(), numToSteal));
-//					totalToSteal += numToSteal;
-//				}
-//			}
-			
-			long adjustment = optimalSize - response.getValue();
-			if(Math.abs(adjustment) < response.getValue()*PERCENT_THRESHOLD) {
-				returnAdjustmentNotMeetingThreshold += adjustment;
-			} else {
-				adjustements.add(new MemberValuePair(member, adjustment));
-			}
-			
-		}
-		
-//		long returnedLeft = returnedItems;
-//		for(int i =0; i<adjustments.size(); i++) {
-//		    if(adjustments[i] != 0) {
-//		       //FIXME: we might have a remainder!
-//		       adjustments[i]+= returnEach;
-//		       returnedLeft-= returnEach;
-//		       println("left "+returnedLeft+" -- "+returnedItems);
-//		       if((returnedItems < 0 && (returnedLeft - returnEach) >= 0) || (returnedItems > 0 && (returnedLeft - returnEach) <=0) ) {
-//		           adjustments[i]+= returnedLeft;
-//		       }
-//		    }
-//		}
-		
-		//from everyone I am stealing from... I should not be PERCENT_THRESHOLD more than them
+    		LOGGER.log(Level.INFO, "I will take work from "+numToTake.size()+" nodes");
+		//for each numToTake, send a message to steal work
+		//use a completion service to manage futures and recieve results
+    	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
+    		
+    		//TODO: replace this with a completion service so we can process results as we get them
+    		Collection<HazelcastWork> stolenTasks = distributedExecutorService.getTopology().getClusterServices().stealTasks(numToTake);
+    		//add to local queue
+    		int totalAdded = 0;
+    		for(HazelcastWork task : stolenTasks) {
+    		    distributedExecutorService.getLocalExecutorService().execute(task);
+    		    totalAdded++;
+    		}
+    		
+    		LOGGER.log(Level.INFO, "Done adding "+totalAdded+"...");
+    		
+    		
+	    } finally {
+	        LOCK.unlock();
+	    }
 	}
 }
