@@ -99,17 +99,22 @@ public class WorkRebalanceTimerTask extends TimerTask {
     		final long needToTake =  optimalSize - localQueueSize;
     		LinkedList<MemberValuePair<Long>> numToTake = new LinkedList<MemberValuePair<Long>>();
     		
+    		LOGGER.log(Level.INFO, "Total Size: "+totalSize+", Optimal size: "+optimalSize+", Local Size: "+localQueueSize);
+    		LOGGER.log(Level.INFO, "I will take "+needToTake+" tasks from "+numToTake.size()+" nodes");
+    		
     		//------------------------
     		// Take a percentage according to the total available to take
     		//------------------------
     		for(MemberResponse<Long> response : queueSizes) {
     		    if(response.getValue() > optimalSize) {
-    		        numToTake.add(new MemberValuePair<Long>(response.getMember(), 
-    		                (long) Math.round(needToTake * (response.getValue() / totalExceedingIdeal))));
+    		        double percent = ((double)response.getValue() / (double)totalExceedingIdeal);
+    		        long take = (long) Math.round(needToTake * percent);
+    		    	numToTake.add(new MemberValuePair<Long>(response.getMember(), take));
+    		    	LOGGER.log(Level.INFO, "I will take "+take+" tasks from "+response.getMember());
     		    }
     		}
 		
-    		LOGGER.log(Level.INFO, "I will take work from "+numToTake.size()+" nodes");
+    		
 		//for each numToTake, send a message to steal work
 		//use a completion service to manage futures and recieve results
     	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
