@@ -3,15 +3,22 @@ package com.succinctllc.hazelcast.work.executor;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.data.MemberValuePair;
 import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.HazelcastWork;
+import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * TODO: for this, lets lock the cluster down so we can figure out exactly 
@@ -28,6 +35,11 @@ import com.succinctllc.hazelcast.work.HazelcastWork;
 public class WorkRebalanceTimerTask extends TimerTask {
     private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
     private final DistributedExecutorService distributedExecutorService;
+    private final HazelcastWorkTopology topology;
+    private final MetricNamer metricNamer;
+    private Histogram histogram;
+    private Timer redistributionTimer;
+    private Timer lockWaitTimer;
 	
 	/**
 	 * If a member has this percent MORE works than the current member, steal them
@@ -39,18 +51,44 @@ public class WorkRebalanceTimerTask extends TimerTask {
 	public WorkRebalanceTimerTask(DistributedExecutorService distributedExecutorService) {
 		this.distributedExecutorService = distributedExecutorService;
 		LOCK = distributedExecutorService.getTopology().getRebalanceTasksLock();
+		topology = distributedExecutorService.getTopology();
+		metricNamer = distributedExecutorService.getMetricNamer();
+		if(distributedExecutorService.isStatisticsEnabled()) {
+		    histogram = distributedExecutorService.getMetrics().newHistogram(createName("Tasks redistributed"), false);
+		    redistributionTimer = distributedExecutorService.getMetrics().newTimer(createName("Timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+		    lockWaitTimer = distributedExecutorService.getMetrics().newTimer(createName("Lock wait timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+		}
 	}
 	
+	private MetricName createName(String name) {
+        return metricNamer.createMetricName(
+            "hazelcast-work", 
+            topology.getName(), 
+            "WorkRebalanceTimerTask", 
+            name
+        );
+    }
+	
 	@Override
-	public void run() {
+    public void run() {
 	    LOGGER.log(Level.INFO, "Running Rebalance Task");
-	    LOCK.lock();
+	    TimerContext waitCtx = null;  
+	    try {
+	        if(lockWaitTimer != null)
+	            waitCtx = lockWaitTimer.time();
+	        LOCK.lock();
+	    } finally {
+	        if(waitCtx != null)
+	            waitCtx.stop();
+	    }
 	    /*
 	     * NOTE: because we are locking here, we need to make ABSOLUTELY sure all our waits are bounded
 	     * ----> Comment on any external calls to note that they are bounded
 	     */
+	    TimerContext timerCtx = null; 
 	    try {
-    	    ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
+	        timerCtx = redistributionTimer.time();
+	        ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
     		
     	    //BOUNDED: MemberTasks.executeOptimistic waits a max of 60 seconds
     	    Collection<MemberResponse<Long>> queueSizes = clusterServices.getLocalQueueSizes();
@@ -128,11 +166,18 @@ public class WorkRebalanceTimerTask extends TimerTask {
     		    totalAdded++;
     		}
     		
+    		if(histogram != null)
+    		    histogram.update(totalAdded);
+    		
     		LOGGER.log(Level.INFO, "Done adding "+totalAdded+"...");
     		
     		
 	    } finally {
-	        LOCK.unlock();
+	        try {
+	            LOCK.unlock();
+	        } finally {
+	            timerCtx.stop();
+	        }
 	    }
 	}
 }
