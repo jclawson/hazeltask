@@ -48,6 +48,10 @@ public class MemberTasks {
         return new MultiTask<T>(callable, members);
     }
     
+    public static <T> DistributedTask<T> create(Callable<T> callable, Member member) {
+        return new DistributedTask<T>(callable, member);
+    }
+    
     /**
      * Will wait a maximum of 1 minute for each node to response with their result.  If an error occurs on any
      * member, we will always attempt to continue execution and collect as many results as possible.
@@ -138,6 +142,10 @@ public class MemberTasks {
         
         public Member getMember() {
         	return this.member;
+        }
+        
+        public Callable<T> getDelegate() {
+            return delegate;
         }
         
         public MemberResponse<T> call() throws Exception {

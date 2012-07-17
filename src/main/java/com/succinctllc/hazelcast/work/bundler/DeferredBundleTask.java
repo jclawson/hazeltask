@@ -41,7 +41,7 @@ public class DeferredBundleTask<T> extends BackoffTask {
     
     private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"bundler", 
+			"hazelcast-work", 
 			deferredWorkBundler.getTopology().getName(), 
 			"DeferredBundleTask", 
 			name

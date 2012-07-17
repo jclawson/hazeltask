@@ -38,8 +38,8 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
         this.svc = svc;
         this.topology = svc.getTopology();
         if(svc.isStatisticsEnabled()) {
-        	flushTimer = svc.getMetrics().newTimer(svc.getMetricNamer().createMetricName("executor", topology.getName(), "StaleWorkFlushTimerTask", "Flush timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-        	numFlushedHistogram = svc.getMetrics().newHistogram(svc.getMetricNamer().createMetricName("executor", topology.getName(), "StaleWorkFlushTimerTask", "Work recovered"), true);
+        	flushTimer = svc.getMetrics().newTimer(svc.getMetricNamer().createMetricName("hazelcast-work", topology.getName(), "StaleWorkFlushTimerTask", "Flush timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+        	numFlushedHistogram = svc.getMetrics().newHistogram(svc.getMetricNamer().createMetricName("hazelcast-work", topology.getName(), "StaleWorkFlushTimerTask", "Work recovered"), true);
         }
     }
 

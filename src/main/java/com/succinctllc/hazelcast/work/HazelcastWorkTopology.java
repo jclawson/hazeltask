@@ -11,12 +11,14 @@ import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapIndexConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
+import com.succinctllc.hazelcast.work.executor.ClusterServices;
 
 /**
  * The topology of the works system describes the different services and
@@ -62,7 +64,8 @@ public class HazelcastWorkTopology {
 	private final ExecutorService workDistributor;
 	private final CopyOnWriteArrayListSet<Member> readyMembers;
 	private final IMap<String, HazelcastWork>                               pendingWork;
-	
+	private final ClusterServices clusterServices;
+	private final ILock rebalanceTasksLock;
 	
 	/**
 	 * This topic alerts all nodes to work completions.  Some nodes may have Futures
@@ -99,6 +102,12 @@ public class HazelcastWorkTopology {
 		pendingWork = hazelcast.getMap(pendingWorkMapName);
 		//workFutures = hazelcast.getMultiMap(createName("work-futures"));
 		workResponseTopic = hazelcast.getTopic(createName("work-response"));
+		
+		HazelcastWorkManagedContext.apply(hazelcast);		
+		
+		clusterServices = new ClusterServices(this);
+		
+		rebalanceTasksLock = hazelcast.getLock(createName("RebalanceTasks"));
 	}
 	
 	private void startReadyMemberPing() {
@@ -107,6 +116,14 @@ public class HazelcastWorkTopology {
         
         //this listener will keep our ready members up to date with who is online
         this.hazelcast.getCluster().addMembershipListener(new MemberRemovedListener());
+	}
+	
+	public ClusterServices getClusterServices() {
+		return clusterServices;
+	}
+	
+	public ILock getRebalanceTasksLock() {
+	    return rebalanceTasksLock;
 	}
 	
 	/**

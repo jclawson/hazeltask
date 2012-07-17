@@ -1,6 +1,8 @@
 package com.succinctllc.hazelcast.work.executor;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import com.hazelcast.logging.Logger;
 import com.succinctllc.core.concurrent.DefaultThreadFactory;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
+import com.succinctllc.core.concurrent.collections.tracked.ITrackedQueue;
 import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.succinctllc.core.metrics.MetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWork;
@@ -76,7 +79,7 @@ public class LocalWorkExecutorService {
 	
 	private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"executor", 
+			"hazelcast-work", 
 			topology.getName(), 
 			"LocalWorkExecutor", 
 			name
@@ -167,6 +170,32 @@ public class LocalWorkExecutorService {
 			if(tCtx != null)
 				tCtx.stop();
 		}
+	}
+	
+	protected Collection<HazelcastWork> stealTasks(long numberOfTasks) {
+	    long totalSize = taskQueue.size();
+	    ArrayList<HazelcastWork> result = new ArrayList<HazelcastWork>((int)numberOfTasks);
+	    for(ITrackedQueue<HazelcastWork> q : this.taskQueue.getQueuesByGroup().values()) {
+	        int qSize = q.size();
+	        if(qSize == 0) continue;
+	        
+	        double p = (double)qSize / (double)totalSize;
+	        long tasksToTake = Math.round(numberOfTasks * p);
+	        
+	        for(int i=0; i < tasksToTake; i++) {
+	            //TODO: this really sucks that we use q.poll() ... why can't this be a dequeue????
+	            HazelcastWork task = q.poll();
+	            if(task == null)
+	                break;
+	            result.add(task);
+	        }
+	    }
+	    
+	    if(result.size() < numberOfTasks) {
+	        //FIXME: should we really care? or is this good enough...
+	    }   
+	    
+	    return result;
 	}
 
 	//FIXME: fix this
