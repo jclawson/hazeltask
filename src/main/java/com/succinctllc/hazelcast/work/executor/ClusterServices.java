@@ -32,6 +32,18 @@ public class ClusterServices {
 		this.topology = topology;
 	}
 	
+	public Collection<Member> getReadyMembers() {
+	    Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
+	            topology.getCommunicationExecutorService(), topology.getHazelcast().getCluster().getMembers(),
+                new IsReady(topology.getName()));
+	    Collection<Member> result = new ArrayList<Member>(responses.size());
+	    for(MemberResponse<Boolean> response : responses) {
+	        if(response.getValue())
+	            result.add(response.getMember());
+	    }
+	    return result;
+	}
+	
 	public Collection<MemberResponse<Long>> getLocalQueueSizes() {
 		return MemberTasks.executeOptimistic(
 			topology.getCommunicationExecutorService(), 
@@ -127,6 +139,18 @@ public class ClusterServices {
 	        return true;
 	    }
 	}
+	
+	protected static class IsReady extends AbstractCallable<Boolean> {
+        private static final long serialVersionUID = 2L;
+
+        public IsReady(String topology) {
+            super(topology);
+        }
+
+        public Boolean call() throws Exception {
+            return svc.isReady();
+        }
+    }
 	
 	protected abstract static class AbstractCallable<T> implements Callable<T>, DistributedExecutorServiceAware, Serializable {
 		private static final long serialVersionUID = 1L;
