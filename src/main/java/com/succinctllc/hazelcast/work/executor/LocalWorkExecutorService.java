@@ -4,12 +4,15 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
+
+import junit.textui.ResultPrinter;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
@@ -158,6 +161,14 @@ public class LocalWorkExecutorService {
 	
 	public long getQueueSize() {
 	    return this.taskQueue.size();
+	}
+	
+	public Map<String, Integer> getGroupSizes() {
+		Map<String, Integer> result = new HashMap<String, Integer>();
+		for(String group : this.taskQueue.getGroups()) {
+			result.put(group, this.taskQueue.getQueueByGroup(group).size());
+		}
+		return result;
 	}
 	
 	public void execute(HazelcastWork command) {
