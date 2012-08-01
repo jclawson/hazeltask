@@ -148,7 +148,7 @@ public class ClusterServices {
         }
 
         public Boolean call() throws Exception {
-            return svc.isReady();
+            return svc != null && svc.isReady();
         }
     }
 	
