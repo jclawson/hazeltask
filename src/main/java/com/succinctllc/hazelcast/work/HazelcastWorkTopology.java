@@ -17,7 +17,9 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
-import com.succinctllc.core.concurrent.collections.CopyOnWriteArrayListSet;
+import com.hazeltask.IsMemberReadyTimerTask;
+import com.hazeltask.core.concurrent.collections.CopyOnWriteArrayListSet;
+import com.hazeltask.executor.WorkResponse;
 import com.succinctllc.hazelcast.work.executor.ClusterServices;
 
 /**

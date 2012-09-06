@@ -4,8 +4,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.succinctllc.core.metrics.MetricNamer;
-import com.succinctllc.core.metrics.ScopeFirstMetricNamer;
+import com.hazeltask.batch.BatchKeyAdapter;
+import com.hazeltask.batch.Bundler;
+import com.hazeltask.core.metrics.MetricNamer;
+import com.hazeltask.core.metrics.ScopeFirstMetricNamer;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorService;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder;
@@ -65,16 +67,16 @@ public class DeferredWorkBundlerBuilder {
          * @param adapter
          * @return
          */
-        public InternalBuilderStep2<I> withIdentifier(BundlerWorkKeyAdapter<I> partitioner) {
+        public InternalBuilderStep2<I> withIdentifier(BatchKeyAdapter<I> partitioner) {
             return new InternalBuilderStep2<I>(this, partitioner);
         }
     }
 
     public static class InternalBuilderStep2<I> {
-        private BundlerWorkKeyAdapter<I>       partitioner;
+        private BatchKeyAdapter<I>       partitioner;
         protected InternalBuilderStep1<I> step1;
         
-        public InternalBuilderStep2(InternalBuilderStep1<I> step1, BundlerWorkKeyAdapter<I> partitioner) {
+        public InternalBuilderStep2(InternalBuilderStep1<I> step1, BatchKeyAdapter<I> partitioner) {
             this.partitioner = partitioner;
             this.step1 = step1;
         }
@@ -88,7 +90,7 @@ public class DeferredWorkBundlerBuilder {
     public static class InternalBuilderStep3<I> {
         protected HazelcastWorkTopology topology;
         protected InternalBuilderStep2<I> step2;
-        protected BundlerWorkKeyAdapter<I>       partitioner;
+        protected BatchKeyAdapter<I>       partitioner;
         protected Bundler<I>        bundler;
         protected int               flushSize;
         protected int               minBundleSize;
@@ -102,7 +104,7 @@ public class DeferredWorkBundlerBuilder {
         protected MetricNamer 		metricNamer;
 	    protected MetricsRegistry 	metricsRegistry;
 
-        public InternalBuilderStep3(InternalBuilderStep2<I> step2, BundlerWorkKeyAdapter<I> partitioner, Bundler<I> bundler) {
+        public InternalBuilderStep3(InternalBuilderStep2<I> step2, BatchKeyAdapter<I> partitioner, Bundler<I> bundler) {
             this.step2              = step2;
             this.partitioner        = partitioner;
             this.bundler            = bundler;

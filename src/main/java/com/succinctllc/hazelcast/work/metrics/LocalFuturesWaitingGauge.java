@@ -1,6 +1,6 @@
 package com.succinctllc.hazelcast.work.metrics;
 
-import com.succinctllc.hazelcast.work.executor.DistributedFutureTracker;
+import com.hazeltask.executor.DistributedFutureTracker;
 import com.yammer.metrics.core.Gauge;
 
 public class LocalFuturesWaitingGauge extends Gauge<Integer> {

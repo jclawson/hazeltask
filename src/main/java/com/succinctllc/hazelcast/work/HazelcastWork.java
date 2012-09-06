@@ -2,7 +2,8 @@ package com.succinctllc.hazelcast.work;
 
 import java.util.concurrent.Callable;
 
-import com.succinctllc.core.concurrent.collections.grouped.Groupable;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
+import com.hazeltask.executor.Work;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
@@ -95,6 +96,14 @@ public class HazelcastWork implements Groupable, Runnable, Work {
             this.e = t;
         }
 	}
+    
+    public Runnable getInnerRunnable() {
+        return this.runTask;
+    }
+    
+    public Callable<?> getInnerCallable() {
+        return this.callTask;
+    }
 
 	public WorkId getWorkId() {
 		return key;

@@ -20,16 +20,21 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.succinctllc.core.concurrent.BackoffTimer;
-import com.succinctllc.core.concurrent.collections.grouped.Groupable;
-import com.succinctllc.core.concurrent.collections.router.ListRouter;
-import com.succinctllc.core.concurrent.collections.router.RoundRobinRouter;
-import com.succinctllc.core.metrics.MetricNamer;
+import com.hazeltask.core.concurrent.BackoffTimer;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
+import com.hazeltask.core.concurrent.collections.router.ListRouter;
+import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
+import com.hazeltask.core.metrics.MetricNamer;
+import com.hazeltask.executor.DistributedFuture;
+import com.hazeltask.executor.DistributedFutureTracker;
+import com.hazeltask.executor.LocalTaskExecutorService;
+import com.hazeltask.executor.StaleWorkFlushTimerTask;
+import com.hazeltask.executor.WorkIdAdapter;
+import com.hazeltask.executor.WorkRebalanceTimerTask;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 import com.succinctllc.hazelcast.work.WorkId;
-import com.succinctllc.hazelcast.work.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceBuilder.InternalBuilderStep2;
 import com.succinctllc.hazelcast.work.metrics.LocalFuturesWaitingGauge;
 import com.succinctllc.hazelcast.work.metrics.LocalIMapSizeGauge;
@@ -71,7 +76,7 @@ public class DistributedExecutorService implements ExecutorService {
     private volatile boolean         isReady  = false;
     private final ListRouter<Member> memberRouter;
     private final WorkIdAdapter     partitionAdapter;
-    private final LocalWorkExecutorService                                  localExecutorService;
+    private final LocalTaskExecutorService                                  localExecutorService;
     private final HazelcastWorkTopology topology;
     private final ExecutorService                                           workDistributor;
     private final DistributedFutureTracker futureTracker;
@@ -109,7 +114,7 @@ public class DistributedExecutorService implements ExecutorService {
         }
         
         
-        this.localExecutorService = new LocalWorkExecutorService(topology, internalBuilderStep1.threadCount, metrics, metricNamer);     
+        this.localExecutorService = new LocalTaskExecutorService(topology, internalBuilderStep1.threadCount, metrics, metricNamer);     
         memberRouter = new RoundRobinRouter<Member>(new Callable<List<Member>>() {
             public List<Member> call() throws Exception {
                 return topology.getReadyMembers();
@@ -165,7 +170,7 @@ public class DistributedExecutorService implements ExecutorService {
         return this.topology;
     }
 
-    public LocalWorkExecutorService getLocalExecutorService() {
+    public LocalTaskExecutorService getLocalExecutorService() {
         return localExecutorService;
     }
     
@@ -394,7 +399,7 @@ public class DistributedExecutorService implements ExecutorService {
                     .getDistributedExecutorService(topology);
             
             if(dsvc == null) return Collections.emptyList();            
-            LocalWorkExecutorService svc = dsvc.getLocalExecutorService();
+            LocalTaskExecutorService svc = dsvc.getLocalExecutorService();
             if(svc == null) return Collections.emptyList();         
             
             switch(this.type) {

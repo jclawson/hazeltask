@@ -7,9 +7,9 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.succinctllc.core.concurrent.collections.grouped.GroupedPriorityQueue;
-import com.succinctllc.core.concurrent.collections.grouped.GroupedQueueRouter;
-import com.succinctllc.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
+import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
+import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
+import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 
 public class HazelcastWorkGroupedQueueTest {
     

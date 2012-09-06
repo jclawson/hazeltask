@@ -5,8 +5,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import com.succinctllc.core.concurrent.BackoffTimer.BackoffTask;
-import com.succinctllc.core.metrics.MetricNamer;
+import com.hazeltask.batch.TaskBatchingService;
+import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.hazeltask.core.metrics.MetricNamer;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
@@ -22,7 +23,7 @@ import com.yammer.metrics.core.TimerContext;
  * @param <T>
  */
 public class DeferredBundleTask<T> extends BackoffTask {
-    private final DeferredWorkBundler<T> deferredWorkBundler;
+    private final TaskBatchingService<T> deferredWorkBundler;
     
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
     private final MetricNamer metricNamer;
@@ -30,7 +31,7 @@ public class DeferredBundleTask<T> extends BackoffTask {
     private Timer bundlerTimer;
    
     
-    public DeferredBundleTask(DeferredWorkBundler<T> deferredWorkBundler, MetricsRegistry metrics, MetricNamer metricNamer) {
+    public DeferredBundleTask(TaskBatchingService<T> deferredWorkBundler, MetricsRegistry metrics, MetricNamer metricNamer) {
         this.deferredWorkBundler = deferredWorkBundler;
         this.metricNamer = metricNamer;
         
@@ -48,6 +49,11 @@ public class DeferredBundleTask<T> extends BackoffTask {
 		);
 	}
     
+    /**
+     * This method also updates the next flush time
+     * @param group
+     * @return
+     */
     private boolean shouldTTLFlush(String group) {
         Long lastFlushed = lastFlushedTimes.get(group);
         long currentTime = System.currentTimeMillis();

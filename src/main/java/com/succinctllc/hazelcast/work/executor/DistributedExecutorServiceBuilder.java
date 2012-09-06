@@ -2,10 +2,10 @@ package com.succinctllc.hazelcast.work.executor;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.succinctllc.core.metrics.MetricNamer;
-import com.succinctllc.core.metrics.ScopeFirstMetricNamer;
+import com.hazeltask.core.metrics.MetricNamer;
+import com.hazeltask.core.metrics.ScopeFirstMetricNamer;
+import com.hazeltask.executor.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.WorkIdAdapter;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 

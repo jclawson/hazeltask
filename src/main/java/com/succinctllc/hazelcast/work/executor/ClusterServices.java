@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.hazelcast.core.Member;
-import com.succinctllc.hazelcast.data.MemberValuePair;
-import com.succinctllc.hazelcast.util.MemberTasks;
-import com.succinctllc.hazelcast.util.MemberTasks.MemberResponse;
+import com.hazeltask.hazelcast.MemberTasks;
+import com.hazeltask.hazelcast.MemberValuePair;
+import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
 
@@ -148,7 +148,7 @@ public class ClusterServices {
         }
 
         public Boolean call() throws Exception {
-            return svc.isReady();
+            return svc != null && svc.isReady();
         }
     }
 	

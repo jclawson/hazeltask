@@ -6,7 +6,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.impl.FactoryImpl;
 import com.hazelcast.impl.FactoryImpl.HazelcastInstanceProxy;
-import com.succinctllc.hazelcast.util.MemberTasks.MemberResponseCallable;
+import com.hazeltask.hazelcast.MemberTasks.MemberResponseCallable;
 import com.succinctllc.hazelcast.work.executor.DistributedExecutorServiceAware;
 
 public class HazelcastWorkManagedContext implements ManagedContext {
