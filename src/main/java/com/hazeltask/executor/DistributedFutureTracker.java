@@ -5,10 +5,10 @@ import java.util.Collection;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
-import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 import com.hazeltask.executor.WorkResponse.Status;
+import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
  * TODO: move the listener binding to DistributedExecutorService so that 
@@ -52,25 +52,34 @@ import com.hazeltask.executor.WorkResponse.Status;
  * 
  * 
  * @author jclawson
+ * 
+ * MessageListener<WorkResponse>
  *
  */
 public class DistributedFutureTracker implements MessageListener<WorkResponse> {
-    private DistributedExecutorService service;
+    //private DistributedExecutorService service;
+    //private final ITopologyService topologyService;
     
     private SetMultimap<String, DistributedFuture<?>> futures = 
             Multimaps.<String, DistributedFuture<?>>synchronizedSetMultimap(
                 HashMultimap.<String, DistributedFuture<?>>create()
             );
     
-    public DistributedFutureTracker(DistributedExecutorService service) {
-        this.service = service;
-        
-        ITopic<WorkResponse> topic = this.service.getTopology().getWorkResponseTopic();
-        topic.addMessageListener(this);
+    public DistributedFutureTracker() {
+
+//TODO: bind this to the topic outside of this class in the builder
+//        ITopic<WorkResponse> topic = this.service.getTopology().getWorkResponseTopic();
+//        topic.addMessageListener(this);
     }
     
-    public void add(String id, DistributedFuture<?> future) {
-        this.futures.put(id, future);
+//    public void add(String id, DistributedFuture<?> future) {
+//        this.futures.put(id, future);
+//    }
+    
+    public <T> DistributedFuture<T> createFuture(HazelcastWork task) {
+        DistributedFuture<T> future = new DistributedFuture<T>();
+        this.futures.put(task.getUniqueIdentifier(), future);
+        return future;
     }
     
     protected boolean removeAll(String id) {

@@ -4,6 +4,7 @@ import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.executor.DistributedExecutorService;
+import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
 import com.hazeltask.executor.WorkRebalanceTimerTask;
 
@@ -25,9 +26,13 @@ public class HazeltaskExecutorBuilder {
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
         
         HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, new HazelcastTopologyService(hazeltaskConfig), null);
-        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorConfig);
         
-        setup(HazeltaskTopology topology, hazeltaskTimer, eSvc);
+        DistributedFutureTracker futureTracker = new DistributedFutureTracker();
+        topology.getTopologyService().addTaskResponseMessageHandler(futureTracker);
+        
+        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorConfig, futureTracker);
+        
+        setup(topology, hazeltaskTimer, eSvc);
         
         Hazeltask.registerInstance(topology, eSvc);
         
@@ -40,8 +45,8 @@ public class HazeltaskExecutorBuilder {
     
     //TODO: combine with batching setup code?
     private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc) {
-        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(svc);
-        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(svc);
+        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc);
+        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(topology);
         
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
             @Override
@@ -53,9 +58,9 @@ public class HazeltaskExecutorBuilder {
 
             @Override
             public void onBeginShutdown(DistributedExecutorService svc) {
+                topology.shutdown();
                 hazeltaskTimer.unschedule(bundleTask);
                 hazeltaskTimer.unschedule(rebalanceTask);
-                topology.shutdown();
             }      
         });
     }

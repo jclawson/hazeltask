@@ -8,11 +8,12 @@ import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.config.Validator;
 import com.hazeltask.core.concurrent.BackoffTimer;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
 import com.succinctllc.hazelcast.work.bundler.DeferredBundleTask;
 
-public class HazeltaskBatchingExecutorBuilder<I> {
+public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
     private final HazeltaskConfig hazeltaskConfig;
     private final BundlerConfig<I> batchingConfig;
     
@@ -32,10 +33,10 @@ public class HazeltaskBatchingExecutorBuilder<I> {
         ITopologyService topologyService = new HazelcastTopologyService(hazeltaskConfig);
         
         HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, topologyService, batchClusterService);
-        DistributedExecutorService eSvc = new DistributedExecutorService(topology, batchingConfig.getExecutorConfig());
+        DistributedExecutorService eSvc = new DistributedExecutorService(topology, batchingConfig.getExecutorConfig(), null);
         TaskBatchingService<I> svc = new TaskBatchingService<I>(hazeltaskConfig, batchingConfig, eSvc, topology);
         
-        setup(hazeltaskTimer, eSvc);
+        setup(topology, hazeltaskTimer, eSvc);
         setup(hazeltaskTimer, svc);
         
         //FIXME: we need to be careful about listener ordering
@@ -56,8 +57,8 @@ public class HazeltaskBatchingExecutorBuilder<I> {
         return svc;
     }
     
-    private void setup(final BackoffTimer hazeltaskTimer, DistributedExecutorService svc) {
-        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(svc);
+    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc) {
+        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc);
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
             @Override
             public void onEndStart(DistributedExecutorService svc) {

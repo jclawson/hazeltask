@@ -7,12 +7,13 @@ import com.hazeltask.HazeltaskServiceListener;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.config.HazeltaskConfig;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 
 //TODO: can we create StatsTaskBatchingService that attaches stats tracking?
 //use listeners too
 
-public class TaskBatchingService<I> implements HazeltaskService<TaskBatchingService<I>> {
+public class TaskBatchingService<I extends Groupable> implements HazeltaskService<TaskBatchingService<I>> {
     
     private final HazeltaskConfig hazeltaskConfig;
     private final BundlerConfig<I> batchingConfig;

@@ -3,9 +3,10 @@ package com.hazeltask.config;
 import com.hazeltask.batch.BatchKeyAdapter;
 import com.hazeltask.batch.Bundler;
 import com.hazeltask.batch.DefaultBatchKeyAdapter;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 
-public class BundlerConfig<I> {
+public class BundlerConfig<I extends Groupable> {
     private int                  flushSize                     = 100;
     private int                  minBundleSize                 = 25;
     private int                  maxBundleSize                 = 100;

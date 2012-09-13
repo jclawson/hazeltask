@@ -2,22 +2,19 @@ package com.hazeltask.executor;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 
-import com.hazelcast.core.ILock;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.hazeltask.HazeltaskTopology;
+import com.hazeltask.ITopologyService;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
-import com.hazeltask.core.metrics.MetricNamer;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.HazelcastWorkTopology;
-import com.succinctllc.hazelcast.work.executor.ClusterServices;
 import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
@@ -31,13 +28,15 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * We lock these tasks with a cluster wide lock so that only one per node may run
  * 
+ * FIXME: lets have TaskStealPolicies so this is customizable, when and how much to steal
+ * 
  * @author jclawson
  */
 public class WorkRebalanceTimerTask extends BackoffTask {
     private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
-    private final DistributedExecutorService distributedExecutorService;
-    private final HazelcastWorkTopology topology;
-    private final MetricNamer metricNamer;
+    private final ITopologyService service;
+    private final Member localMember;
+    
     private Histogram histogram;
     private Timer redistributionTimer;
     private Timer lockWaitTimer;
@@ -47,40 +46,29 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	 */
 	private static final double THRESHOLD = 0.30;
 	
-	private final ILock LOCK;
+	private final Lock LOCK;
 	
-	public WorkRebalanceTimerTask(DistributedExecutorService distributedExecutorService) {
-		this.distributedExecutorService = distributedExecutorService;
-		LOCK = distributedExecutorService.getTopology().getRebalanceTasksLock();
-		topology = distributedExecutorService.getTopology();
-		metricNamer = distributedExecutorService.getMetricNamer();
-		if(distributedExecutorService.isStatisticsEnabled()) {
-		    histogram = distributedExecutorService.getMetrics().newHistogram(createName("Tasks redistributed"), false);
-		    redistributionTimer = distributedExecutorService.getMetrics().newTimer(createName("Timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-		    lockWaitTimer = distributedExecutorService.getMetrics().newTimer(createName("Lock wait timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-		}
+	public WorkRebalanceTimerTask(HazeltaskTopology topology) {
+	    ExecutorMetrics metrics = topology.getExecutorMetrics();
+	    LOCK = topology.getTopologyService().getRebalanceTaskClusterLock();
+		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
+		service = topology.getTopologyService();
+		
+		histogram = metrics.getTaskBalanceHistogram().getMetric();
+        redistributionTimer = metrics.getTaskBalanceTimer().getMetric();
+        lockWaitTimer = metrics.getTaskBalanceLockWaitTimer().getMetric();
 	}
 	
-	private MetricName createName(String name) {
-        return metricNamer.createMetricName(
-            "hazelcast-work", 
-            topology.getName(), 
-            "WorkRebalanceTimerTask", 
-            name
-        );
-    }
 	
 	@Override
     public boolean execute() {
 	    LOGGER.log(Level.INFO, "Running Rebalance Task");
-	    TimerContext waitCtx = null;  
+	    TimerContext waitCtx = lockWaitTimer.time();
 	    try {
-	        if(lockWaitTimer != null)
-	            waitCtx = lockWaitTimer.time();
+	        
 	        LOCK.lock();
 	    } finally {
-	        if(waitCtx != null)
-	            waitCtx.stop();
+	        waitCtx.stop();
 	    }
 	    /*
 	     * NOTE: because we are locking here, we need to make ABSOLUTELY sure all our waits are bounded
@@ -89,17 +77,17 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	    TimerContext timerCtx = null; 
 	    try {
 	        timerCtx = redistributionTimer.time();
-	        ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
+	        //ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
     		
     	    //BOUNDED: MemberTasks.executeOptimistic waits a max of 60 seconds
-    	    Collection<MemberResponse<Long>> queueSizes = clusterServices.getLocalQueueSizes();
+    	    Collection<MemberResponse<Long>> queueSizes = service.getLocalQueueSizes();
     	    if(queueSizes.size() == 0) {
     	        LOGGER.log(Level.INFO, "No data");
     	        return false;
     	    }
     		
     	    //TODO: check if response.getMember().localMember() works below so we don't have to do this
-    	    Member localMember = this.distributedExecutorService.getTopology().getHazelcast().getCluster().getLocalMember();
+    	    //Member localMember = this.distributedExecutorService.getTopology().getHazelcast().getCluster().getLocalMember();
             long localQueueSize = -1;        
     		long totalSize = 0;
     	
@@ -159,11 +147,11 @@ public class WorkRebalanceTimerTask extends BackoffTask {
     	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
     		
     		//TODO: replace this with a completion service so we can process results as we get them
-    		Collection<HazelcastWork> stolenTasks = distributedExecutorService.getTopology().getClusterServices().stealTasks(numToTake);
+    		Collection<HazelcastWork> stolenTasks = service.stealTasks(numToTake);
     		//add to local queue
     		int totalAdded = 0;
     		for(HazelcastWork task : stolenTasks) {
-    		    distributedExecutorService.getLocalExecutorService().execute(task);
+    		    service.addTaskToLocalQueue(task); //TODO: what if it returns false?
     		    totalAdded++;
     		}
     		

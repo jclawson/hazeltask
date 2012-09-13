@@ -3,7 +3,7 @@ package com.hazeltask.executor;
 import com.succinctllc.hazelcast.work.WorkId;
 
 
-public interface WorkIdAdapter {
+public interface WorkIdAdapter<T> {
 	/**
 	 * The WorkId returned does not need to be equal for 
 	 * successive calls, but it should never duplicate an id
@@ -12,5 +12,5 @@ public interface WorkIdAdapter {
 	 * @param task
 	 * @return
 	 */
-    public WorkId createWorkId(Object task);
+    public WorkId createWorkId(T task);
 }

@@ -7,6 +7,7 @@ import com.hazelcast.core.Hazelcast;
 import com.hazeltask.batch.TaskBatchingService;
 import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.config.HazeltaskConfig;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 
 public class Hazeltask {
@@ -29,7 +30,7 @@ public class Hazeltask {
         }
     }
     
-    protected static <I> void registerInstance(HazeltaskTopology topology, TaskBatchingService<I> batchingService) {
+    protected static <I extends Groupable> void registerInstance(HazeltaskTopology topology, TaskBatchingService<I> batchingService) {
         if(instances.putIfAbsent(topology.getName(), new Hazeltask(topology, batchingService.getDistributedExecutorService(), batchingService)) != null) {
             throw new IllegalStateException("An instance for the topology "+topology+" already exists!");
         }
@@ -47,7 +48,7 @@ public class Hazeltask {
         }
     }
 
-    protected static <I> HazeltaskBatchingExecutorBuilder<I> buildBatchingExecutorService(
+    protected static <I extends Groupable> HazeltaskBatchingExecutorBuilder<I> buildBatchingExecutorService(
             HazeltaskConfig config, BundlerConfig<I> batchingConfig) {
         validateHazeltaskConfig(config);
         return new HazeltaskBatchingExecutorBuilder<I>(config, batchingConfig);
@@ -58,7 +59,7 @@ public class Hazeltask {
     }
 
     @SuppressWarnings("unchecked")
-    public <I> TaskBatchingService<I> getTaskBatchingService() {
+    public <I extends Groupable> TaskBatchingService<I> getTaskBatchingService() {
         if (taskBatchService == null) { throw new IllegalStateException(
                 "TaskBatchingService was not configured for this topology"); }
         return (TaskBatchingService<I>) taskBatchService;

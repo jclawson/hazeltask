@@ -40,7 +40,7 @@ public class LocalTaskExecutorService {
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
 	private final HazeltaskTopology topology;
-	private QueueExecutor<HazelcastWork> localExecutorPool;
+	private QueueExecutor localExecutorPool;
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private GroupedPriorityQueue<HazelcastWork> taskQueue;
 	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
@@ -73,7 +73,7 @@ public class LocalTaskExecutorService {
 			metrics.newGauge(createName("Queue size"), new CollectionSizeGauge(taskQueue));
 		}
 		
-		localExecutorPool = new QueueExecutor<HazelcastWork>(taskQueue, maxThreads, factory, workExecutedTimer);
+		localExecutorPool = new QueueExecutor(taskQueue, maxThreads, factory, workExecutedTimer);
 		localExecutorPool.addListener(new DelegatingExecutorListener(listeners));
 		
 		if(executorConfig.isFutureSupportEnabled())

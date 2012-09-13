@@ -1,7 +1,9 @@
 package com.hazeltask.batch;
 
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
-public interface BatchExecutorListener<I> {
+
+public interface BatchExecutorListener<I extends Groupable> {
     /**
      * 
      * @param item

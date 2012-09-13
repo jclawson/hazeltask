@@ -4,9 +4,11 @@ import java.util.Collection;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.LoggingService;
+import com.hazeltask.batch.BatchMetrics;
 import com.hazeltask.batch.IBatchClusterService;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.CopyOnWriteArrayListSet;
+import com.hazeltask.executor.ExecutorMetrics;
 
 /**
  * TODO:  Who should be responsible for keeping this topology up to date?  I think it should be
@@ -24,6 +26,10 @@ public class HazeltaskTopology {
     //TODO: make a HazeltaskBatchTopology class that has this in it (extend this class)
     private final IBatchClusterService batchClusterService;
     private final LoggingService loggingService;
+    private boolean iAmReady;
+    
+    private final ExecutorMetrics executorMetrics;
+    private final BatchMetrics batchMetrics;
     
     public HazeltaskTopology(HazeltaskConfig hazeltaskConfig, ITopologyService svc, IBatchClusterService batchClusterService) {
         this.hazeltaskConfig = hazeltaskConfig;
@@ -31,6 +37,11 @@ public class HazeltaskTopology {
         this.topologyService = svc;
         loggingService = hazeltaskConfig.getHazelcast().getLoggingService();
         this.batchClusterService = batchClusterService;
+        this.executorMetrics = new ExecutorMetrics(hazeltaskConfig);
+        if(this.batchClusterService != null)
+            this.batchMetrics = new BatchMetrics(hazeltaskConfig);
+        else
+            this.batchMetrics = null;
     }
     
     public LoggingService getLoggingService() {
@@ -42,11 +53,15 @@ public class HazeltaskTopology {
     }
     
     protected void iAmReady() {
-        //TODO: add tracking of local ready state
+        this.iAmReady = true;
     }
     
     protected void shutdown() {
-        //TODO: set not ready
+        this.iAmReady = false;
+    }
+    
+    public boolean isReady() {
+        return this.iAmReady;
     }
     
     protected void setReadyMembers(Collection<Member> members) {
@@ -68,4 +83,14 @@ public class HazeltaskTopology {
     public IBatchClusterService getBatchClusterService() {
         return batchClusterService;
     }
+
+    public ExecutorMetrics getExecutorMetrics() {
+        return executorMetrics;
+    }
+
+    public BatchMetrics getBatchMetrics() {
+        return batchMetrics;
+    }
+    
+    
 }

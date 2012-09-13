@@ -17,11 +17,11 @@ import com.succinctllc.hazelcast.work.WorkId;
  *
  * @param <I>
  */
-public abstract class BatchKeyAdapter<I> implements WorkIdAdapter {
+public abstract class BatchKeyAdapter<I extends Groupable> implements WorkIdAdapter<I> {
     public abstract String getItemGroup(I o);
     public abstract String getItemId(I o);
     
-    public WorkId createWorkId(Groupable groupable) {
+    public WorkId createWorkId(I groupable) {
         return new WorkId(groupable.getUniqueIdentifier(), groupable.getGroup());
     }
     

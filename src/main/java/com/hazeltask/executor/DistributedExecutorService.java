@@ -39,7 +39,7 @@ public class DistributedExecutorService implements ExecutorService, HazeltaskSer
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10;
     
-    public DistributedExecutorService(HazeltaskTopology hcTopology, ExecutorConfig executorConfig) {
+    public DistributedExecutorService(HazeltaskTopology hcTopology, ExecutorConfig executorConfig, DistributedFutureTracker futureTracker) {
         this.topology = hcTopology;
         this.executorConfig = executorConfig;
         this.memberRouter = executorConfig.getMemberRouterFactory().createRouter(new Callable<List<Member>>(){
@@ -50,7 +50,7 @@ public class DistributedExecutorService implements ExecutorService, HazeltaskSer
         
         workIdAdapter = executorConfig.getWorkIdAdapter();
         
-        futureTracker = new DistributedFutureTracker(this);
+        this.futureTracker = futureTracker;
         
         this.localExecutorService = new LocalTaskExecutorService(topology, executorConfig);
         
@@ -108,9 +108,11 @@ public class DistributedExecutorService implements ExecutorService, HazeltaskSer
     }
 
     public <T> Future<T> submit(Callable<T> task) {
+        if(futureTracker == null)
+            throw new IllegalStateException("FutureTracker is null");
+        
         HazelcastWork work = createHazelcastWorkWrapper(task);
-        DistributedFuture<T> future = new DistributedFuture<T>();
-        futureTracker.add(work.getUniqueIdentifier(), future);
+        DistributedFuture<T> future = futureTracker.createFuture(work);
         if(!submitHazelcastWork(work, false)) {
             //remove future from tracker, error out future with duplicate exception
             //i hate this... it would be a cool feature to attach this future to the 
@@ -142,9 +144,11 @@ public class DistributedExecutorService implements ExecutorService, HazeltaskSer
     }
 
     public Future<?> submit(Runnable task) {
+        if(futureTracker == null)
+            throw new IllegalStateException("FutureTracker is null");
+        
         HazelcastWork work = createHazelcastWorkWrapper(task);
-        DistributedFuture future = new DistributedFuture();
-        futureTracker.add(work.getUniqueIdentifier(), future);
+        DistributedFuture<?> future = futureTracker.createFuture(work);
         submitHazelcastWork(work, false);
         return future;
     }
@@ -173,7 +177,6 @@ public class DistributedExecutorService implements ExecutorService, HazeltaskSer
                     return false;
                 }
                 
-                //TODO: make ack configurable
                 if(topology.getTopologyService().sendTask(wrapper, m, executorConfig.isAcknowlegeWorkSubmission())) {
                     return true;
                 } else {

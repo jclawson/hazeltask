@@ -1,10 +1,17 @@
 package com.hazeltask;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MessageListener;
+import com.hazeltask.executor.WorkResponse;
+import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
+import com.hazeltask.hazelcast.MemberValuePair;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
@@ -29,6 +36,19 @@ public interface ITopologyService {
     public boolean addPendingTask(HazelcastWork work, boolean replaceIfExists);
     
     /**
+     * Retrive the hazeltasks in the local pending task map with the predicate restriction
+     * @param predicate
+     * @return
+     */
+    public Collection<HazelcastWork> getLocalPendingTasks(String predicate);
+    
+    /**
+     * Get the local queue sizes for each member
+     * @return
+     */
+    public Collection<MemberResponse<Long>> getLocalQueueSizes();
+    
+    /**
      * 
      * @param work
      * @return true if removed, false it did not exist
@@ -38,7 +58,13 @@ public interface ITopologyService {
     public void broadcastTaskCompletion(String workId, Serializable response);
     public void broadcastTaskCancellation(String workId);
     public void broadcastTaskError(String workId, Throwable exception);
+    public void addTaskResponseMessageHandler(MessageListener<WorkResponse> listener);
     
     public void shutdown();
     public List<HazelcastWork> shutdownNow();
+    
+    public Lock getRebalanceTaskClusterLock();
+    
+    public Collection<HazelcastWork> stealTasks(List<MemberValuePair<Long>> numToTake);
+    public boolean addTaskToLocalQueue(HazelcastWork task);
 }

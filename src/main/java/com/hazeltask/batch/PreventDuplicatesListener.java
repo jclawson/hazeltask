@@ -2,10 +2,11 @@ package com.hazeltask.batch;
 
 import java.util.Collection;
 
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.ExecutorListener;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 
-public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, ExecutorListener {
+public class PreventDuplicatesListener<I extends Groupable> implements BatchExecutorListener<I>, ExecutorListener {
     private final IBatchClusterService<I> svc;
     private final BatchKeyAdapter<I> batchKeyAdapter;
     
@@ -31,11 +32,11 @@ public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, E
         }
     }
 
-    public boolean beforeAdd(Object item) {
+    public boolean beforeAdd(I item) {
         return svc.isInPreventDuplicateSet(batchKeyAdapter.getItemId((I)item));
     }
 
-    public void afterAdd(Object item, boolean added) {
+    public void afterAdd(I item, boolean added) {
         if(added) {
             svc.addToPreventDuplicateSet(batchKeyAdapter.getItemId((I)item));
         }

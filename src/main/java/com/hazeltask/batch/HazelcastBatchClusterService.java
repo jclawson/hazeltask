@@ -4,8 +4,9 @@ import java.util.Collection;
 import java.util.Map;
 
 import com.hazeltask.config.HazeltaskConfig;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
-public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> {
+public class HazelcastBatchClusterService<I extends Groupable> implements IBatchClusterService<I> {
 
     public HazelcastBatchClusterService(HazeltaskConfig config) {
         
@@ -34,6 +35,11 @@ public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> 
     public Collection<I> drain(String group) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    public boolean isInPreventDuplicateSet(String itemId) {
+        // TODO Auto-generated method stub
+        return false;
     }
 
 }
