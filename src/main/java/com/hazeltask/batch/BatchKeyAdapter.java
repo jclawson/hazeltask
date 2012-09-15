@@ -1,6 +1,5 @@
 package com.hazeltask.batch;
 
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.WorkIdAdapter;
 import com.succinctllc.hazelcast.work.WorkId;
 
@@ -17,12 +16,12 @@ import com.succinctllc.hazelcast.work.WorkId;
  *
  * @param <I>
  */
-public abstract class BatchKeyAdapter<I extends Groupable> implements WorkIdAdapter<I> {
+public abstract class BatchKeyAdapter<I> implements WorkIdAdapter<I> {
     public abstract String getItemGroup(I o);
     public abstract String getItemId(I o);
     
     public WorkId createWorkId(I groupable) {
-        return new WorkId(groupable.getUniqueIdentifier(), groupable.getGroup());
+        return new WorkId(getItemId(groupable), getItemGroup(groupable));
     }
     
     /**

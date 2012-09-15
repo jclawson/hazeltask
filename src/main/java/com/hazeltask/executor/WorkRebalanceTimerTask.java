@@ -9,7 +9,6 @@ import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
-import com.hazeltask.ITopologyService;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
@@ -34,8 +33,8 @@ import com.yammer.metrics.core.TimerContext;
  */
 public class WorkRebalanceTimerTask extends BackoffTask {
     private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
-    private final ITopologyService service;
     private final Member localMember;
+    private final IExecutorTopologyService executorTopologyService;
     
     private Histogram histogram;
     private Timer redistributionTimer;
@@ -48,11 +47,11 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	
 	private final Lock LOCK;
 	
-	public WorkRebalanceTimerTask(HazeltaskTopology topology) {
+	public WorkRebalanceTimerTask(HazeltaskTopology topology, IExecutorTopologyService executorTopologyService) {
 	    ExecutorMetrics metrics = topology.getExecutorMetrics();
-	    LOCK = topology.getTopologyService().getRebalanceTaskClusterLock();
+	    LOCK = executorTopologyService.getRebalanceTaskClusterLock();
 		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
-		service = topology.getTopologyService();
+		this.executorTopologyService = executorTopologyService;
 		
 		histogram = metrics.getTaskBalanceHistogram().getMetric();
         redistributionTimer = metrics.getTaskBalanceTimer().getMetric();
@@ -80,7 +79,7 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	        //ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
     		
     	    //BOUNDED: MemberTasks.executeOptimistic waits a max of 60 seconds
-    	    Collection<MemberResponse<Long>> queueSizes = service.getLocalQueueSizes();
+    	    Collection<MemberResponse<Long>> queueSizes = executorTopologyService.getLocalQueueSizes();
     	    if(queueSizes.size() == 0) {
     	        LOGGER.log(Level.INFO, "No data");
     	        return false;
@@ -147,11 +146,11 @@ public class WorkRebalanceTimerTask extends BackoffTask {
     	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
     		
     		//TODO: replace this with a completion service so we can process results as we get them
-    		Collection<HazelcastWork> stolenTasks = service.stealTasks(numToTake);
+    		Collection<HazelcastWork> stolenTasks = executorTopologyService.stealTasks(numToTake);
     		//add to local queue
     		int totalAdded = 0;
     		for(HazelcastWork task : stolenTasks) {
-    		    service.addTaskToLocalQueue(task); //TODO: what if it returns false?
+    		    executorTopologyService.addTaskToLocalQueue(task); //TODO: what if it returns false?
     		    totalAdded++;
     		}
     		

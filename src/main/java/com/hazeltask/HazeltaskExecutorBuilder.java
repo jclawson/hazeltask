@@ -5,6 +5,8 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.DistributedFutureTracker;
+import com.hazeltask.executor.HazelcastExecutorTopologyService;
+import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
 import com.hazeltask.executor.WorkRebalanceTimerTask;
 
@@ -25,14 +27,29 @@ public class HazeltaskExecutorBuilder {
         //TODO: we could use 1 timer thread for ALL topologies... Investigate
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
         
-        HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, new HazelcastTopologyService(hazeltaskConfig), null);
+        //FIXME: how should I track readyMembers?
+        // - the topologyService needs to know readyMembers
+        // - I wanted the topology to track them because they are part of the "Topology"
+        // - The topologyService also has the method to query for readyMembers
+        // - But I want to avoid tight coupling
+        
+        //     I think the answer here is to remove the readyMember query from the topologyService
+        //     and rename the topology service to something else... err... keep only readyMember query
+        //     in the topology service.
+        
+        //        lets rename topology service too.... 
+        //        IExecutorTopologyService, IBatchTopologyService, ITopologyService
+        
+        ITopologyService topologyService = new HazelcastTopologyService(hazeltaskConfig);
+        HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, topologyService, null);
+        IExecutorTopologyService svc = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
         
         DistributedFutureTracker futureTracker = new DistributedFutureTracker();
-        topology.getTopologyService().addTaskResponseMessageHandler(futureTracker);
+        svc.addTaskResponseMessageHandler(futureTracker);
         
-        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorConfig, futureTracker);
+        DistributedExecutorService eSvc = new DistributedExecutorService(topology, svc, executorConfig, futureTracker);
         
-        setup(topology, hazeltaskTimer, eSvc);
+        setup(topology, hazeltaskTimer, eSvc, svc);
         
         Hazeltask.registerInstance(topology, eSvc);
         
@@ -44,9 +61,9 @@ public class HazeltaskExecutorBuilder {
     }
     
     //TODO: combine with batching setup code?
-    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc) {
-        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc);
-        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(topology);
+    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, IExecutorTopologyService execTopSvc) {
+        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc, execTopSvc);
+        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(topology, execTopSvc);
         
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
             @Override

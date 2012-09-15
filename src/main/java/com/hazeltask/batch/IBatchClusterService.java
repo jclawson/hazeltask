@@ -5,7 +5,7 @@ import java.util.Map;
 
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
-public interface IBatchClusterService<I extends Groupable> {
+public interface IBatchClusterService<I> {
     /**
      * 
      * @return true if the item was not already present

@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.executor;
+package com.hazeltask.executor;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;

@@ -10,6 +10,8 @@ import com.hazeltask.config.Validator;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
+import com.hazeltask.executor.HazelcastExecutorTopologyService;
+import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
 import com.succinctllc.hazelcast.work.bundler.DeferredBundleTask;
 
@@ -29,14 +31,16 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         //TODO: we could use 1 timer thread for ALL topologies... Investigate
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
         
-        IBatchClusterService<I> batchClusterService = new HazelcastBatchClusterService<I>(hazeltaskConfig);
         ITopologyService topologyService = new HazelcastTopologyService(hazeltaskConfig);
-        
+        IBatchClusterService<I> batchClusterService = new HazelcastBatchClusterService<I>(hazeltaskConfig);
         HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, topologyService, batchClusterService);
-        DistributedExecutorService eSvc = new DistributedExecutorService(topology, batchingConfig.getExecutorConfig(), null);
+        IExecutorTopologyService executorTopologyService = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
+        
+        
+        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorTopologyService, batchingConfig.getExecutorConfig(), null);
         TaskBatchingService<I> svc = new TaskBatchingService<I>(hazeltaskConfig, batchingConfig, eSvc, topology);
         
-        setup(topology, hazeltaskTimer, eSvc);
+        setup(topology, hazeltaskTimer, eSvc, executorTopologyService);
         setup(hazeltaskTimer, svc);
         
         //FIXME: we need to be careful about listener ordering
@@ -57,8 +61,8 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         return svc;
     }
     
-    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc) {
-        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc);
+    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
+        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc, executorTopologyService);
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
             @Override
             public void onEndStart(DistributedExecutorService svc) {

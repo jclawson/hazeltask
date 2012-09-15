@@ -5,15 +5,14 @@ import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
-import com.hazeltask.ITopologyService;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 
 public class ResponseExecutorListener implements ExecutorListener {
     
-    private ITopologyService service;
+    private IExecutorTopologyService service;
     private ILogger LOGGER;
     
-    public ResponseExecutorListener(ITopologyService service, LoggingService loggingService) {
+    public ResponseExecutorListener(IExecutorTopologyService service, LoggingService loggingService) {
         this.service = service;
         LOGGER = loggingService.getLogger(ResponseExecutorListener.class.getName());
     }

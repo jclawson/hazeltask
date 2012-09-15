@@ -20,8 +20,9 @@ import com.yammer.metrics.core.TimerContext;
 public class StaleWorkFlushTimerTask extends BackoffTask {
 	private static ILogger LOGGER = Logger.getLogger(StaleWorkFlushTimerTask.class.getName());
 	
-    private com.hazeltask.executor.DistributedExecutorService svc;
-    private HazeltaskTopology topology;
+    private final com.hazeltask.executor.DistributedExecutorService svc;
+    private final HazeltaskTopology topology;
+    private final IExecutorTopologyService executorTopologyService;
 
     public static long EXPIRE_TIME_BUFFER = 5000L; //5 seconds
     public static long EMPTY_EXPIRE_TIME_BUFFER = 10000L; //10 seconds
@@ -29,11 +30,12 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleWorkFlushTimerTask(HazeltaskTopology topology, com.hazeltask.executor.DistributedExecutorService svc) {
+    public StaleWorkFlushTimerTask(HazeltaskTopology topology, com.hazeltask.executor.DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
         this.svc = svc;
         this.topology = topology;
         this.flushTimer = topology.getExecutorMetrics().getStaleWorkFlushTimer().getMetric();
         this.numFlushedHistogram = topology.getExecutorMetrics().getStaleFlushCountHistogram().getMetric();
+        this.executorTopologyService = executorTopologyService;
     }
 
     @Override
@@ -52,7 +54,7 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
 //	        Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(topology.getCommunicationExecutorService(),
 //	                topology.getReadyMembers(), new GetOldestTime(topology.getName()));
     	    
-    	    Collection<MemberResponse<Long>> results = topology.getTopologyService().getLocalQueueSizes();
+    	    Collection<MemberResponse<Long>> results = executorTopologyService.getLocalQueueSizes();
 	
 	        long min = Long.MAX_VALUE;
 	        for(MemberResponse<Long> result : results) {
@@ -77,7 +79,7 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
 //	        Set<String> keys = (Set<String>) map.localKeySet(pred);
 //	        Collection<HazelcastWork> works = map.getAll(keys).values();
 	        
-	        Collection<HazelcastWork> works = topology.getTopologyService().getLocalPendingTasks(sql);
+	        Collection<HazelcastWork> works = executorTopologyService.getLocalPendingTasks(sql);
 	        
 	        if(works.size() > 0) {
 	            flushed = true;

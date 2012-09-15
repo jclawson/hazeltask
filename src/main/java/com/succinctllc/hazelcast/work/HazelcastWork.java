@@ -12,6 +12,9 @@ import com.hazeltask.executor.Work;
  * FIXME: handling the completion tasks here is wrong... We need to move that logic out
  * so we can handle things like cancellation too!
  * 
+ * FIXME: make DataSerializable, use SerializationHelper for runTask / callTask... 
+ *        write boolean to indicate if runnable / callable
+ * 
  * @author jclawson
  *
  */
@@ -26,8 +29,8 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 	private String topology;
 	private int submissionCount;
 	
-	private volatile Object result;
-    private volatile Exception e;
+	private volatile transient Object result;
+    private volatile transient Exception e;
 	
 	public HazelcastWork(String topology, WorkId key, Runnable task){
 		this.runTask = task;

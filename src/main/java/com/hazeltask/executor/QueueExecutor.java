@@ -51,11 +51,25 @@ public class QueueExecutor {
     }
     
     //TODO: make this better like ThreadPoolExecutor
-    public void shutdownNow() {
+    //FIXME: this method should wait until all work is done
+    //but prevent any new work from being added!!!
+    public void shutdown() {
         isShutdown = true;
         for (Worker w : workers) {
             w.interruptNow();
         }
+    }
+    
+    //TODO: make this better like ThreadPoolExecutor
+    public List<HazelcastWork> shutdownNow() {
+        isShutdown = true;
+        ArrayList<HazelcastWork> works = new ArrayList<HazelcastWork>(workers.size()+queue.size());
+        for (Worker w : workers) {
+            w.interruptNow();
+            works.add(w.getCurrentTask());
+        }
+        queue.drainTo(works);
+        return works;
     }
     
     public Collection<HazelcastWork> getTasksInProgress() {

@@ -6,7 +6,9 @@ import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.ExecutorListener;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 
-public class PreventDuplicatesListener<I extends Groupable> implements BatchExecutorListener<I>, ExecutorListener {
+@Deprecated
+//do not use this .... its slow and shouldn't be needed
+public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, ExecutorListener {
     private final IBatchClusterService<I> svc;
     private final BatchKeyAdapter<I> batchKeyAdapter;
     
@@ -33,7 +35,7 @@ public class PreventDuplicatesListener<I extends Groupable> implements BatchExec
     }
 
     public boolean beforeAdd(I item) {
-        return svc.isInPreventDuplicateSet(batchKeyAdapter.getItemId((I)item));
+        return !svc.isInPreventDuplicateSet(batchKeyAdapter.getItemId((I)item));
     }
 
     public void afterAdd(I item, boolean added) {

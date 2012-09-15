@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -15,7 +14,6 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
-import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.DefaultThreadFactory;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
@@ -34,6 +32,26 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author Jason Clawson
  *
+ * TODO: allow the specification of a regex for group name
+ *       this regex will parse out interesting parameters 
+ *       that we can query against to get queues... for example:
+ *       
+ *       groups:
+ *         customer-123:com.example.Foo
+ *         customer-123:com.example.Bar
+ *         customer-456:com.example.Foo
+ *       
+ *       regex: customer-(\d+):(.*) -- customerId, className
+ *       
+ *       Then we can query like... getQueues("customerId", 123) : returns #1 and #2
+ *       or 
+ *       getQueues("className", "com.example.Foo") returns #1 and #3
+ *       
+ *       It might be nice to be able to use the hazelcast index class
+ *       
+ *       This will allow us to, for example, count the total items in a customer's queues
+ *       or total up all queues of a certain priority number
+ *
  */
 public class LocalTaskExecutorService {
 
@@ -44,6 +62,7 @@ public class LocalTaskExecutorService {
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private GroupedPriorityQueue<HazelcastWork> taskQueue;
 	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
+	private final IExecutorTopologyService executorTopologyService;
 	
 	private final int maxThreads;
 	
@@ -51,11 +70,12 @@ public class LocalTaskExecutorService {
 	private Timer workSubmittedTimer;
 	private Timer workExecutedTimer;
 	
-	protected LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig) {
+	protected LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
 		this.maxThreads = executorConfig.getThreadCount();
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
-
+		this.executorTopologyService = executorTopologyService;
+		
 		DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",topology.getName());
 		
 		taskQueue = new GroupedPriorityQueue<HazelcastWork>(new GroupedQueueRouter.RoundRobinPartition<HazelcastWork>(),
@@ -66,7 +86,8 @@ public class LocalTaskExecutorService {
         });
 		
 		if(topology.getHazeltaskConfig().getMetricsRegistry() != null) {
-			MetricsRegistry metrics = topology.getHazeltaskConfig().getMetricsRegistry();
+			//TODO: move metrics to ExecutorMetrics class
+		    MetricsRegistry metrics = topology.getHazeltaskConfig().getMetricsRegistry();
 		    workSubmittedTimer = metrics.newTimer(createName("Work submitted"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 			workExecutedTimer = metrics.newTimer(createName("Work executed"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 			metrics.newGauge(createName("Throughput"), new WorkThroughputGauge(workSubmittedTimer, workExecutedTimer));
@@ -77,7 +98,7 @@ public class LocalTaskExecutorService {
 		localExecutorPool.addListener(new DelegatingExecutorListener(listeners));
 		
 		if(executorConfig.isFutureSupportEnabled())
-		    addListener(new ResponseExecutorListener(topology.getTopologyService(), topology.getLoggingService()));
+		    addListener(new ResponseExecutorListener(executorTopologyService, topology.getLoggingService()));
 		
 		addListener(new WorkCompletionExecutorListener());
 		
@@ -92,7 +113,7 @@ public class LocalTaskExecutorService {
 		);
 	}
 
-	public synchronized void start(){
+	public synchronized void startup(){
 		if(isStarted.compareAndSet(false, true)) {
 		    
 		    localExecutorPool.startup();
@@ -112,7 +133,7 @@ public class LocalTaskExecutorService {
             HazelcastWork work = (HazelcastWork)runnable;
             //TODO: add task exceptions handling / retry logic
             //for now, just remove the work because its completed
-            topology.getTopologyService().removePendingTask(work);
+            executorTopologyService.removePendingTask(work);
         }
 
         public boolean beforeExecute(HazelcastWork runnable) {return true;}
@@ -167,7 +188,7 @@ public class LocalTaskExecutorService {
 		}
 	}
 	
-	protected Collection<HazelcastWork> stealTasks(long numberOfTasks) {
+	public Collection<HazelcastWork> stealTasks(long numberOfTasks) {
 	    long totalSize = taskQueue.size();
 	    ArrayList<HazelcastWork> result = new ArrayList<HazelcastWork>((int)numberOfTasks);
 	    for(ITrackedQueue<HazelcastWork> q : this.taskQueue.getQueuesByGroup().values()) {
@@ -193,14 +214,17 @@ public class LocalTaskExecutorService {
 	    return result;
 	}
 
-	//FIXME: fix this
-	public void shutdown() {
-		localExecutorPool.shutdownNow();
+	//TODO: time how long it takes to shutdown
+	public synchronized void shutdown() {
+	    if(isStarted.compareAndSet(true, false)) {
+	        localExecutorPool.shutdown();
+	    }
 	}
 	
-	//FIXME: fix this
-	public List<Runnable> shutdownNow() {
-	    localExecutorPool.shutdownNow();
+	public synchronized List<HazelcastWork> shutdownNow() {
+	    if(isStarted.compareAndSet(true, false)) {
+            return localExecutorPool.shutdownNow();
+        }
 	    return Collections.emptyList();
 	}
 

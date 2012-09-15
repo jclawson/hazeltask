@@ -19,8 +19,8 @@ public class PreventDuplicatesTest {
         DefaultBatchKeyAdapter<FooItem> batchKeyAdapter = new DefaultBatchKeyAdapter<FooItem>();
         @SuppressWarnings("unchecked")
         IBatchClusterService<FooItem> svc = mock(IBatchClusterService.class);
-        when(svc.addToPreventDuplicateSet(anyString()))
-            .thenReturn(true);
+        when(svc.isInPreventDuplicateSet(anyString()))
+            .thenReturn(false);
         
         PreventDuplicatesListener<FooItem> listener = new PreventDuplicatesListener<FooItem>(svc, batchKeyAdapter);
         Assert.assertTrue(listener.beforeAdd(new FooItem()));
@@ -31,8 +31,8 @@ public class PreventDuplicatesTest {
         DefaultBatchKeyAdapter<FooItem> batchKeyAdapter = new DefaultBatchKeyAdapter<FooItem>();
         @SuppressWarnings("unchecked")
         IBatchClusterService<FooItem> svc = mock(IBatchClusterService.class);
-        when(svc.addToPreventDuplicateSet(anyString()))
-            .thenReturn(false);
+        when(svc.isInPreventDuplicateSet(anyString()))
+            .thenReturn(true);
         
         PreventDuplicatesListener<FooItem> listener = new PreventDuplicatesListener<FooItem>(svc, batchKeyAdapter);
         Assert.assertFalse(listener.beforeAdd(new FooItem()));

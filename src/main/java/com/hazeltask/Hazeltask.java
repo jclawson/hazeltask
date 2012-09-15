@@ -2,6 +2,7 @@ package com.hazeltask;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazeltask.batch.TaskBatchingService;
@@ -14,10 +15,12 @@ public class Hazeltask {
     public static ConcurrentMap<String, Hazeltask> instances = new ConcurrentHashMap<String, Hazeltask>();
     private final DistributedExecutorService       executor;
     private final TaskBatchingService<?>              taskBatchService;
+    private final HazeltaskTopology             topology;
 
     private Hazeltask(HazeltaskTopology topology, DistributedExecutorService executorService, TaskBatchingService<?> batchingService) {
         this.executor = executorService;
         this.taskBatchService = batchingService;
+        this.topology = topology;
     }
 
     public static Hazeltask getInstance(String topology) {
@@ -54,8 +57,12 @@ public class Hazeltask {
         return new HazeltaskBatchingExecutorBuilder<I>(config, batchingConfig);
     }
 
-    public DistributedExecutorService getDistributedExecutorService() {
+    public ExecutorService getExecutorService() {
         return executor;
+    }
+    
+    public HazeltaskTopology getHazelcastTopology() {
+        return topology;
     }
 
     @SuppressWarnings("unchecked")

@@ -145,7 +145,7 @@ public class DistributedExecutorService implements ExecutorService {
     
     public void startup() {
         if(!disableWorkers) {
-            localExecutorService.start();
+            localExecutorService.startup();
             isReady = true;
             topology.localExecutorServiceReady();
             new Timer(topology.createName("rebalance-timer"), true)

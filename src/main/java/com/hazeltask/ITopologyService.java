@@ -1,70 +1,21 @@
 package com.hazeltask;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
 import com.hazelcast.core.Member;
-import com.hazelcast.core.MessageListener;
-import com.hazeltask.executor.WorkResponse;
-import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
-import com.hazeltask.hazelcast.MemberValuePair;
 import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
- * Create hazelcast backed implementation to abstract how we communicate in the cluster
+ * Methods here that act on multiple members will query for ready members
+ * to ensure they have the most up to date data.
  * 
  * @author jclawson
  *
  */
 public interface ITopologyService {
-    public boolean isMemberReady(Member member);
-    public long pingMember();
     public Set<Member> getReadyMembers();
-    public boolean sendTask(HazelcastWork work, Member member, boolean waitForAck);
-    
-    
-    /**
-     * 
-     * @param work
-     * @param replaceIfExists
-     * @return
-     */
-    public boolean addPendingTask(HazelcastWork work, boolean replaceIfExists);
-    
-    /**
-     * Retrive the hazeltasks in the local pending task map with the predicate restriction
-     * @param predicate
-     * @return
-     */
-    public Collection<HazelcastWork> getLocalPendingTasks(String predicate);
-    
-    /**
-     * Get the local queue sizes for each member
-     * @return
-     */
-    public Collection<MemberResponse<Long>> getLocalQueueSizes();
-    
-    /**
-     * 
-     * @param work
-     * @return true if removed, false it did not exist
-     */
-    public boolean removePendingTask(HazelcastWork work);
-    
-    public void broadcastTaskCompletion(String workId, Serializable response);
-    public void broadcastTaskCancellation(String workId);
-    public void broadcastTaskError(String workId, Throwable exception);
-    public void addTaskResponseMessageHandler(MessageListener<WorkResponse> listener);
-    
+    public long pingMember(Member member);
     public void shutdown();
     public List<HazelcastWork> shutdownNow();
-    
-    public Lock getRebalanceTaskClusterLock();
-    
-    public Collection<HazelcastWork> stealTasks(List<MemberValuePair<Long>> numToTake);
-    public boolean addTaskToLocalQueue(HazelcastWork task);
 }
