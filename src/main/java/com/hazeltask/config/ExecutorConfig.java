@@ -1,6 +1,6 @@
 package com.hazeltask.config;
 
-import static java.util.concurrent.TimeUnit.*;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
@@ -11,6 +11,7 @@ public class ExecutorConfig {
     protected boolean          acknowlegeWorkSubmission = false;
     protected boolean          disableWorkers           = false;
     protected int              threadCount              = 4;
+    @SuppressWarnings("rawtypes")
     protected WorkIdAdapter    workIdAdapter            = new DefaultWorkIdAdapter();
     protected boolean          autoStart                = true;
     private ListRouterFactory  memberRouterFactory      = RoundRobinRouter.FACTORY;
@@ -103,6 +104,7 @@ public class ExecutorConfig {
         return threadCount;
     }
 
+    @SuppressWarnings("rawtypes")
     public WorkIdAdapter getWorkIdAdapter() {
         return workIdAdapter;
     }

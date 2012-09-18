@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -116,6 +117,7 @@ public class LocalTaskExecutorService {
 		if(isStarted.compareAndSet(false, true)) {
 		    
 		    localExecutorPool.startup();
+		    LOGGER.log(Level.FINE, "LocalTaskExecutorService started for "+topology.getName());
 		}
 	}
 	

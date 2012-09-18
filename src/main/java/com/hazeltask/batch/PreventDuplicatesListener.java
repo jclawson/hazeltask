@@ -2,7 +2,6 @@ package com.hazeltask.batch;
 
 import java.util.Collection;
 
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.HazelcastWork;
 

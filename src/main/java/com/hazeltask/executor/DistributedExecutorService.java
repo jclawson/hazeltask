@@ -15,9 +15,9 @@ import java.util.logging.Level;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
-import com.hazeltask.ServiceListenable;
 import com.hazeltask.HazeltaskServiceListener;
 import com.hazeltask.HazeltaskTopology;
+import com.hazeltask.ServiceListenable;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
 import com.yammer.metrics.core.Meter;
@@ -27,9 +27,10 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
 
     private ExecutorConfig executorConfig;
     private final HazeltaskTopology        topology;
-    private volatile boolean               isReady = false;
     private final ListRouter<Member>       memberRouter;
     private final LocalTaskExecutorService localExecutorService;
+    
+    @SuppressWarnings("rawtypes")
     private final WorkIdAdapter            workIdAdapter;
     private final DistributedFutureTracker futureTracker;
     private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService>>();
@@ -149,6 +150,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         }
     }
     
+    @SuppressWarnings("unchecked")
     private HazelcastWork createHazelcastWorkWrapper(Runnable task){
         if(task instanceof HazelcastWork) {
             ((HazelcastWork) task).updateCreatedTime();
@@ -158,6 +160,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         }
     }
     
+    @SuppressWarnings("unchecked")
     private HazelcastWork createHazelcastWorkWrapper(Callable<?> task) {
         return new HazelcastWork(topology.getName(), workIdAdapter.createWorkId(task), task);
     }
@@ -188,7 +191,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     
     protected boolean submitHazelcastWork(HazelcastWork wrapper, boolean isResubmitting) {      
         
-        WorkId workKey = wrapper.getWorkId();
+        //WorkId workKey = wrapper.getWorkId();
         boolean executeTask = true;
         /*
          * with acknowledgeWorkSubmition, we will sit in this loop until a 

@@ -1,5 +1,9 @@
 package com.hazeltask.batch;
 
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.Arrays;
 
 import junit.framework.Assert;
@@ -7,8 +11,6 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.hazeltask.executor.HazelcastWork;
-
-import static org.mockito.Mockito.*;
 
 import data.FooItem;
 

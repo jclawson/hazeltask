@@ -1,7 +1,5 @@
 package com.hazeltask.batch;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -21,7 +19,6 @@ import com.hazeltask.executor.DistributedExecutorService;
 
 public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingService<I>> {
     
-    private final HazeltaskConfig hazeltaskConfig;
     private final BundlerConfig<I> batchingConfig;
     private final DistributedExecutorService svc;
     private final HazeltaskTopology topology;
@@ -30,8 +27,8 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
     private final CopyOnWriteArrayList<BatchExecutorListener<I>> batchListeners = new CopyOnWriteArrayList<BatchExecutorListener<I>>();
     private final ILogger LOGGER;
     
+    @SuppressWarnings("unchecked")
     public TaskBatchingService(HazeltaskConfig hazeltaskConfig, BundlerConfig<I> batchingConfig, DistributedExecutorService eSvc, HazeltaskTopology topology) {
-        this.hazeltaskConfig = hazeltaskConfig;
         this.batchingConfig = batchingConfig;
         this.svc = eSvc;
         this.topology = topology;

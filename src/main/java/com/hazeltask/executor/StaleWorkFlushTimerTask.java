@@ -5,7 +5,6 @@ import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
@@ -17,7 +16,6 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
 	private static ILogger LOGGER = Logger.getLogger(StaleWorkFlushTimerTask.class.getName());
 	
     private final com.hazeltask.executor.DistributedExecutorService svc;
-    private final HazeltaskTopology topology;
     private final IExecutorTopologyService executorTopologyService;
 
     public static long EXPIRE_TIME_BUFFER = 5000L; //5 seconds
@@ -28,7 +26,6 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
     
     public StaleWorkFlushTimerTask(HazeltaskTopology topology, com.hazeltask.executor.DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
         this.svc = svc;
-        this.topology = topology;
         this.flushTimer = topology.getExecutorMetrics().getStaleWorkFlushTimer().getMetric();
         this.numFlushedHistogram = topology.getExecutorMetrics().getStaleFlushCountHistogram().getMetric();
         this.executorTopologyService = executorTopologyService;
@@ -60,13 +57,10 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
 	        }
 	        
 	        String sql;
-	        SqlPredicate pred;
 	        if(min == Long.MAX_VALUE) {
 	            sql = "createdAtMillis < "+(System.currentTimeMillis()-EMPTY_EXPIRE_TIME_BUFFER);
-	            pred = new SqlPredicate(sql);
 	        } else {
 	            sql = "createdAtMillis < "+(min-EXPIRE_TIME_BUFFER);
-	            pred = new SqlPredicate(sql);
 	        }
 	        
 	        //System.out.println("Map Size: "+map.size()+" "+map.values().size());

@@ -5,7 +5,7 @@ package com.hazeltask;
  * @author jclawson
  *
  */
-public class HazeltaskServiceListener<T extends ServiceListenable> {
+public class HazeltaskServiceListener<T extends ServiceListenable<T>> {
     public void onBeginStart(T svc){};
     public void onEndStart(T svc){};
     public void onBeginShutdown(T svc){};

@@ -3,7 +3,6 @@ package com.hazeltask.config;
 import com.hazeltask.batch.BatchKeyAdapter;
 import com.hazeltask.batch.Bundler;
 import com.hazeltask.batch.DefaultBatchKeyAdapter;
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 
 public class BundlerConfig<I> {
@@ -81,8 +80,7 @@ public class BundlerConfig<I> {
         return this;
     }
 
-    @SuppressWarnings("rawtypes")
-    public BundlerConfig<I> withBatchKeyAdapter(BatchKeyAdapter batchKeyAdapter) {
+    public BundlerConfig<I> withBatchKeyAdapter(BatchKeyAdapter<I> batchKeyAdapter) {
         this.batchKeyAdapter = batchKeyAdapter;
         this.executorConfig.withWorkIdAdapter(batchKeyAdapter);
         return this;

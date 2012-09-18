@@ -24,6 +24,7 @@ public class HazeltaskTopology {
     private final ITopologyService topologyService;
     
     //TODO: make a HazeltaskBatchTopology class that has this in it (extend this class)
+    @SuppressWarnings("rawtypes")
     private final IBatchClusterService batchClusterService;
     private final LoggingService loggingService;
     private boolean iAmReady;
@@ -31,7 +32,7 @@ public class HazeltaskTopology {
     private final ExecutorMetrics executorMetrics;
     private final BatchMetrics batchMetrics;
     
-    public HazeltaskTopology(HazeltaskConfig hazeltaskConfig, ITopologyService svc, IBatchClusterService batchClusterService) {
+    public HazeltaskTopology(HazeltaskConfig hazeltaskConfig, ITopologyService svc, @SuppressWarnings("rawtypes") IBatchClusterService batchClusterService) {
         this.hazeltaskConfig = hazeltaskConfig;
         this.readyMembers = new CopyOnWriteArrayListSet<Member>();
         this.topologyService = svc;
@@ -81,6 +82,7 @@ public class HazeltaskTopology {
         return this.hazeltaskConfig;
     }
 
+    @SuppressWarnings("rawtypes")
     public IBatchClusterService getBatchClusterService() {
         return batchClusterService;
     }

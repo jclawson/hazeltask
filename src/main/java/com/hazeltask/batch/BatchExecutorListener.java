@@ -1,6 +1,5 @@
 package com.hazeltask.batch;
 
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
 
 public interface BatchExecutorListener<I> {

@@ -13,13 +13,11 @@ import com.hazeltask.hazelcast.MultiMapProxy;
 
 public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> {
 
-    private final BundlerConfig<I> config;
     private final MultiMapProxy<String, I> multimap;
     private final String topologyName;
     private final BatchKeyAdapter<I> keyer;
     
     public HazelcastBatchClusterService(HazeltaskConfig htConfig, BundlerConfig<I> config) {
-        this.config = config;
         this.topologyName = htConfig.getTopologyName();
         this.keyer = config.getBatchKeyAdapter();
         
@@ -57,6 +55,7 @@ public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> 
         return multimap.getAsList(group);
     }
 
+    @SuppressWarnings("unchecked")
     public int removeItems(String group, Collection<I> items) {
         return multimap.removeAll(group, (Collection<Object>) items);
     }

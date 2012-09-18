@@ -8,8 +8,6 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.DistributedFuture;
-
 public class DistributedFutureTest {
     @Test
     public void testSetValue() {

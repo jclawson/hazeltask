@@ -1,17 +1,11 @@
 package com.hazeltask.batch;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
-import com.hazeltask.batch.TaskBatchingService;
 import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
-import com.hazeltask.core.metrics.MetricNamer;
-import com.yammer.metrics.core.MetricName;
-import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 

@@ -1,15 +1,9 @@
 package com.hazeltask.batch;
 
-import java.util.concurrent.TimeUnit;
-
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.core.metrics.Metric;
 import com.hazeltask.core.metrics.MetricNamer;
-import com.hazeltask.executor.StaleWorkFlushTimerTask;
-import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
-import com.yammer.metrics.core.Timer;
 
 public class BatchMetrics {
     private final MetricNamer namer;

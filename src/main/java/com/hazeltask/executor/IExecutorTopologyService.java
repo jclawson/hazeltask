@@ -2,9 +2,7 @@ package com.hazeltask.executor;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 

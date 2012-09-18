@@ -5,8 +5,6 @@ import java.util.concurrent.TimeUnit;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.metrics.Metric;
 import com.hazeltask.core.metrics.MetricNamer;
-import com.hazeltask.executor.metrics.LocalFuturesWaitingGauge;
-import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
@@ -133,7 +131,7 @@ public class ExecutorMetrics {
         return namer.createMetricName("hazelcast-work", topologyName, clz.getSimpleName(), name);
     }
     
-    private MetricName createMetricName(String type, String name) {
-        return namer.createMetricName("hazelcast-work", topologyName, type, name);
-    }
+//    private MetricName createMetricName(String type, String name) {
+//        return namer.createMetricName("hazelcast-work", topologyName, type, name);
+//    }
 }
