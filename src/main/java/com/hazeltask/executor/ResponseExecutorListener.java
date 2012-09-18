@@ -21,13 +21,16 @@ public class ResponseExecutorListener implements ExecutorListener {
         HazelcastWork work = (HazelcastWork)runnable;
         boolean success = exception == null && work.getException() == null;
         
+        
+        
         try {
             //Member me = topology.getHazelcast().getCluster().getLocalMember();
             if(success) {
                 service.broadcastTaskCompletion(work.getUniqueIdentifier(), (Serializable)work.getResult());
                 //response = new WorkResponse(me, work.getUniqueIdentifier(), (Serializable)work.getResult(), WorkResponse.Status.SUCCESS);
             } else {
-                service.broadcastTaskError(work.getUniqueIdentifier(), work.getException());
+                Throwable resolvedException = (work.getException() != null) ? work.getException() : exception;
+                service.broadcastTaskError(work.getUniqueIdentifier(), resolvedException);
                 //response = new WorkResponse(me, work.getUniqueIdentifier(), work.getException());
             }
             //TODO: handle work cancellation
