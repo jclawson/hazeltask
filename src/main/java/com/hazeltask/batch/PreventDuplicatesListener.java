@@ -4,7 +4,7 @@ import java.util.Collection;
 
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.ExecutorListener;
-import com.succinctllc.hazelcast.work.HazelcastWork;
+import com.hazeltask.executor.HazelcastWork;
 
 @Deprecated
 //do not use this .... its slow and shouldn't be needed

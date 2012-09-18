@@ -1,5 +1,7 @@
 package com.hazeltask;
 
+import com.hazelcast.core.Hazelcast;
+import com.hazeltask.batch.DeferredBundleTask;
 import com.hazeltask.batch.HazelcastBatchClusterService;
 import com.hazeltask.batch.IBatchClusterService;
 import com.hazeltask.batch.PreventDuplicatesListener;
@@ -12,8 +14,10 @@ import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
+import com.hazeltask.executor.LocalTaskExecutorService;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
-import com.succinctllc.hazelcast.work.bundler.DeferredBundleTask;
+import com.hazeltask.executor.WorkRebalanceTimerTask;
+import com.yammer.metrics.Metrics;
 
 public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
     private final HazeltaskConfig hazeltaskConfig;
@@ -22,6 +26,13 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
     public HazeltaskBatchingExecutorBuilder(HazeltaskConfig config, BundlerConfig<I> batchingConfig) {
         this.batchingConfig = batchingConfig;
         this.hazeltaskConfig = config;
+        if(config.getHazelcast() == null) {
+            config.withHazelcastInstance(Hazelcast.getDefaultInstance());
+        }
+        
+        if(config.getMetricsRegistry() == null) {
+            config.withMetricsRegistry(Metrics.defaultRegistry());
+        }
         
         Validator.validate(batchingConfig);
     }
@@ -32,15 +43,15 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
         
         ITopologyService topologyService = new HazelcastTopologyService(hazeltaskConfig);
-        IBatchClusterService<I> batchClusterService = new HazelcastBatchClusterService<I>(hazeltaskConfig);
+        IBatchClusterService<I> batchClusterService = new HazelcastBatchClusterService<I>(hazeltaskConfig, batchingConfig);
         HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, topologyService, batchClusterService);
         IExecutorTopologyService executorTopologyService = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
         
-        
-        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorTopologyService, batchingConfig.getExecutorConfig(), null);
+        LocalTaskExecutorService localExeutorService = new LocalTaskExecutorService(topology, batchingConfig.getExecutorConfig(), executorTopologyService);
+        DistributedExecutorService eSvc = new DistributedExecutorService(topology, executorTopologyService, batchingConfig.getExecutorConfig(), null, localExeutorService);
         TaskBatchingService<I> svc = new TaskBatchingService<I>(hazeltaskConfig, batchingConfig, eSvc, topology);
         
-        setup(topology, hazeltaskTimer, eSvc, executorTopologyService);
+        setup(topology, hazeltaskTimer, eSvc, topologyService, executorTopologyService, localExeutorService);
         setup(hazeltaskTimer, svc);
         
         //FIXME: we need to be careful about listener ordering
@@ -54,6 +65,8 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         }
         
         Hazeltask.registerInstance(topology, svc);
+        hazeltaskTimer.start();
+        
         //if autoStart... we need to start
         if(batchingConfig.getExecutorConfig().isAutoStart()) {
             svc.startup();
@@ -61,23 +74,33 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         return svc;
     }
     
-    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
+    private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, ITopologyService topologySvc, IExecutorTopologyService executorTopologyService, LocalTaskExecutorService localExeutorService) {
         final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc, executorTopologyService);
+        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(topology, localExeutorService, executorTopologyService);
+        final IsMemberReadyTimerTask getReadyMembersTask = new IsMemberReadyTimerTask(topologySvc, topology);
+        
+        hazeltaskConfig.getHazelcast().getCluster().addMembershipListener(getReadyMembersTask);
+        
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
             @Override
             public void onEndStart(DistributedExecutorService svc) {
                 hazeltaskTimer.schedule(bundleTask, 1000, 30000, 2);
+                hazeltaskTimer.schedule(rebalanceTask, 1000, batchingConfig.getExecutorConfig().getRebalanceTaskPeriod());
+                hazeltaskTimer.schedule(getReadyMembersTask, 500, 20000);
+                topology.iAmReady();
             }
 
             @Override
             public void onBeginShutdown(DistributedExecutorService svc) {
                 hazeltaskTimer.unschedule(bundleTask);
+                hazeltaskTimer.unschedule(rebalanceTask);
+                hazeltaskTimer.unschedule(getReadyMembersTask);
             }      
         });
     }
     
     private void setup(final BackoffTimer hazeltaskTimer, TaskBatchingService<I> svc) {
-        final DeferredBundleTask<I> bundleTask = new DeferredBundleTask<I>(svc, null, null);
+        final DeferredBundleTask<I> bundleTask = new DeferredBundleTask<I>(batchingConfig, svc);
         svc.addServiceListener(new HazeltaskServiceListener<TaskBatchingService<I>>(){
             @Override
             public void onEndStart(TaskBatchingService<I> svc) {

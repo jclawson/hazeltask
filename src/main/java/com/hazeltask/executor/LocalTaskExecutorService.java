@@ -20,9 +20,8 @@ import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.hazeltask.core.metrics.MetricNamer;
-import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.metrics.CollectionSizeGauge;
-import com.succinctllc.hazelcast.work.metrics.WorkThroughputGauge;
+import com.hazeltask.executor.metrics.CollectionSizeGauge;
+import com.hazeltask.executor.metrics.WorkThroughputGauge;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
@@ -70,7 +69,7 @@ public class LocalTaskExecutorService {
 	private Timer workSubmittedTimer;
 	private Timer workExecutedTimer;
 	
-	protected LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig, IExecutorTopologyService executorTopologyService) {
+	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
 		this.maxThreads = executorConfig.getThreadCount();
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();

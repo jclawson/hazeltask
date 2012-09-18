@@ -20,8 +20,6 @@ import com.hazeltask.HazeltaskServiceListener;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
-import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.WorkId;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.TimerContext;
 
@@ -47,7 +45,8 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     public DistributedExecutorService(HazeltaskTopology         hcTopology, 
                                       IExecutorTopologyService  executorTopologyService, 
                                       ExecutorConfig            executorConfig, 
-                                      DistributedFutureTracker  futureTracker) {
+                                      DistributedFutureTracker  futureTracker, 
+                                      LocalTaskExecutorService localExecutorService) {
         this.topology = hcTopology;
         this.executorConfig = executorConfig;
         this.executorTopologyService = executorTopologyService;
@@ -62,7 +61,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         
         this.futureTracker = futureTracker;
         
-        this.localExecutorService = new LocalTaskExecutorService(topology, executorConfig, executorTopologyService);
+        this.localExecutorService = localExecutorService;
         
         LOGGER = topology.getLoggingService().getLogger(DistributedExecutorService.class.getName());
         
@@ -140,6 +139,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                 //TODO: should we cancel or throw an exception?
                 //  - i think cancel, because presumably the work is going to run we just can't track it
                 //    so if you don't care about the result, no harm
+                LOGGER.log(Level.SEVERE, "Unable to submit HazeltaskTask to worker member");
                 future.setCancelled();
                 futureTracker.removeAll(work.getUniqueIdentifier());
             }
@@ -219,6 +219,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                         isResubmitting = true;
                     }
                 } catch (TimeoutException e) {
+                    LOGGER.log(Level.WARNING, "Timed out while trying to submit task for try #"+tries+", trying again...");
                     isResubmitting = true;
                 }
             } else {

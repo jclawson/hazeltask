@@ -1,11 +1,13 @@
-package com.succinctllc.hazelcast.work.bundler;
+package com.hazeltask.batch;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import com.hazeltask.batch.TaskBatchingService;
+import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.core.metrics.MetricNamer;
 import com.yammer.metrics.core.MetricName;
@@ -24,30 +26,33 @@ import com.yammer.metrics.core.TimerContext;
  */
 public class DeferredBundleTask<T> extends BackoffTask {
     private final TaskBatchingService<T> deferredWorkBundler;
+    private final BundlerConfig<T> batchConfig;
     
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
-    private final MetricNamer metricNamer;
+    //private final MetricNamer metricNamer;
     
     private Timer bundlerTimer;
    
     
-    public DeferredBundleTask(TaskBatchingService<T> deferredWorkBundler, MetricsRegistry metrics, MetricNamer metricNamer) {
+    public DeferredBundleTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredWorkBundler) {
         this.deferredWorkBundler = deferredWorkBundler;
-        this.metricNamer = metricNamer;
-        
-        if(metrics != null) {
-        	bundlerTimer = metrics.newTimer(createName("Bundle timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);        	
-        }        
+       // this.metricNamer = metricNamer;
+        this.batchConfig = batchingConfig;
+ 
+//FIXME: add this metric
+//        if(metrics != null) {
+//        	bundlerTimer = metrics.newTimer(createName("Bundle timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);        	
+//        }        
     }
     
-    private MetricName createName(String name) {
-		return metricNamer.createMetricName(
-			"hazelcast-work", 
-			deferredWorkBundler.getTopology().getName(), 
-			"DeferredBundleTask", 
-			name
-		);
-	}
+//    private MetricName createName(String name) {
+//		return metricNamer.createMetricName(
+//			"hazelcast-work", 
+//			deferredWorkBundler.getTopology().getName(), 
+//			"DeferredBundleTask", 
+//			name
+//		);
+//	}
     
     /**
      * This method also updates the next flush time
@@ -57,7 +62,7 @@ public class DeferredBundleTask<T> extends BackoffTask {
     private boolean shouldTTLFlush(String group) {
         Long lastFlushed = lastFlushedTimes.get(group);
         long currentTime = System.currentTimeMillis();
-        if(lastFlushed == null || currentTime - lastFlushed > this.deferredWorkBundler.getFlushTTL()) {
+        if(lastFlushed == null || currentTime - lastFlushed > batchConfig.getFlushTTL()) {
             lastFlushedTimes.put(group, currentTime);
             return true;
         } else {
@@ -74,16 +79,18 @@ public class DeferredBundleTask<T> extends BackoffTask {
         	tCtx = bundlerTimer.time();
     	
         try {
-	    	Map<String, Integer> sizes = this.deferredWorkBundler.getNonZeroLocalGroupSizes();
-	        int flushSize = this.deferredWorkBundler.getFlushSize();
+	    	Map<String, Integer> sizes = deferredWorkBundler.getNonZeroLocalGroupSizes();
+	        int flushSize = batchConfig.getFlushSize();
 	        for(Entry<String, Integer> entry : sizes.entrySet()) {
 	            if(entry.getValue() >= flushSize) {
 	                String group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
-	                deferredWorkBundler.flush(group);
+	                int numFlushed = deferredWorkBundler.flush(group);
+	                //TODO: historgram this
 	                flushed = true;
 	            } else if (shouldTTLFlush(entry.getKey())) {
-	                deferredWorkBundler.flush(entry.getKey());
+	                int numFlushed = deferredWorkBundler.flush(entry.getKey());
+	                //TODO: historgram this
 	                flushed = true;
 	            }
 	        }

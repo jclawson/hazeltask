@@ -2,41 +2,60 @@ package com.hazeltask;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.TimerTask;
+import java.util.Set;
 
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MembershipEvent;
+import com.hazelcast.core.MembershipListener;
+import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 
 /**
  * TODO: we can turn this into a heart beat task that monitors the state of the members
+ *       perhaps take into account more things than just ready or not
  * 
  * @author Jason Clawson
  *
  */
-public class IsMemberReadyTimerTask extends TimerTask {
-	private final HazeltaskTopology t;
+public class IsMemberReadyTimerTask extends BackoffTask implements MembershipListener {
+	private final ITopologyService topologyService;
+	private final HazeltaskTopology topology;
 	
-	public IsMemberReadyTimerTask(HazeltaskTopology t) {
-		this.t = t;
+	public IsMemberReadyTimerTask(ITopologyService topologyService, HazeltaskTopology topology) {
+		this.topologyService = topologyService;
+		this.topology = topology;
 	}
 	
 	@Override
-	public void run() {
-	    Collection<Member> readyMembers = t.getReadyMembers();
-        Member thisMember = t.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
+	public boolean execute() {
+	    Collection<Member> readyMembers = topologyService.getReadyMembers();
+	    Member me = topology.getLocalMember();
 
         Collection<Member> members = new ArrayList<Member>(readyMembers.size());    
         for (Member m : readyMembers) {
            // we need to make sure the member thinks its local if it is
            // hazelcast is dumb
-           if (m.equals(thisMember)) m = thisMember;
+           if (m.equals(me)) m = me;
                 
            if(!m.isLiteMember())
               members.add(m);
         }
         
         //set the ready members on the topology instance
-        t.setReadyMembers(members);
+        topology.setReadyMembers(members);
+        
+        return true;
 	}
+
+    public void memberAdded(MembershipEvent membershipEvent) {
+        this.execute();
+    }
+
+    public void memberRemoved(MembershipEvent membershipEvent) {
+        Member m = membershipEvent.getMember();
+        Set<Member> members = topology.getReadyMembers();
+        members.remove(m);
+        topology.setReadyMembers(members);
+    }
 	
 	
 }

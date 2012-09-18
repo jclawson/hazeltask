@@ -5,7 +5,6 @@ import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 public class ResponseExecutorListener implements ExecutorListener {
     

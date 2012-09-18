@@ -1,9 +1,8 @@
 package com.hazeltask.batch;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
 public interface IBatchClusterService<I> {
     /**
@@ -35,13 +34,22 @@ public interface IBatchClusterService<I> {
      * Gets all the non-zero sizes of all the groups in the batch service
      * @return
      */
-    public Map<String, Integer> getGroupSizes();
+    public Map<String, Integer> getNonZeroLocalGroupSizes();
     
     /**
-     * Removes all items from the specified group and returns them
+     * Get items in group
      * 
      * @param group
      * @return
      */
-    public Collection<I> drain(String group);
+    public List<I> getItems(String group);
+    
+    /**
+     * Remove the given items from the given group
+     * 
+     * @param group
+     * @param items
+     * @return number of items actually removed
+     */
+    public int removeItems(String group, Collection<I> items);
 }

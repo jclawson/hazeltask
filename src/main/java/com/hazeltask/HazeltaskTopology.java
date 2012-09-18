@@ -54,6 +54,7 @@ public class HazeltaskTopology {
     
     protected void iAmReady() {
         this.iAmReady = true;
+        this.readyMembers.add(hazeltaskConfig.getHazelcast().getCluster().getLocalMember());
     }
     
     protected void shutdown() {
@@ -90,6 +91,10 @@ public class HazeltaskTopology {
 
     public BatchMetrics getBatchMetrics() {
         return batchMetrics;
+    }
+    
+    public Member getLocalMember() {
+        return hazeltaskConfig.getHazelcast().getCluster().getLocalMember();
     }
     
     

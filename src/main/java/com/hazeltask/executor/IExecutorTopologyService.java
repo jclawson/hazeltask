@@ -12,7 +12,6 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
  * Create hazelcast backed implementation to abstract how we communicate in the cluster
@@ -69,5 +68,5 @@ public interface IExecutorTopologyService {
     public Lock getRebalanceTaskClusterLock();
     
     public Collection<HazelcastWork> stealTasks(List<MemberValuePair<Long>> numToTake);
-    public boolean addTaskToLocalQueue(HazelcastWork task);
+    //public boolean addTaskToLocalQueue(HazelcastWork task);
 }

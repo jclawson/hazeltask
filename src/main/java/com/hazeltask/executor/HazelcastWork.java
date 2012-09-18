@@ -1,9 +1,8 @@
-package com.succinctllc.hazelcast.work;
+package com.hazeltask.executor;
 
 import java.util.concurrent.Callable;
 
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
-import com.hazeltask.executor.Work;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items

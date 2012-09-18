@@ -6,7 +6,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.succinctllc.hazelcast.work.HazelcastWork;
+import com.hazeltask.executor.HazelcastWork;
 
 import static org.mockito.Mockito.*;
 

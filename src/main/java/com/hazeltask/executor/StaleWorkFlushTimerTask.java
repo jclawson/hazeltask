@@ -1,8 +1,6 @@
 package com.hazeltask.executor;
 
-import java.io.Serializable;
 import java.util.Collection;
-import java.util.concurrent.Callable;
 import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
@@ -11,8 +9,6 @@ import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
-import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.HazelcastWorkManager;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
@@ -102,20 +98,20 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
     	return flushed;
     }
     
-    private static class GetOldestTime implements Callable<Long>, Serializable {
-        private static final long serialVersionUID = 1L;
-        private String topologyName;
-        private GetOldestTime(String topologyName){
-            this.topologyName = topologyName;
-        }
-        
-        public Long call() throws Exception {
-            LocalTaskExecutorService svc = HazelcastWorkManager
-                    .getDistributedExecutorService(topologyName)
-                    .getLocalExecutorService();           
-            Long result = svc.getOldestWorkCreatedTime();
-            return result;
-        }
-    }
+//    private static class GetOldestTime implements Callable<Long>, Serializable {
+//        private static final long serialVersionUID = 1L;
+//        private String topologyName;
+//        private GetOldestTime(String topologyName){
+//            this.topologyName = topologyName;
+//        }
+//        
+//        public Long call() throws Exception {
+//            LocalTaskExecutorService svc = HazelcastWorkManager
+//                    .getDistributedExecutorService(topologyName)
+//                    .getLocalExecutorService();           
+//            Long result = svc.getOldestWorkCreatedTime();
+//            return result;
+//        }
+//    }
 
 }

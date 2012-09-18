@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.metrics;
+package com.hazeltask.executor.metrics;
 
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;

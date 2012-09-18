@@ -1,6 +1,5 @@
 package com.hazeltask.executor;
 
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 public interface ExecutorListener {
     /**

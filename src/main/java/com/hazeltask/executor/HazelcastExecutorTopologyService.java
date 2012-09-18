@@ -5,12 +5,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Level;
 
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
@@ -21,20 +23,23 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.clustertasks.GetLocalQueueSizesTask;
 import com.hazeltask.clustertasks.StealTasksTask;
+import com.hazeltask.clustertasks.SubmitTaskTask;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
-import com.succinctllc.hazelcast.work.HazelcastWork;
-import com.succinctllc.hazelcast.work.executor.ClusterServices.SubmitWorkTask;
 
 public class HazelcastExecutorTopologyService implements IExecutorTopologyService {
     //private final BloomFilter<CharSequence> bloomFilter;
     private HazeltaskTopology topology;
     private String topologyName;
+    private final Member me;
+    private ILogger LOGGER;
     
     
     private final ExecutorService communicationExecutorService;
@@ -50,6 +55,8 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         topologyName = hazeltaskConfig.getTopologyName();
         this.topology = topology;
         hazelcast = hazeltaskConfig.getHazelcast();
+        this.me = hazelcast.getCluster().getLocalMember();
+        this.LOGGER = topology.getLoggingService().getLogger(HazelcastExecutorTopologyService.class.getName());
         
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
         
@@ -88,17 +95,17 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 //    }
 
     
-
     public boolean sendTask(HazelcastWork work, Member member, boolean waitForAck) throws TimeoutException {
         @SuppressWarnings("unchecked")
-        Future<Boolean> future = (Future<Boolean>) workDistributor.submit(MemberTasks.create(new SubmitWorkTask(work, topologyName), member));
-        if(waitForAck) {
+        Future<Boolean> future = (Future<Boolean>) workDistributor.submit(MemberTasks.create(new SubmitTaskTask(work, topologyName), member));
+        if(!waitForAck) {
             try {
                 return future.get(5, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return false;
             } catch (ExecutionException e) {
+                LOGGER.log(Level.SEVERE, "Unable to submit work for execution", e);
                 return false;
             }
         } else {
@@ -106,20 +113,32 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         }
     }
 
+    /**
+     * Add to the write ahead log (hazelcast IMap) that tracks all the outstanding tasks
+     */
     public boolean addPendingTask(HazelcastWork work, boolean replaceIfExists) {
-        // TODO Auto-generated method stub
-        return false;
+        if(!replaceIfExists)
+            return pendingWork.putIfAbsent(work.getUniqueIdentifier(), work) == null;
+        
+        pendingWork.put(work.getUniqueIdentifier(), work);
+        return true;
+    }
+    
+    /**
+     * Asynchronously put the work into the pending map so we can work on submitting it to the worker
+     * if we wanted.  Could possibly cause duplicate work if we execute the work, then add to the map.
+     * @param work
+     * @return
+     */
+    public Future<HazelcastWork> addPendingTaskAsync(HazelcastWork work) {
+        return pendingWork.putAsync(work.getUniqueIdentifier(), work);
     }
 
     public boolean removePendingTask(HazelcastWork work) {
-        // TODO Auto-generated method stub
-        return false;
+        pendingWork.removeAsync(work.getUniqueIdentifier());
+        return true;
     }
 
-    public void broadcastTaskCompletion(WorkResponse response) {
-        // TODO Auto-generated method stub
-
-    }
 
     public boolean addToPreventDuplicateSetIfAbsent(String itemId) {
         // TODO Auto-generated method stub
@@ -132,23 +151,23 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     }
 
     public void broadcastTaskCompletion(String workId, Serializable response) {
-        // TODO Auto-generated method stub
-        
+        WorkResponse message = new WorkResponse(me, workId, response, WorkResponse.Status.SUCCESS);
+        workResponseTopic.publish(message);
     }
 
     public void broadcastTaskCancellation(String workId) {
-        // TODO Auto-generated method stub
-        
+        WorkResponse message = new WorkResponse(me, workId, null, WorkResponse.Status.CANCELLED);
+        workResponseTopic.publish(message);
     }
 
     public void broadcastTaskError(String workId, Throwable exception) {
-        // TODO Auto-generated method stub
-        
+        WorkResponse message = new WorkResponse(me, workId, exception);
+        workResponseTopic.publish(message);
     }
 
     public Collection<HazelcastWork> getLocalPendingTasks(String predicate) {
-        // TODO Auto-generated method stub
-        return null;
+        Set<String> keys = pendingWork.localKeySet(new SqlPredicate(predicate));
+        return pendingWork.getAll(keys).values();
     }
 
     public Collection<MemberResponse<Long>> getLocalQueueSizes() {
@@ -160,8 +179,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     }
 
     public void addTaskResponseMessageHandler(MessageListener<WorkResponse> listener) {
-        // TODO Auto-generated method stub
-        
+        workResponseTopic.addMessageListener(listener);
     }
 
     
@@ -201,14 +219,8 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return result;
     }
 
-    public boolean addTaskToLocalQueue(HazelcastWork task) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
     public int getLocalPendingWorkMapSize() {
-        // TODO Auto-generated method stub
-        return 0;
+        return pendingWork.localKeySet().size();
     }
 
 }

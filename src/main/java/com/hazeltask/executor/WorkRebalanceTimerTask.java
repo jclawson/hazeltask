@@ -12,7 +12,6 @@ import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
@@ -35,6 +34,7 @@ public class WorkRebalanceTimerTask extends BackoffTask {
     private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
     private final Member localMember;
     private final IExecutorTopologyService executorTopologyService;
+    private final LocalTaskExecutorService localSvc;
     
     private Histogram histogram;
     private Timer redistributionTimer;
@@ -47,11 +47,12 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	
 	private final Lock LOCK;
 	
-	public WorkRebalanceTimerTask(HazeltaskTopology topology, IExecutorTopologyService executorTopologyService) {
+	public WorkRebalanceTimerTask(HazeltaskTopology topology, LocalTaskExecutorService localSvc, IExecutorTopologyService executorTopologyService) {
 	    ExecutorMetrics metrics = topology.getExecutorMetrics();
 	    LOCK = executorTopologyService.getRebalanceTaskClusterLock();
 		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
 		this.executorTopologyService = executorTopologyService;
+		this.localSvc = localSvc;
 		
 		histogram = metrics.getTaskBalanceHistogram().getMetric();
         redistributionTimer = metrics.getTaskBalanceTimer().getMetric();
@@ -150,7 +151,7 @@ public class WorkRebalanceTimerTask extends BackoffTask {
     		//add to local queue
     		int totalAdded = 0;
     		for(HazelcastWork task : stolenTasks) {
-    		    executorTopologyService.addTaskToLocalQueue(task); //TODO: what if it returns false?
+    		    localSvc.execute(task); //TODO: what if it returns false?
     		    totalAdded++;
     		}
     		

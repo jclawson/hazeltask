@@ -83,6 +83,24 @@ public class MultiMapProxy<K, V> /*implements MultiMap<K, V>*/ {
 			return guavaMultiMap.remove(key, value);
 		return hcMultiMap.remove(key, value);
 	}
+	
+	public int removeAll(Object key, Collection<Object> values) {
+        int totalRemoved = 0;
+	    if(guavaMultiMap != null) {
+            synchronized (guavaMultiMap) {
+                for(Object o : values) {
+                    if(guavaMultiMap.remove(key, o))
+                        totalRemoved ++;
+                }
+            } 
+        } else {
+            for(Object o : values) {
+                if(hcMultiMap.remove(key, o))
+                    totalRemoved ++;
+            }
+        }
+	    return totalRemoved;
+    }
 
 	public Collection<V> remove(Object key) {
 		return hcMultiMap.remove(key);

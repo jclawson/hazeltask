@@ -13,8 +13,8 @@ import com.hazeltask.executor.DistributedExecutorService;
 public abstract class AbstractCallable<T> implements Callable<T>, DataSerializable {
     private static final long serialVersionUID = 1L;
     private String topologyName;
-    protected transient DistributedExecutorService svc;
-    protected transient HazeltaskTopology topology;
+    //private transient DistributedExecutorService svc;
+    //private transient HazeltaskTopology topology;
     
     public AbstractCallable(String topology) {
         this.topologyName = topology;
@@ -24,23 +24,30 @@ public abstract class AbstractCallable<T> implements Callable<T>, DataSerializab
         return topologyName;
     }
 
-    public void setDistributedExecutorService(DistributedExecutorService svc) {
-        this.svc = svc;
-    }
-
     public void writeData(DataOutput out) throws IOException {
         //SerializationHelper.writeObject(out, obj)
         out.writeUTF(topologyName);
         writChildData(out);
     }
-
-    public void readData(DataInput in) throws IOException {
-        topologyName = in.readUTF();
+    
+    protected DistributedExecutorService getDistributedExecutorService() {
         Hazeltask ht = Hazeltask.getInstance(topologyName);
         if(ht != null) {
-            svc = (DistributedExecutorService) ht.getExecutorService();
-            topology = ht.getHazelcastTopology();
+            return (DistributedExecutorService) ht.getExecutorService();
         }
+        throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
+    }
+    
+    protected HazeltaskTopology getHazeltaskTopology() {
+        Hazeltask ht = Hazeltask.getInstance(topologyName);
+        if(ht != null) {
+            return ht.getHazelcastTopology();
+        }
+        throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
+    }
+
+    public void readData(DataInput in) throws IOException {
+        topologyName = in.readUTF();      
         readChildData(in);
     }  
     

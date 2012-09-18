@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work;
+package com.hazeltask.executor;
 
 import java.io.DataInput;
 import java.io.DataOutput;

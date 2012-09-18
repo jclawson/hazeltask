@@ -13,9 +13,9 @@ import com.hazelcast.core.Member;
 import com.hazeltask.clustertasks.IsMemberReadyTask;
 import com.hazeltask.clustertasks.NoOpTask;
 import com.hazeltask.config.HazeltaskConfig;
+import com.hazeltask.executor.HazelcastWork;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 public class HazelcastTopologyService implements ITopologyService {
 private String topologyName;

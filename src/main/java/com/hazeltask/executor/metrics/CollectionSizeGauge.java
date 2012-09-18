@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.metrics;
+package com.hazeltask.executor.metrics;
 
 import java.util.Collection;
 

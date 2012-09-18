@@ -12,7 +12,11 @@ public class IsMemberReadyTask extends AbstractCallable<Boolean> {
     }
 
     public Boolean call() throws Exception {
-        return topology != null && topology.isReady();
+        try {
+            return getHazeltaskTopology() != null && getHazeltaskTopology().isReady();
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     @Override

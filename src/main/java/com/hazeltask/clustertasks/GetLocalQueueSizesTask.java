@@ -13,8 +13,9 @@ public class GetLocalQueueSizesTask extends AbstractCallable<Long> {
         super(topology);
     }
 
+    //fixme: svc is null for local operations! wtf!  grrrrrr!  lame!
     public Long call() throws Exception {
-        LocalTaskExecutorService localSvc = svc.getLocalTaskExecutorService();
+        LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         
         return localSvc.getQueueSize();
     }

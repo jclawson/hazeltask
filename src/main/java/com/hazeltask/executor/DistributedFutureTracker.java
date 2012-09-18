@@ -8,7 +8,6 @@ import com.google.common.collect.SetMultimap;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 import com.hazeltask.executor.WorkResponse.Status;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 /**
  * TODO: move the listener binding to DistributedExecutorService so that 

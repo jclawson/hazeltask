@@ -9,7 +9,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.succinctllc.hazelcast.work.HazelcastWork;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 

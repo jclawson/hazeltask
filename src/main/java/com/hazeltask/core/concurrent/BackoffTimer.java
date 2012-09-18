@@ -97,7 +97,7 @@ public class BackoffTimer {
             this.task = task;
             this.minDelay = fixedDelay;
             this.maxDelay = fixedDelay;
-            this.backoffMultiplier = 1;
+            this.backoffMultiplier = 1000;
             this.currentDelay = initialDelay;
         }
         

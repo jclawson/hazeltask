@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work.metrics;
+package com.hazeltask.executor.metrics;
 
 import com.hazeltask.executor.DistributedFutureTracker;
 import com.yammer.metrics.core.Gauge;

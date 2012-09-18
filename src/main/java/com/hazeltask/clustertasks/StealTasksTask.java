@@ -5,8 +5,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collection;
 
+import com.hazeltask.executor.HazelcastWork;
 import com.hazeltask.executor.LocalTaskExecutorService;
-import com.succinctllc.hazelcast.work.HazelcastWork;
 
 public class StealTasksTask extends AbstractCallable<Collection<HazelcastWork>> {
     private static final long serialVersionUID = 1L;
@@ -19,7 +19,7 @@ public class StealTasksTask extends AbstractCallable<Collection<HazelcastWork>> 
     }
 
     public Collection<HazelcastWork> call() throws Exception {
-        LocalTaskExecutorService localSvc = svc.getLocalTaskExecutorService();
+        LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         
         return localSvc.stealTasks(numberOfTasks);
     }
