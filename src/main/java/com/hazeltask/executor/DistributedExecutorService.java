@@ -2,7 +2,6 @@ package com.hazeltask.executor;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -94,20 +93,28 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
     
     protected void doShutdown() {
-        doShutdownNow();
+        doShutdownNow(false);
     }
     
     protected List<HazelcastWork> doShutdownNow() {
+        return doShutdownNow(true);
+    }
+    
+    protected List<HazelcastWork> doShutdownNow(boolean shutdownNow) {
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onBeginShutdown(this);
         
-        //FIXME implement this
-        
+        //TODO: is everything shutdown?
+        List<HazelcastWork> works = null;
+        if(shutdownNow)
+            works = this.localExecutorService.shutdownNow();
+        else
+            this.localExecutorService.shutdown();
         
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onEndShutdown(this);
         
-        return Collections.emptyList();
+        return works;
     }
 
     public boolean isShutdown() {

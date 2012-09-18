@@ -30,7 +30,7 @@ public class DelegatingExecutorListener implements ExecutorListener {
         boolean allow = true;
         for(ExecutorListener listener : listeners) {
             try {
-                allow = allow && listener.beforeExecute(runnable);
+                allow = listener.beforeExecute(runnable) && allow;
             } catch(Throwable e) {
                 //ignore
                 //TODO: log
