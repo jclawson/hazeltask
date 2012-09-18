@@ -1,7 +1,13 @@
-hazelcast-work
+Hazeltask
 ==============
-NOTE: This is a work in progress... API changes drastically... Not quite ready yet
+An advanced task distribution system based on Hazelcast with a familiar ExecutorService API
 
+Current Status
+==============
+Almost to 1.0!  This 0.9 release is functional, just a few TODO's left!
+
+Features
+==============
 This project encompasses an advanced distributed work library for Hazelcast.  
 It is modeled after the ExecutorService API but adds a lot of missing features 
 the built in Hazelcast executor service doesn't provide such as:
