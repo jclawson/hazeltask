@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit;
  * runs a task.  This allows you to create polling tasks that if they have nothing to do, don't run as often
  * until they do!
  * 
+ * this thread will shutdown if there are no tasks in its queue for 5 minutes
+ * 
  * NOTE: the functionality of adding tasks after the timer is started is currently undefined
  * 
  * TODO: add checks to prevent you from adding tasks after the timer is shutdown
@@ -23,6 +25,7 @@ public class BackoffTimer {
     DelayQueue<DelayedTimerTask> queue = new DelayQueue<DelayedTimerTask>();
     private boolean started = false;
     private String name;
+    private TimerThread timerThread;
     
     public BackoffTimer(String name) {
         this.name = name;
@@ -31,10 +34,19 @@ public class BackoffTimer {
     public void start() {
         if(!started) {
             started = true;
-            TimerThread thread = new TimerThread(queue);
-            thread.setDaemon(true);
-            thread.setName(BackoffTimer.class.getSimpleName()+"-"+name);
-            thread.start();
+            timerThread = new TimerThread(queue);
+            timerThread.setDaemon(true);
+            timerThread.setName(BackoffTimer.class.getSimpleName()+"-"+name);
+            timerThread.start();
+        }
+    }
+    
+    //FIXME: fix this concurrency race condition bug. need state lock
+    public void stop() {
+        if(started) {
+            started = false;
+            timerThread.shutdown();
+            timerThread = null;
         }
     }
     
@@ -54,7 +66,8 @@ public class BackoffTimer {
     }
     
     public boolean unschedule(BackoffTask task) {
-        throw new RuntimeException("not implemented yet");
+        //throw new RuntimeException("not implemented yet");
+        return queue.remove(task);
     }
     
     public static abstract class BackoffTask {
@@ -141,18 +154,24 @@ public class BackoffTimer {
     
     class TimerThread extends Thread {
         private DelayQueue<DelayedTimerTask> queue;
-
+        private volatile boolean shutdown = false;
+        
         TimerThread(DelayQueue<DelayedTimerTask> queue) {
             this.queue = queue;
         }
         
+        public void shutdown() {
+            shutdown = true;
+        }
+
         public void run() {
-            while (true) {
+            while (!shutdown) {
                 try {
                     DelayedTimerTask task = queue.poll(5, TimeUnit.MINUTES);
                     if(task != null) {
                         boolean cancelled = task.isCancelled();
                         if(!cancelled) {
+                            //if the task throws an exception, it will never be run again 
                             task.run();
                             //put that task back so we run it again later
                             cancelled = task.isCancelled();

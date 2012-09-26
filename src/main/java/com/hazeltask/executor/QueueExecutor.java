@@ -2,11 +2,15 @@ package com.hazeltask.executor;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.yammer.metrics.core.Timer;
@@ -17,11 +21,35 @@ public class QueueExecutor {
     private final BlockingQueue<HazelcastWork> queue;
     private final ThreadFactory threadFactory;
     private volatile int coreThreads;
-    private volatile boolean isShutdown;
     private Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
     private Timer workExecutedTimer;
     
+    /**
+     * Updated only when worker finds nothing in the queue
+     */
+    private long completedTaskCount;
+    
     private final HashSet<Worker> workers = new HashSet<Worker>();
+    
+    private static final RuntimePermission shutdownPerm =
+            new RuntimePermission("modifyThread");
+    
+    volatile int runState;
+    static final int RUNNING    = 0;
+    static final int SHUTDOWN   = 1;
+    static final int STOP       = 2;
+    static final int TERMINATED = 3;
+    
+    /**
+     * Lock held on updates to poolSize, corePoolSize,
+     * maximumPoolSize, runState, and workers set.
+     */
+    private final ReentrantLock mainLock = new ReentrantLock();
+
+    /**
+     * Wait condition to support awaitTermination
+     */
+    private final Condition termination = mainLock.newCondition();
     
     public QueueExecutor(BlockingQueue<HazelcastWork> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
         this.coreThreads = coreThreads;
@@ -39,13 +67,18 @@ public class QueueExecutor {
     }
     
     public void startup() {
-        //start all threads
-        for(int i =0; i<coreThreads; i++) {
-            Worker w = new Worker();
-            Thread t = threadFactory.newThread(w);
-            w.thread = t;
-            workers.add(w);
-            t.start();
+        mainLock.lock();
+        try {
+            //start all threads
+            for(int i = workers.size(); i<coreThreads; i++) {
+               Worker w = new Worker();
+               Thread t = threadFactory.newThread(w);
+               w.thread = t;
+               workers.add(w);
+               t.start();
+            }
+        } finally {
+            mainLock.unlock();
         }
     }
     
@@ -53,7 +86,43 @@ public class QueueExecutor {
     //FIXME: this method should wait until all work is done
     //but prevent any new work from being added!!!
     public void shutdown() {
-        isShutdown = true;
+        SecurityManager security = System.getSecurityManager();
+        if (security != null)
+            security.checkPermission(shutdownPerm);
+        
+        final ReentrantLock mainLock = this.mainLock;
+        mainLock.lock();
+        
+        try {
+            int state = runState;
+            if(state > RUNNING)
+                return;
+            
+            if (security != null) { // Check if caller can modify our threads
+                for (Worker w : workers)
+                    security.checkAccess(w.thread);
+            }
+            
+            
+            if (state < SHUTDOWN)
+                runState = SHUTDOWN;
+            
+            try {
+                for (Worker w : workers) {
+                    w.interruptIfIdle();
+                }
+            } catch (SecurityException se) { // Try to back out
+                runState = state;
+                // tryTerminate() here would be a no-op
+                throw se;
+            }
+            
+            tryTerminate(); // Terminate now if pool and queue empty
+            
+        } finally {
+            mainLock.unlock();
+        }
+        
         for (Worker w : workers) {
             w.interruptNow();
         }
@@ -61,15 +130,124 @@ public class QueueExecutor {
     
     //TODO: make this better like ThreadPoolExecutor
     public List<HazelcastWork> shutdownNow() {
-        isShutdown = true;
-        ArrayList<HazelcastWork> works = new ArrayList<HazelcastWork>(workers.size()+queue.size());
-        for (Worker w : workers) {
-            w.interruptNow();
-            works.add(w.getCurrentTask());
+        /*
+         * shutdownNow differs from shutdown only in that
+         * 1. runState is set to STOP,
+         * 2. all worker threads are interrupted, not just the idle ones, and
+         * 3. the queue is drained and returned.
+         */
+    SecurityManager security = System.getSecurityManager();
+    if (security != null)
+            security.checkPermission(shutdownPerm);
+
+        final ReentrantLock mainLock = this.mainLock;
+        mainLock.lock();
+        try {
+            int state = runState;
+            if(state > STOP)
+                return Collections.emptyList();
+            
+            if (security != null) { // Check if caller can modify our threads
+                for (Worker w : workers)
+                    security.checkAccess(w.thread);
+            }
+
+            if (state < STOP)
+                runState = STOP;
+
+            try {
+                for (Worker w : workers) {
+                    w.interruptNow();
+                }
+            } catch (SecurityException se) { // Try to back out
+                runState = state;
+                // tryTerminate() here would be a no-op
+                throw se;
+            }
+
+            List<HazelcastWork> tasks = drainQueue();
+            //jclawson - added this to make sure we grap possibly incomplete tasks
+            for (Worker w : workers) {
+                HazelcastWork task = w.getCurrentTask();
+                if(task != null)
+                    tasks.add(w.getCurrentTask());
+            }
+            
+            tryTerminate(); // Terminate now if pool and queue empty
+            return tasks;
+        } finally {
+            mainLock.unlock();
         }
-        queue.drainTo(works);
-        return works;
     }
+    
+    /**
+     * Drains the task queue into a new list. Used by shutdownNow.
+     * Call only while holding main lock.
+     */
+    private List<HazelcastWork> drainQueue() {
+        List<HazelcastWork> taskList = new ArrayList<HazelcastWork>();
+        queue.drainTo(taskList);
+        /*
+         * If the queue is a DelayQueue or any other kind of queue
+         * for which poll or drainTo may fail to remove some elements,
+         * we need to manually traverse and remove remaining tasks.
+         * To guarantee atomicity wrt other threads using this queue,
+         * we need to create a new iterator for each element removed.
+         */
+        while (!queue.isEmpty()) {
+            Iterator<HazelcastWork> it = queue.iterator();
+            try {
+                if (it.hasNext()) {
+                    HazelcastWork r = it.next();
+                    if (queue.remove(r))
+                        taskList.add(r);
+                }
+            } catch (ConcurrentModificationException ignore) {
+            }
+        }
+        return taskList;
+    }
+    
+    /**
+     * Transitions to TERMINATED state if either (SHUTDOWN and pool
+     * and queue empty) or (STOP and pool empty), otherwise unless
+     * stopped, ensuring that there is at least one live thread to
+     * handle queued tasks.
+     *
+     * This method is called from the three places in which
+     * termination can occur: in workerDone on exit of the last thread
+     * after pool has been shut down, or directly within calls to
+     * shutdown or shutdownNow, if there are no live threads.
+     */
+    private void tryTerminate() {
+        mainLock.lock();
+        try {
+            boolean allTerminated = true;
+            for(Worker w : this.workers) {
+                allTerminated = allTerminated && w.isTerminated();
+            }
+            
+            if (allTerminated) {
+                int state = runState;
+                
+                //we prevent adding to the queue external to this executor in the 
+                //LocalTaskExecutorService, so we guarantee nothing will be added to the
+                //queue before shutdown on this Executor is even called
+                if (state == STOP || state == SHUTDOWN) {
+                    runState = TERMINATED;
+                    termination.signalAll();
+                    terminated();
+                }
+            }
+        } finally {
+            mainLock.unlock();
+        }
+    }
+    
+    /**
+     * Default implementation does nothing
+     */
+    protected void terminated() { }
     
     public Collection<HazelcastWork> getTasksInProgress() {
         List<HazelcastWork> result = new ArrayList<HazelcastWork>(workers.size());
@@ -82,7 +260,7 @@ public class QueueExecutor {
     }
     
     public boolean isShutdown() {
-        return isShutdown;
+        return runState != RUNNING;
     }
     
     private HazelcastWork getTask() {
@@ -112,14 +290,23 @@ public class QueueExecutor {
         }
     }
     
+    public long getCompletedTaskCount() {
+        return completedTaskCount;
+    }
+
     private final class Worker implements Runnable {
         private volatile HazelcastWork currentTask;
         private final ReentrantLock runLock = new ReentrantLock();
         private Thread thread;
         private volatile long completedTasks;
+        private volatile boolean isTerminated;
         
         boolean isActive() {
             return runLock.isLocked();
+        }
+        
+        public boolean isTerminated() {
+            return isTerminated;
         }
         
         void interruptNow() {
@@ -172,6 +359,7 @@ public class QueueExecutor {
             	if(tCtx != null)
             		tCtx.stop();
             	currentTask = null;
+            	completedTasks++;
             	runLock.unlock();
             }
         }
@@ -207,6 +395,13 @@ public class QueueExecutor {
                     runTask(r);
                     interval = minInterval;
                 } else { //there was no work in the taskQueue so lets wait a little
+                    mainLock.lock();
+                    try {
+                        //bookkeeping
+                        completedTaskCount += completedTasks;
+                    } finally {
+                        mainLock.unlock();
+                    }
                     try {
                         Thread.sleep(interval);
                         interval = Math.min(maxInterval, interval * exponent);
@@ -220,6 +415,9 @@ public class QueueExecutor {
                     return;
                 }
             }
+            //thread has terminated, see if we can terminate the whole QueueExecutor
+            isTerminated = true;
+            tryTerminate();
         }
     }
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
@@ -59,7 +60,6 @@ public class LocalTaskExecutorService {
     
 	private final HazeltaskTopology topology;
 	private QueueExecutor localExecutorPool;
-	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	private GroupedPriorityQueue<HazelcastWork> taskQueue;
 	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
 	private final IExecutorTopologyService executorTopologyService;
@@ -114,11 +114,8 @@ public class LocalTaskExecutorService {
 	}
 
 	public synchronized void startup(){
-		if(isStarted.compareAndSet(false, true)) {
-		    
-		    localExecutorPool.startup();
-		    LOGGER.log(Level.FINE, "LocalTaskExecutorService started for "+topology.getName());
-		}
+		 localExecutorPool.startup();
+		 LOGGER.log(Level.FINE, "LocalTaskExecutorService started for "+topology.getName());
 	}
 	
 	/**
@@ -177,12 +174,17 @@ public class LocalTaskExecutorService {
 		return result;
 	}
 	
-	public void execute(HazelcastWork command) {
-		TimerContext tCtx = null;
+	public boolean execute(HazelcastWork command) {
+		if(localExecutorPool.isShutdown()) {
+		    LOGGER.log(Level.WARNING, "Cannot enqueue the task "+command+".  The executor threads are shutdown.");
+		    return false;
+		}
+	    
+	    TimerContext tCtx = null;
 		if(workSubmittedTimer != null)
 			tCtx = workSubmittedTimer.time();
 		try {
-			taskQueue.add(command);
+			return taskQueue.add(command);
 		} finally {
 			if(tCtx != null)
 				tCtx.stop();
@@ -190,43 +192,44 @@ public class LocalTaskExecutorService {
 	}
 	
 	public Collection<HazelcastWork> stealTasks(long numberOfTasks) {
-	    long totalSize = taskQueue.size();
-	    ArrayList<HazelcastWork> result = new ArrayList<HazelcastWork>((int)numberOfTasks);
-	    for(ITrackedQueue<HazelcastWork> q : this.taskQueue.getQueuesByGroup().values()) {
-	        int qSize = q.size();
-	        if(qSize == 0) continue;
-	        
-	        double p = (double)qSize / (double)totalSize;
-	        long tasksToTake = Math.round(numberOfTasks * p);
-	        
-	        for(int i=0; i < tasksToTake; i++) {
-	            //TODO: this really sucks that we use q.poll() ... why can't this be a dequeue????
-	            HazelcastWork task = q.poll();
-	            if(task == null)
-	                break;
-	            result.add(task);
-	        }
+	    if(!this.localExecutorPool.isShutdown()) {
+    	    long totalSize = taskQueue.size();
+    	    ArrayList<HazelcastWork> result = new ArrayList<HazelcastWork>((int)numberOfTasks);
+    	    for(ITrackedQueue<HazelcastWork> q : this.taskQueue.getQueuesByGroup().values()) {
+    	        int qSize = q.size();
+    	        if(qSize == 0) continue;
+    	        
+    	        double p = (double)qSize / (double)totalSize;
+    	        long tasksToTake = Math.round(numberOfTasks * p);
+    	        
+    	        for(int i=0; i < tasksToTake; i++) {
+    	            //TODO: this really sucks that we use q.poll() ... why can't this be a dequeue????
+    	            HazelcastWork task = q.poll();
+    	            if(task == null)
+    	                break;
+    	            result.add(task);
+    	        }
+    	    }
+    	    
+    	    if(result.size() < numberOfTasks) {
+    	        //FIXME: should we really care? or is this good enough...
+    	    }   
+    	    
+    	    return result;
+	    } else {
+	        LOGGER.log(Level.WARNING,"Cannot steal "+numberOfTasks+" tasks.  The executor threads are shutdown.");
+	        return Collections.emptyList();
 	    }
-	    
-	    if(result.size() < numberOfTasks) {
-	        //FIXME: should we really care? or is this good enough...
-	    }   
-	    
-	    return result;
 	}
 
 	//TODO: time how long it takes to shutdown
-	public synchronized void shutdown() {
-	    if(isStarted.compareAndSet(true, false)) {
-	        localExecutorPool.shutdown();
-	    }
+	public void shutdown() {
+	    localExecutorPool.shutdown();
 	}
 	
-	public synchronized List<HazelcastWork> shutdownNow() {
-	    if(isStarted.compareAndSet(true, false)) {
-            return localExecutorPool.shutdownNow();
-        }
-	    return Collections.emptyList();
+	//TODO: time how long it takes to shutdown
+	public List<HazelcastWork> shutdownNow() {
+	    return localExecutorPool.shutdownNow();
 	}
 
 	public boolean isShutdown() {

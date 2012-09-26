@@ -104,6 +104,7 @@ public class HazeltaskExecutorBuilder {
                 hazeltaskTimer.unschedule(bundleTask);
                 hazeltaskTimer.unschedule(rebalanceTask);
                 hazeltaskTimer.unschedule(getReadyMembersTask);
+                hazeltaskTimer.stop();
             }      
         });
     }

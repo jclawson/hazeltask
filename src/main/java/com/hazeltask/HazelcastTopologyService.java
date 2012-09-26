@@ -1,5 +1,6 @@
 package com.hazeltask;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import com.hazeltask.clustertasks.IsMemberReadyTask;
 import com.hazeltask.clustertasks.NoOpTask;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.HazelcastWork;
+import com.hazeltask.executor.ShutdownTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 
@@ -61,12 +63,21 @@ private String topologyName;
     }
     
     public void shutdown() {
-        // TODO Auto-generated method stub
-        
+        MemberTasks.executeOptimistic(communicationExecutorService, 
+                                      hazelcast.getCluster().getMembers(), 
+                                      new ShutdownTask(topologyName, false)
+        );
     }
     
     public List<HazelcastWork> shutdownNow() {
-        // TODO Auto-generated method stub
-        return null;
+        Collection<MemberResponse<Collection<HazelcastWork>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
+            hazelcast.getCluster().getMembers(), 
+            new ShutdownTask(topologyName, true)
+        );
+        List<HazelcastWork> tasks = new ArrayList<HazelcastWork>();
+        for(MemberResponse<Collection<HazelcastWork>> response : responses) {
+            tasks.addAll(response.getValue());
+        }
+        return tasks;
     }
 }

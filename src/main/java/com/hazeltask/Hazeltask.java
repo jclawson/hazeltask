@@ -11,6 +11,13 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 
+/**
+ * TODO: should we make this like Hazelcast where you create the Hazeltask instance from this 
+ * class instead of from the builders?  I tend to like the build step better...
+ * 
+ * @author jclawson
+ *
+ */
 public class Hazeltask {
     public static ConcurrentMap<String, Hazeltask> instances = new ConcurrentHashMap<String, Hazeltask>();
     private final DistributedExecutorService       executor;
@@ -23,7 +30,7 @@ public class Hazeltask {
         this.topology = topology;
     }
 
-    public static Hazeltask getInstance(String topology) {
+    public static Hazeltask getHazeltaskInstanceByName(String topology) {
         return instances.get(topology);
     }
 

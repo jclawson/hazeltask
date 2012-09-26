@@ -31,7 +31,7 @@ public abstract class AbstractCallable<T> implements Callable<T>, DataSerializab
     }
     
     protected DistributedExecutorService getDistributedExecutorService() {
-        Hazeltask ht = Hazeltask.getInstance(topologyName);
+        Hazeltask ht = Hazeltask.getHazeltaskInstanceByName(topologyName);
         if(ht != null) {
             return (DistributedExecutorService) ht.getExecutorService();
         }
@@ -39,7 +39,7 @@ public abstract class AbstractCallable<T> implements Callable<T>, DataSerializab
     }
     
     protected HazeltaskTopology getHazeltaskTopology() {
-        Hazeltask ht = Hazeltask.getInstance(topologyName);
+        Hazeltask ht = Hazeltask.getHazeltaskInstanceByName(topologyName);
         if(ht != null) {
             return ht.getHazelcastTopology();
         }
