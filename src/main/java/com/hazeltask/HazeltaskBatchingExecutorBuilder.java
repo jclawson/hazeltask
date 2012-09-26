@@ -95,6 +95,7 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
                 hazeltaskTimer.unschedule(bundleTask);
                 hazeltaskTimer.unschedule(rebalanceTask);
                 hazeltaskTimer.unschedule(getReadyMembersTask);
+                hazeltaskTimer.stop();//this would stop after 5 min anyways
             }      
         });
     }

@@ -104,7 +104,7 @@ public class HazeltaskExecutorBuilder {
                 hazeltaskTimer.unschedule(bundleTask);
                 hazeltaskTimer.unschedule(rebalanceTask);
                 hazeltaskTimer.unschedule(getReadyMembersTask);
-                hazeltaskTimer.stop();
+                hazeltaskTimer.stop();//this would stop after 5 min anyways
             }      
         });
     }
