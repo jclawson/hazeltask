@@ -10,7 +10,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 import data.FooItem;
 
@@ -50,10 +50,10 @@ public class PreventDuplicatesTest {
             .thenReturn(true);
         
         
-        WorkBundle<FooItem> bundle = mock(WorkBundle.class);
+        TaskBatch<FooItem> bundle = mock(TaskBatch.class);
         when(bundle.getItems()).thenReturn(Arrays.asList(item));
         
-        HazelcastWork work = mock(HazelcastWork.class);
+        HazeltaskTask work = mock(HazeltaskTask.class);
         when(work.getInnerRunnable()).thenReturn(bundle);
         
         PreventDuplicatesListener<FooItem> listener = new PreventDuplicatesListener<FooItem>(svc, batchKeyAdapter);

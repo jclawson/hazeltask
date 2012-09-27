@@ -4,22 +4,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.hazeltask.executor.task.WorkId;
+import com.hazeltask.executor.task.TaskId;
 
-public abstract class AbstractWorkBundle<I> implements WorkBundle<I> {
+public abstract class AbstractTaskBatch<I> implements TaskBatch<I> {
 	private static final long serialVersionUID = 1L;
 	private final List<I> items;
-	private final WorkId workId;
+	private final TaskId taskId;
 	
 	/**
 	 * @param id - typically UUID.randomUUID().toString()
 	 * @param group
 	 * @param items
 	 */
-	public AbstractWorkBundle(String id, String group, Collection<I> items) {
+	public AbstractTaskBatch(String id, String group, Collection<I> items) {
 		//this ensures our list is serializable
 		this.items = new ArrayList<I>(items);
-		workId = new WorkId(id, group);
+		taskId = new TaskId(id, group);
 	}
 	
 	public final void run() {
@@ -28,16 +28,16 @@ public abstract class AbstractWorkBundle<I> implements WorkBundle<I> {
 	
 	public abstract void run(List<I> items);
 
-	public WorkId getWorkId() {
-		return workId;
+	public TaskId getTaskId() {
+		return taskId;
 	}
 
 	public String getGroup() {
-		return workId.getGroup();
+		return taskId.getGroup();
 	}
 
 	public String getUniqueIdentifier() {
-		return workId.getId();
+		return taskId.getId();
 	}
 
 	public Collection<I> getItems() {

@@ -2,8 +2,8 @@ package com.hazeltask.batch;
 
 import java.util.Collection;
 
-import com.hazeltask.executor.task.Work;
+import com.hazeltask.executor.task.Task;
 
-public interface WorkBundle<I> extends Work {
+public interface TaskBatch<I> extends Task {
     public Collection<I> getItems();
 }

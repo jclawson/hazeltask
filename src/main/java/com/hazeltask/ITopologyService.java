@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.hazelcast.core.Member;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 /**
  * Methods here that act on multiple members will query for ready members
@@ -17,5 +17,5 @@ public interface ITopologyService {
     public Set<Member> getReadyMembers();
     public long pingMember(Member member);
     public void shutdown();
-    public List<HazelcastWork> shutdownNow();
+    public List<HazeltaskTask> shutdownNow();
 }

@@ -16,7 +16,7 @@ import com.hazelcast.nio.DataSerializable;
  * @author Jason Clawson
  *
  */
-public class WorkId implements DataSerializable {
+public class TaskId implements DataSerializable {
     private static final long serialVersionUID = 1L;
 
     private String            uniqueId;
@@ -27,7 +27,7 @@ public class WorkId implements DataSerializable {
      * @param id
      * @param group
      */
-    public WorkId(String id, String group) {
+    public TaskId(String id, String group) {
         this.uniqueId = id;
         this.group = group;
     }
@@ -37,7 +37,7 @@ public class WorkId implements DataSerializable {
      * 
      * @param group
      */
-    public WorkId(String group) {
+    public TaskId(String group) {
         this.uniqueId = UUID.randomUUID().toString();
         this.group = group;
     }

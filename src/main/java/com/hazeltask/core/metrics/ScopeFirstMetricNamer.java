@@ -19,7 +19,7 @@ public class ScopeFirstMetricNamer implements MetricNamer {
 	private String getMBeanName(String group, String scope, String type,
 			String name) {
 		final StringBuilder nameBuilder = new StringBuilder();
-		nameBuilder.append("hazelcast-work");
+		nameBuilder.append("hazeltask");
 		if (scope != null) {
 			nameBuilder.append(":type=");
 			nameBuilder.append(scope);

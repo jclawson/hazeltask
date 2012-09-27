@@ -10,7 +10,7 @@ import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 
 public class BatchContext<I extends Groupable> {
-    private final Bundler<I>             bundler;
+    private final IBatchFactory<I>             bundler;
     private final BatchKeyAdapter<I>     batchKeyAdapter;
     private final SetMultimap<String, I> multimap;
     private final BundlerConfig<I> batchingConfig;
@@ -52,7 +52,7 @@ public class BatchContext<I extends Groupable> {
     private void submit(String group) {
         Set<I> items = multimap.removeAll(group);
         if(items.size() > 0) {
-            WorkBundle<I> task = bundler.bundle(group, items);
+            TaskBatch<I> task = bundler.createBatch(group, items);
             svc.execute(task);
         }
     }

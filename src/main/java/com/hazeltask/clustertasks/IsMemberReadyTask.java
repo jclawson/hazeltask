@@ -4,7 +4,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class IsMemberReadyTask extends AbstractCallable<Boolean> {
+public class IsMemberReadyTask extends AbstractClusterTask<Boolean> {
     private static final long serialVersionUID = 2L;
 
     public IsMemberReadyTask(String topology) {

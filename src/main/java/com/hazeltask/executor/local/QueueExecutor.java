@@ -14,17 +14,17 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.hazeltask.executor.ExecutorListener;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 
 public class QueueExecutor {
-    private final BlockingQueue<HazelcastWork> queue;
+    private final BlockingQueue<HazeltaskTask> queue;
     private final ThreadFactory threadFactory;
     private volatile int coreThreads;
     private Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
-    private Timer workExecutedTimer;
+    private Timer taskExecutedTimer;
     
     /**
      * Updated only when worker finds nothing in the queue
@@ -53,11 +53,11 @@ public class QueueExecutor {
      */
     private final Condition termination = mainLock.newCondition();
     
-    public QueueExecutor(BlockingQueue<HazelcastWork> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
+    public QueueExecutor(BlockingQueue<HazeltaskTask> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
         this.coreThreads = coreThreads;
         this.queue = queue;
         this.threadFactory = threadFactory;
-        this.workExecutedTimer = workExecutedTimer;
+        this.taskExecutedTimer = workExecutedTimer;
     }
     
     /**
@@ -131,7 +131,7 @@ public class QueueExecutor {
     }
     
     //TODO: make this better like ThreadPoolExecutor
-    public List<HazelcastWork> shutdownNow() {
+    public List<HazeltaskTask> shutdownNow() {
         /*
          * shutdownNow differs from shutdown only in that
          * 1. runState is set to STOP,
@@ -167,10 +167,10 @@ public class QueueExecutor {
                 throw se;
             }
 
-            List<HazelcastWork> tasks = drainQueue();
+            List<HazeltaskTask> tasks = drainQueue();
             //jclawson - added this to make sure we grap possibly incomplete tasks
             for (Worker w : workers) {
-                HazelcastWork task = w.getCurrentTask();
+                HazeltaskTask task = w.getCurrentTask();
                 if(task != null)
                     tasks.add(w.getCurrentTask());
             }
@@ -186,8 +186,8 @@ public class QueueExecutor {
      * Drains the task queue into a new list. Used by shutdownNow.
      * Call only while holding main lock.
      */
-    private List<HazelcastWork> drainQueue() {
-        List<HazelcastWork> taskList = new ArrayList<HazelcastWork>();
+    private List<HazeltaskTask> drainQueue() {
+        List<HazeltaskTask> taskList = new ArrayList<HazeltaskTask>();
         queue.drainTo(taskList);
         /*
          * If the queue is a DelayQueue or any other kind of queue
@@ -197,10 +197,10 @@ public class QueueExecutor {
          * we need to create a new iterator for each element removed.
          */
         while (!queue.isEmpty()) {
-            Iterator<HazelcastWork> it = queue.iterator();
+            Iterator<HazeltaskTask> it = queue.iterator();
             try {
                 if (it.hasNext()) {
-                    HazelcastWork r = it.next();
+                    HazeltaskTask r = it.next();
                     if (queue.remove(r))
                         taskList.add(r);
                 }
@@ -251,10 +251,10 @@ public class QueueExecutor {
      */
     protected void terminated() { }
     
-    public Collection<HazelcastWork> getTasksInProgress() {
-        List<HazelcastWork> result = new ArrayList<HazelcastWork>(workers.size());
+    public Collection<HazeltaskTask> getTasksInProgress() {
+        List<HazeltaskTask> result = new ArrayList<HazeltaskTask>(workers.size());
         for (Worker w : workers) {
-            HazelcastWork task = w.getCurrentTask();
+            HazeltaskTask task = w.getCurrentTask();
             if(task != null)
                 result.add(task);
         }
@@ -265,15 +265,15 @@ public class QueueExecutor {
         return runState != RUNNING;
     }
     
-    private HazelcastWork getTask() {
+    private HazeltaskTask getTask() {
         return queue.poll();
     }
     
-    private HazelcastWork waitForTask() throws InterruptedException {
+    private HazeltaskTask waitForTask() throws InterruptedException {
         return queue.take();
     }
     
-    protected void beforeExecute(Thread t, HazelcastWork r) {
+    protected void beforeExecute(Thread t, HazeltaskTask r) {
         for(ExecutorListener listener : listeners) {
             try {
                 listener.beforeExecute(r);
@@ -282,7 +282,7 @@ public class QueueExecutor {
             }
         }
     }
-    protected void afterExecute(HazelcastWork r, Throwable t) {
+    protected void afterExecute(HazeltaskTask r, Throwable t) {
         for(ExecutorListener listener : listeners) {
             try {
                 listener.afterExecute(r, t);
@@ -297,7 +297,7 @@ public class QueueExecutor {
     }
 
     private final class Worker implements Runnable {
-        private volatile HazelcastWork currentTask;
+        private volatile HazeltaskTask currentTask;
         private final ReentrantLock runLock = new ReentrantLock();
         private Thread thread;
         private volatile long completedTasks;
@@ -315,7 +315,7 @@ public class QueueExecutor {
             thread.interrupt();
         }
         
-        public HazelcastWork getCurrentTask() {
+        public HazeltaskTask getCurrentTask() {
             return this.currentTask;
         }
         
@@ -334,11 +334,11 @@ public class QueueExecutor {
             }
         }
         
-        private void runTask(HazelcastWork task) {
+        private void runTask(HazeltaskTask task) {
             
             TimerContext tCtx = null;
-        	if(workExecutedTimer != null) {
-        		 tCtx = workExecutedTimer.time();
+        	if(taskExecutedTimer != null) {
+        		 tCtx = taskExecutedTimer.time();
         	}
         	
         	final ReentrantLock runLock = this.runLock;
@@ -380,7 +380,7 @@ public class QueueExecutor {
             long exponent = 2;
             final int maxInterval = 1500;   //1.5 seconds
             while(!isShutdown()) {
-                HazelcastWork r = null;
+                HazeltaskTask r = null;
                 //if we have reached the last interval then lets just 
                 //block and wait for a task
                 if(interval >= maxInterval) {

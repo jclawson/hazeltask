@@ -27,8 +27,8 @@ import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.ResponseExecutorListener;
 import com.hazeltask.executor.metrics.CollectionSizeGauge;
-import com.hazeltask.executor.metrics.WorkThroughputGauge;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.metrics.TaskThroughputGauge;
+import com.hazeltask.executor.task.HazeltaskTask;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
@@ -65,15 +65,15 @@ public class LocalTaskExecutorService {
     
 	private final HazeltaskTopology topology;
 	private QueueExecutor localExecutorPool;
-	private GroupedPriorityQueue<HazelcastWork> taskQueue;
+	private GroupedPriorityQueue<HazeltaskTask> taskQueue;
 	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
 	private final IExecutorTopologyService executorTopologyService;
 	
 	private final int maxThreads;
 	
 	private MetricNamer metricNamer;
-	private Timer workSubmittedTimer;
-	private Timer workExecutedTimer;
+	private Timer taskSubmittedTimer;
+	private Timer taskExecutedTimer;
 	
 	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
@@ -81,11 +81,11 @@ public class LocalTaskExecutorService {
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
 		this.executorTopologyService = executorTopologyService;
 		
-		DefaultThreadFactory factory = new DefaultThreadFactory("DistributedTask",topology.getName());
+		DefaultThreadFactory factory = new DefaultThreadFactory("Hazeltask", topology.getName());
 		
-		taskQueue = new GroupedPriorityQueue<HazelcastWork>(new GroupedQueueRouter.RoundRobinPartition<HazelcastWork>(),
-                new TimeCreatedAdapter<HazelcastWork>(){
-            public long getTimeCreated(HazelcastWork item) {
+		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.RoundRobinPartition<HazeltaskTask>(),
+                new TimeCreatedAdapter<HazeltaskTask>(){
+            public long getTimeCreated(HazeltaskTask item) {
                 return item.getTimeCreated();
             }
         });
@@ -93,27 +93,27 @@ public class LocalTaskExecutorService {
 		if(topology.getHazeltaskConfig().getMetricsRegistry() != null) {
 			//TODO: move metrics to ExecutorMetrics class
 		    MetricsRegistry metrics = topology.getHazeltaskConfig().getMetricsRegistry();
-		    workSubmittedTimer = metrics.newTimer(createName("Work submitted"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-			workExecutedTimer = metrics.newTimer(createName("Work executed"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-			metrics.newGauge(createName("Throughput"), new WorkThroughputGauge(workSubmittedTimer, workExecutedTimer));
-			metrics.newGauge(createName("Queue size"), new CollectionSizeGauge(taskQueue));
+		    taskSubmittedTimer = metrics.newTimer(createName("task-submitted"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+			taskExecutedTimer = metrics.newTimer(createName("task-executed"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+			metrics.newGauge(createName("throughput"), new TaskThroughputGauge(taskSubmittedTimer, taskExecutedTimer));
+			metrics.newGauge(createName("queue-size"), new CollectionSizeGauge(taskQueue));
 		}
 		
-		localExecutorPool = new QueueExecutor(taskQueue, maxThreads, factory, workExecutedTimer);
+		localExecutorPool = new QueueExecutor(taskQueue, maxThreads, factory, taskExecutedTimer);
 		localExecutorPool.addListener(new DelegatingExecutorListener(listeners));
 		
 		if(executorConfig.isFutureSupportEnabled())
 		    addListener(new ResponseExecutorListener(executorTopologyService, topology.getLoggingService()));
 		
-		addListener(new WorkCompletionExecutorListener());
+		addListener(new TaskCompletionExecutorListener());
 		
 	}
 	
 	private MetricName createName(String name) {
 		return metricNamer.createMetricName(
-			"hazelcast-work", 
+			"hazeltask", 
 			topology.getName(), 
-			"LocalWorkExecutor", 
+			LocalTaskExecutorService.class.getSimpleName(), 
 			name
 		);
 	}
@@ -131,15 +131,15 @@ public class LocalTaskExecutorService {
         listeners.add(listener);
     }
     
-    private class WorkCompletionExecutorListener implements ExecutorListener {
-        public void afterExecute(HazelcastWork runnable, Throwable exception) {
-            HazelcastWork work = (HazelcastWork)runnable;
+    private class TaskCompletionExecutorListener implements ExecutorListener {
+        public void afterExecute(HazeltaskTask runnable, Throwable exception) {
+            HazeltaskTask task = (HazeltaskTask)runnable;
             //TODO: add task exceptions handling / retry logic
             //for now, just remove the work because its completed
-            executorTopologyService.removePendingTask(work);
+            executorTopologyService.removePendingTask(task);
         }
 
-        public boolean beforeExecute(HazelcastWork runnable) {return true;}
+        public boolean beforeExecute(HazeltaskTask runnable) {return true;}
     }
 	
 	/**
@@ -148,12 +148,12 @@ public class LocalTaskExecutorService {
 	 * 
 	 * @return
 	 */
-	public Long getOldestWorkCreatedTime(){
+	public Long getOldestTaskCreatedTime(){
 	    long oldest = Long.MAX_VALUE;
 	    
 	    //there is a tiny race condition here... but we just want to make our best attempt
 	    for(Runnable r : localExecutorPool.getTasksInProgress()) {
-	        long timeCreated = ((HazelcastWork)r).getTimeCreated();
+	        long timeCreated = ((HazeltaskTask)r).getTimeCreated();
 	        if(timeCreated < oldest) {
 	            oldest = timeCreated;
 	        }
@@ -179,15 +179,15 @@ public class LocalTaskExecutorService {
 		return result;
 	}
 	
-	public boolean execute(HazelcastWork command) {
+	public boolean execute(HazeltaskTask command) {
 		if(localExecutorPool.isShutdown()) {
 		    LOGGER.log(Level.WARNING, "Cannot enqueue the task "+command+".  The executor threads are shutdown.");
 		    return false;
 		}
 	    
 	    TimerContext tCtx = null;
-		if(workSubmittedTimer != null)
-			tCtx = workSubmittedTimer.time();
+		if(taskSubmittedTimer != null)
+			tCtx = taskSubmittedTimer.time();
 		try {
 			return taskQueue.add(command);
 		} finally {
@@ -196,11 +196,11 @@ public class LocalTaskExecutorService {
 		}
 	}
 	
-	public Collection<HazelcastWork> stealTasks(long numberOfTasks) {
+	public Collection<HazeltaskTask> stealTasks(long numberOfTasks) {
 	    if(!this.localExecutorPool.isShutdown()) {
     	    long totalSize = taskQueue.size();
-    	    ArrayList<HazelcastWork> result = new ArrayList<HazelcastWork>((int)numberOfTasks);
-    	    for(ITrackedQueue<HazelcastWork> q : this.taskQueue.getQueuesByGroup().values()) {
+    	    ArrayList<HazeltaskTask> result = new ArrayList<HazeltaskTask>((int)numberOfTasks);
+    	    for(ITrackedQueue<HazeltaskTask> q : this.taskQueue.getQueuesByGroup().values()) {
     	        int qSize = q.size();
     	        if(qSize == 0) continue;
     	        
@@ -209,7 +209,7 @@ public class LocalTaskExecutorService {
     	        
     	        for(int i=0; i < tasksToTake; i++) {
     	            //TODO: this really sucks that we use q.poll() ... why can't this be a dequeue????
-    	            HazelcastWork task = q.poll();
+    	            HazeltaskTask task = q.poll();
     	            if(task == null)
     	                break;
     	            result.add(task);
@@ -233,7 +233,7 @@ public class LocalTaskExecutorService {
 	}
 	
 	//TODO: time how long it takes to shutdown
-	public List<HazelcastWork> shutdownNow() {
+	public List<HazeltaskTask> shutdownNow() {
 	    return localExecutorPool.shutdownNow();
 	}
 

@@ -14,20 +14,20 @@ import com.yammer.metrics.core.Timer;
  * 
  * @author Jason Clawson
  */
-public class WorkThroughputGauge extends Gauge<Double> {
+public class TaskThroughputGauge extends Gauge<Double> {
 
-	private final Timer workSubmitted;
-	private final Timer workExecuted;
+	private final Timer taskSubmitted;
+	private final Timer taskExecuted;
 	
-	public WorkThroughputGauge(Timer workSubmitted, Timer workExecuted) {
-		this.workSubmitted = workSubmitted;
-		this.workExecuted = workExecuted;
+	public TaskThroughputGauge(Timer workSubmitted, Timer workExecuted) {
+		this.taskSubmitted = workSubmitted;
+		this.taskExecuted = workExecuted;
 	}
 	
 	@Override
 	public Double value() {
-		double addRate = workSubmitted.oneMinuteRate();
-		double removeRate = workExecuted.oneMinuteRate();		
+		double addRate = taskSubmitted.oneMinuteRate();
+		double removeRate = taskExecuted.oneMinuteRate();		
 		return removeRate - addRate;
 	}
 

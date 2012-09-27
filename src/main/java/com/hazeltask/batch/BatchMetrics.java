@@ -25,10 +25,10 @@ public class BatchMetrics {
     
     
     private MetricName createMetricName(Class<?> clz, String name) {
-        return namer.createMetricName("hazelcast-work", topologyName, clz.getSimpleName(), name);
+        return namer.createMetricName("hazeltask", topologyName, clz.getSimpleName(), name);
     }
     
     private MetricName createMetricName(String type, String name) {
-        return namer.createMetricName("hazelcast-work", topologyName, type, name);
+        return namer.createMetricName("hazeltask", topologyName, type, name);
     }
 }

@@ -2,7 +2,7 @@ package com.hazeltask.executor.task;
 
 
 
-public interface WorkIdAdapter<T> {
+public interface TaskIdAdapter<T> {
 	/**
 	 * The WorkId returned does not need to be equal for 
 	 * successive calls, but it should never duplicate an id
@@ -11,5 +11,5 @@ public interface WorkIdAdapter<T> {
 	 * @param task
 	 * @return
 	 */
-    public WorkId createWorkId(T task);
+    public TaskId createTaskId(T task);
 }

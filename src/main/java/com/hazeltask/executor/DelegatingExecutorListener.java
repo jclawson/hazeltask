@@ -3,7 +3,7 @@ package com.hazeltask.executor;
 import java.util.Arrays;
 import java.util.Collection;
 
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 
 
@@ -17,7 +17,7 @@ public class DelegatingExecutorListener implements ExecutorListener {
         this.listeners = Arrays.asList(delegate);
     }
     
-    public void afterExecute(HazelcastWork runnable, Throwable exception) {
+    public void afterExecute(HazeltaskTask runnable, Throwable exception) {
         for(ExecutorListener listener : listeners) {
             try {
                 listener.afterExecute(runnable, exception);
@@ -28,7 +28,7 @@ public class DelegatingExecutorListener implements ExecutorListener {
         }
     }
 
-    public boolean beforeExecute(HazelcastWork runnable) {
+    public boolean beforeExecute(HazeltaskTask runnable) {
         boolean allow = true;
         for(ExecutorListener listener : listeners) {
             try {

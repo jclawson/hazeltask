@@ -1,6 +1,6 @@
 package com.hazeltask.executor;
 
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 
 public interface ExecutorListener {
@@ -9,6 +9,6 @@ public interface ExecutorListener {
      * @param runnable
      * @return
      */
-    public boolean beforeExecute(HazelcastWork runnable);
-    public void afterExecute(HazelcastWork runnable, Throwable exception);
+    public boolean beforeExecute(HazeltaskTask runnable);
+    public void afterExecute(HazeltaskTask runnable, Throwable exception);
 }

@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
-public class GetLocalQueueSizesTask extends AbstractCallable<Long> {
+public class GetLocalQueueSizesTask extends AbstractClusterTask<Long> {
     private static final long serialVersionUID = 1L;
 
     public GetLocalQueueSizesTask(String topology) {

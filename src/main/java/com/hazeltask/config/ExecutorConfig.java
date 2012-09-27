@@ -4,15 +4,15 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
-import com.hazeltask.executor.task.DefaultWorkIdAdapter;
-import com.hazeltask.executor.task.WorkIdAdapter;
+import com.hazeltask.executor.task.DefaultTaskIdAdapter;
+import com.hazeltask.executor.task.TaskIdAdapter;
 
 public class ExecutorConfig {
-    protected boolean          acknowlegeWorkSubmission = false;
+    protected boolean          acknowlegeTaskSubmission = false;
     protected boolean          disableWorkers           = false;
     protected int              threadCount              = 4;
     @SuppressWarnings("rawtypes")
-    protected WorkIdAdapter    workIdAdapter            = new DefaultWorkIdAdapter();
+    protected TaskIdAdapter    taskIdAdapter            = new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
     private ListRouterFactory  memberRouterFactory      = RoundRobinRouter.FACTORY;
     private boolean            enableFutureTracking     = true;
@@ -22,13 +22,13 @@ public class ExecutorConfig {
     // protected long autoStartDelay = 0;
     // TODO: Allow developers to provide all the threads we need
 
-    public ExecutorConfig withAcknowlegeWorkSubmission(boolean acknowlegeWorkSubmission) {
-        this.acknowlegeWorkSubmission = acknowlegeWorkSubmission;
+    public ExecutorConfig withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
+        this.acknowlegeTaskSubmission = acknowlegeTaskSubmission;
         return this;
     }
 
-    public ExecutorConfig acknowlegeWorkSubmission() {
-        this.acknowlegeWorkSubmission = true;
+    public ExecutorConfig acknowlegeTaskSubmission() {
+        this.acknowlegeTaskSubmission = true;
         return this;
     }
 
@@ -57,8 +57,8 @@ public class ExecutorConfig {
     }
 
     @SuppressWarnings("rawtypes")
-    public ExecutorConfig withWorkIdAdapter(WorkIdAdapter workIdAdapter) {
-        this.workIdAdapter = workIdAdapter;
+    public ExecutorConfig withTaskIdAdapter(TaskIdAdapter taskIdAdapter) {
+        this.taskIdAdapter = taskIdAdapter;
         return this;
     }
     
@@ -92,8 +92,8 @@ public class ExecutorConfig {
         return this;
     }
 
-    public boolean isAcknowlegeWorkSubmission() {
-        return acknowlegeWorkSubmission;
+    public boolean isAcknowlegeTaskSubmission() {
+        return acknowlegeTaskSubmission;
     }
 
     public boolean isDisableWorkers() {
@@ -105,8 +105,8 @@ public class ExecutorConfig {
     }
 
     @SuppressWarnings("rawtypes")
-    public WorkIdAdapter getWorkIdAdapter() {
-        return workIdAdapter;
+    public TaskIdAdapter getTaskIdAdapter() {
+        return taskIdAdapter;
     }
 
     public boolean isAutoStart() {

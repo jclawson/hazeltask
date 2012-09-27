@@ -11,35 +11,35 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazelcast.core.Message;
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkId;
-import com.hazeltask.executor.task.WorkResponse;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskId;
+import com.hazeltask.executor.task.TaskResponse;
 
 public class DistributedFutureTrackerTest {
-    private WorkId workOneId;
-    private WorkId workTwoId;
+    private TaskId workOneId;
+    private TaskId workTwoId;
     private DistributedFutureTracker tracker;
     
     @Before
     public void setupData() {
-        workOneId = new WorkId("item-1", "group-1");
-        workTwoId = new WorkId("item-2", "group-1");
+        workOneId = new TaskId("item-1", "group-1");
+        workTwoId = new TaskId("item-2", "group-1");
         tracker = new DistributedFutureTracker();
     }
     
     @Test
     public void testFutureTrackSuccess() throws InterruptedException, ExecutionException {
-        HazelcastWork work = new HazelcastWork("default", workOneId, (Callable<?>)null);
+        HazeltaskTask work = new HazeltaskTask("default", workOneId, (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
-        WorkResponse response = new WorkResponse(
+        TaskResponse response = new TaskResponse(
                                         null, 
                                         workOneId.getId(), 
                                         "Yay!", 
-                                        WorkResponse.Status.SUCCESS
+                                        TaskResponse.Status.SUCCESS
                                     );
         
-        Message<WorkResponse> responseMessage = new Message<WorkResponse>("default-topic", response);
+        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response);
         tracker.onMessage(responseMessage);
         
         Assert.assertEquals(future.get(), "Yay!");
@@ -47,16 +47,16 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TestException.class)
     public void testFutureTrackException() throws Throwable {
-        HazelcastWork work = new HazelcastWork("default", workOneId, (Callable<?>)null);
+        HazeltaskTask work = new HazeltaskTask("default", workOneId, (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
-        WorkResponse response = new WorkResponse(
+        TaskResponse response = new TaskResponse(
                                         null, 
                                         workOneId.getId(), 
                                         new TestException("No!")
                                     );
         
-        Message<WorkResponse> responseMessage = new Message<WorkResponse>("default-topic", response);
+        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response);
         tracker.onMessage(responseMessage);
         
         try {
@@ -68,7 +68,7 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TimeoutException.class)
     public void testFutureTrackGetTimeout() throws InterruptedException, ExecutionException, TimeoutException {
-        HazelcastWork work = new HazelcastWork("default", workOneId, (Callable<?>)null);
+        HazeltaskTask work = new HazeltaskTask("default", workOneId, (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);        
         Assert.assertEquals(future.get(10, TimeUnit.MILLISECONDS), "Yay!");
     }

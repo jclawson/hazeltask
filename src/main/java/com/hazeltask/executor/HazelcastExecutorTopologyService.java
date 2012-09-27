@@ -30,8 +30,8 @@ import com.hazeltask.clustertasks.GetLocalQueueSizesTask;
 import com.hazeltask.clustertasks.StealTasksTask;
 import com.hazeltask.clustertasks.SubmitTaskTask;
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkResponse;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
@@ -46,11 +46,11 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     
     private final ExecutorService communicationExecutorService;
 
-    private final ExecutorService workDistributor;
+    private final ExecutorService taskDistributor;
     //private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final IMap<String, HazelcastWork>                            pendingWork;
+    private final IMap<String, HazeltaskTask>                            pendingTask;
     private final ILock rebalanceTasksLock;
-    private final ITopic<WorkResponse>      workResponseTopic;
+    private final ITopic<TaskResponse>      taskResponseTopic;
     private final HazelcastInstance hazelcast;
     
     public HazelcastExecutorTopologyService(HazeltaskConfig hazeltaskConfig, HazeltaskTopology topology) {
@@ -62,27 +62,27 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
         
-        String workDistributorName = name("work-distributor");
+        String taskDistributorName = name("task-distributor");
         
         //limit the threads on the distributor to 1 thread
         hazelcast.getConfig()
             .addExecutorConfig(new ExecutorConfig()
-                .setName(workDistributorName)
+                .setName(taskDistributorName)
                 .setMaxPoolSize(1)
                 .setCorePoolSize(1)
             );
         
-        workDistributor =  hazelcast.getExecutorService(workDistributorName);
+        taskDistributor =  hazelcast.getExecutorService(taskDistributorName);
         //readyMembers = new CopyOnWriteArrayListSet<Member>();
         
-        String pendingWorkMapName = name("pending-work");
+        String pendingTaskMapName = name("pending-tasks");
         hazelcast.getConfig()
         .addMapConfig(new MapConfig()
-            .setName(workDistributorName)
+            .setName(taskDistributorName)
             .addMapIndexConfig(new MapIndexConfig("createdAtMillis", false)));
         
-        pendingWork = hazelcast.getMap(pendingWorkMapName);
-        workResponseTopic = hazelcast.getTopic(name("work-response"));
+        pendingTask = hazelcast.getMap(pendingTaskMapName);
+        taskResponseTopic = hazelcast.getTopic(name("task-response"));
         
         rebalanceTasksLock = hazelcast.getLock(name("task-balance"));
     }
@@ -97,9 +97,9 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 //    }
 
     
-    public boolean sendTask(HazelcastWork work, Member member, boolean waitForAck) throws TimeoutException {
+    public boolean sendTask(HazeltaskTask task, Member member, boolean waitForAck) throws TimeoutException {
         @SuppressWarnings("unchecked")
-        Future<Boolean> future = (Future<Boolean>) workDistributor.submit(MemberTasks.create(new SubmitTaskTask(work, topologyName), member));
+        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskTask(task, topologyName), member));
         if(!waitForAck) {
             try {
                 return future.get(5, TimeUnit.SECONDS);
@@ -107,7 +107,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
                 Thread.currentThread().interrupt();
                 return false;
             } catch (ExecutionException e) {
-                LOGGER.log(Level.SEVERE, "Unable to submit work for execution", e);
+                LOGGER.log(Level.SEVERE, "Unable to submit task for execution", e);
                 return false;
             }
         } else {
@@ -118,26 +118,26 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     /**
      * Add to the write ahead log (hazelcast IMap) that tracks all the outstanding tasks
      */
-    public boolean addPendingTask(HazelcastWork work, boolean replaceIfExists) {
+    public boolean addPendingTask(HazeltaskTask task, boolean replaceIfExists) {
         if(!replaceIfExists)
-            return pendingWork.putIfAbsent(work.getUniqueIdentifier(), work) == null;
+            return pendingTask.putIfAbsent(task.getUniqueIdentifier(), task) == null;
         
-        pendingWork.put(work.getUniqueIdentifier(), work);
+        pendingTask.put(task.getUniqueIdentifier(), task);
         return true;
     }
     
     /**
      * Asynchronously put the work into the pending map so we can work on submitting it to the worker
      * if we wanted.  Could possibly cause duplicate work if we execute the work, then add to the map.
-     * @param work
+     * @param task
      * @return
      */
-    public Future<HazelcastWork> addPendingTaskAsync(HazelcastWork work) {
-        return pendingWork.putAsync(work.getUniqueIdentifier(), work);
+    public Future<HazeltaskTask> addPendingTaskAsync(HazeltaskTask task) {
+        return pendingTask.putAsync(task.getUniqueIdentifier(), task);
     }
 
-    public boolean removePendingTask(HazelcastWork work) {
-        pendingWork.removeAsync(work.getUniqueIdentifier());
+    public boolean removePendingTask(HazeltaskTask task) {
+        pendingTask.removeAsync(task.getUniqueIdentifier());
         return true;
     }
 
@@ -152,24 +152,24 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return false;
     }
 
-    public void broadcastTaskCompletion(String workId, Serializable response) {
-        WorkResponse message = new WorkResponse(me, workId, response, WorkResponse.Status.SUCCESS);
-        workResponseTopic.publish(message);
+    public void broadcastTaskCompletion(String taskId, Serializable response) {
+        TaskResponse message = new TaskResponse(me, taskId, response, TaskResponse.Status.SUCCESS);
+        taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskCancellation(String workId) {
-        WorkResponse message = new WorkResponse(me, workId, null, WorkResponse.Status.CANCELLED);
-        workResponseTopic.publish(message);
+    public void broadcastTaskCancellation(String taskId) {
+        TaskResponse message = new TaskResponse(me, taskId, null, TaskResponse.Status.CANCELLED);
+        taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskError(String workId, Throwable exception) {
-        WorkResponse message = new WorkResponse(me, workId, exception);
-        workResponseTopic.publish(message);
+    public void broadcastTaskError(String taskId, Throwable exception) {
+        TaskResponse message = new TaskResponse(me, taskId, exception);
+        taskResponseTopic.publish(message);
     }
 
-    public Collection<HazelcastWork> getLocalPendingTasks(String predicate) {
-        Set<String> keys = pendingWork.localKeySet(new SqlPredicate(predicate));
-        return pendingWork.getAll(keys).values();
+    public Collection<HazeltaskTask> getLocalPendingTasks(String predicate) {
+        Set<String> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
+        return pendingTask.getAll(keys).values();
     }
 
     public Collection<MemberResponse<Long>> getLocalQueueSizes() {
@@ -180,8 +180,8 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         );
     }
 
-    public void addTaskResponseMessageHandler(MessageListener<WorkResponse> listener) {
-        workResponseTopic.addMessageListener(listener);
+    public void addTaskResponseMessageHandler(MessageListener<TaskResponse> listener) {
+        taskResponseTopic.addMessageListener(listener);
     }
 
     
@@ -193,18 +193,18 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     }
 
     @SuppressWarnings("unchecked")
-    public Collection<HazelcastWork> stealTasks(List<MemberValuePair<Long>> numToTake) {
-        Collection<HazelcastWork> result = new LinkedList<HazelcastWork>();
-        Collection<Future<Collection<HazelcastWork>>> futures = new ArrayList<Future<Collection<HazelcastWork>>>(numToTake.size());
+    public Collection<HazeltaskTask> stealTasks(List<MemberValuePair<Long>> numToTake) {
+        Collection<HazeltaskTask> result = new LinkedList<HazeltaskTask>();
+        Collection<Future<Collection<HazeltaskTask>>> futures = new ArrayList<Future<Collection<HazeltaskTask>>>(numToTake.size());
         for(MemberValuePair<Long> entry : numToTake) {
-            futures.add((Future<Collection<HazelcastWork>>)
+            futures.add((Future<Collection<HazeltaskTask>>)
                     communicationExecutorService.submit(MemberTasks.create(new StealTasksTask(topology.getName(), entry.getValue()), entry.getMember())));
         }
         
-        for(Future<Collection<HazelcastWork>> f : futures) {
+        for(Future<Collection<HazeltaskTask>> f : futures) {
             try {
-                Collection<HazelcastWork> work = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
-                result.addAll(work);
+                Collection<HazeltaskTask> task = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
+                result.addAll(task);
             } catch (InterruptedException e) {
                 //FIXME: log... we may have just dumped work into the ether.. it will have to be recovered
                 //this really really should not happen
@@ -221,8 +221,8 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return result;
     }
 
-    public int getLocalPendingWorkMapSize() {
-        return pendingWork.localKeySet().size();
+    public int getLocalPendingTaskMapSize() {
+        return pendingTask.localKeySet().size();
     }
 
 }

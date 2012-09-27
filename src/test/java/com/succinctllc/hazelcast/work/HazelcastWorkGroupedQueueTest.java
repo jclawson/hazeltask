@@ -10,25 +10,25 @@ import org.junit.Test;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 public class HazelcastWorkGroupedQueueTest {
     
-    private GroupedPriorityQueue<HazelcastWork> taskQueue;
+    private GroupedPriorityQueue<HazeltaskTask> taskQueue;
     
     @Before
     public void setupData() {
-        taskQueue = new GroupedPriorityQueue<HazelcastWork>(new GroupedQueueRouter.RoundRobinPartition<HazelcastWork>(),
-                new TimeCreatedAdapter<HazelcastWork>(){
-            public long getTimeCreated(HazelcastWork item) {
+        taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.RoundRobinPartition<HazeltaskTask>(),
+                new TimeCreatedAdapter<HazeltaskTask>(){
+            public long getTimeCreated(HazeltaskTask item) {
                 return item.getTimeCreated();
             }            
         });
         
-        HazelcastWork work1 = mock(HazelcastWork.class);
-        HazelcastWork work2 = mock(HazelcastWork.class);
-        HazelcastWork work3 = mock(HazelcastWork.class);
-        HazelcastWork work4 = mock(HazelcastWork.class);
+        HazeltaskTask work1 = mock(HazeltaskTask.class);
+        HazeltaskTask work2 = mock(HazeltaskTask.class);
+        HazeltaskTask work3 = mock(HazeltaskTask.class);
+        HazeltaskTask work4 = mock(HazeltaskTask.class);
         
         when(work1.getGroup()).thenReturn("1");
         when(work2.getGroup()).thenReturn("1");

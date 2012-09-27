@@ -10,13 +10,13 @@ import com.hazeltask.Hazeltask;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.executor.DistributedExecutorService;
 
-public abstract class AbstractCallable<T> implements Callable<T>, DataSerializable {
+public abstract class AbstractClusterTask<T> implements Callable<T>, DataSerializable {
     private static final long serialVersionUID = 1L;
     private String topologyName;
     //private transient DistributedExecutorService svc;
     //private transient HazeltaskTopology topology;
     
-    public AbstractCallable(String topology) {
+    public AbstractClusterTask(String topology) {
         this.topologyName = topology;
     }
 

@@ -20,8 +20,8 @@ import com.hazeltask.ServiceListenable;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkIdAdapter;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskIdAdapter;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.TimerContext;
 
@@ -33,14 +33,14 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     private final LocalTaskExecutorService localExecutorService;
     
     @SuppressWarnings("rawtypes")
-    private final WorkIdAdapter            workIdAdapter;
+    private final TaskIdAdapter            taskIdAdapter;
     private final DistributedFutureTracker futureTracker;
     private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService>>();
     private final ILogger LOGGER;
     private final IExecutorTopologyService  executorTopologyService;
     
-    private com.yammer.metrics.core.Timer workAddedTimer;
-    private Meter worksRejected;
+    private com.yammer.metrics.core.Timer taskAddedTimer;
+    private Meter tasksRejected;
     
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10;
@@ -60,7 +60,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
             }
         });
         
-        workIdAdapter = executorConfig.getWorkIdAdapter();
+        taskIdAdapter = executorConfig.getTaskIdAdapter();
         
         this.futureTracker = futureTracker;
         
@@ -68,8 +68,8 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         
         LOGGER = topology.getLoggingService().getLogger(DistributedExecutorService.class.getName());
         
-        workAddedTimer = hcTopology.getExecutorMetrics().getWorkSubmitTimer().getMetric();
-        worksRejected = hcTopology.getExecutorMetrics().getWorkRejectedMeter().getMetric();
+        taskAddedTimer = hcTopology.getExecutorMetrics().getTaskSubmitTimer().getMetric();
+        tasksRejected = hcTopology.getExecutorMetrics().getTaskRejectedMeter().getMetric();
     }
 
     public ExecutorConfig getExecutorConfig() {
@@ -77,9 +77,9 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
 
     public void execute(Runnable command) {
-        TimerContext ctx = workAddedTimer.time();
+        TimerContext ctx = taskAddedTimer.time();
         try {
-            submitHazelcastWork(createHazelcastWorkWrapper(command), false);
+            submitHazeltaskTask(createHazeltaskTaskWrapper(command), false);
         } finally {
             ctx.stop();
         }
@@ -99,25 +99,25 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         doShutdownNow(false);
     }
     
-    protected List<HazelcastWork> doShutdownNow() {
+    protected List<HazeltaskTask> doShutdownNow() {
         return doShutdownNow(true);
     }
     
-    protected List<HazelcastWork> doShutdownNow(boolean shutdownNow) {
+    protected List<HazeltaskTask> doShutdownNow(boolean shutdownNow) {
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onBeginShutdown(this);
         
         //TODO: is everything shutdown?
-        List<HazelcastWork> works = null;
+        List<HazeltaskTask> tasks = null;
         if(shutdownNow)
-            works = this.localExecutorService.shutdownNow();
+            tasks = this.localExecutorService.shutdownNow();
         else
             this.localExecutorService.shutdown();
         
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onEndShutdown(this);
         
-        return works;
+        return tasks;
     }
 
     public boolean isShutdown() {
@@ -136,14 +136,14 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
 
     public <T> Future<T> submit(Callable<T> task) {
-        TimerContext ctx = workAddedTimer.time();
+        TimerContext ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
             
-            HazelcastWork work = createHazelcastWorkWrapper(task);
-            DistributedFuture<T> future = futureTracker.createFuture(work);
-            if(!submitHazelcastWork(work, false)) {
+            HazeltaskTask taskWrapper = createHazeltaskTaskWrapper(task);
+            DistributedFuture<T> future = futureTracker.createFuture(taskWrapper);
+            if(!submitHazeltaskTask(taskWrapper, false)) {
                 //remove future from tracker, error out future with duplicate exception
                 //i hate this... it would be a cool feature to attach this future to the 
                 //work in progress.  its easier to just cancel it for now
@@ -152,7 +152,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                 //    so if you don't care about the result, no harm
                 LOGGER.log(Level.SEVERE, "Unable to submit HazeltaskTask to worker member");
                 future.setCancelled();
-                futureTracker.removeAll(work.getUniqueIdentifier());
+                futureTracker.removeAll(taskWrapper.getUniqueIdentifier());
             }
             return future;
         } finally {
@@ -161,22 +161,22 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
     
     @SuppressWarnings("unchecked")
-    private HazelcastWork createHazelcastWorkWrapper(Runnable task){
-        if(task instanceof HazelcastWork) {
-            ((HazelcastWork) task).updateCreatedTime();
-            return (HazelcastWork) task;
+    private HazeltaskTask createHazeltaskTaskWrapper(Runnable task){
+        if(task instanceof HazeltaskTask) {
+            ((HazeltaskTask) task).updateCreatedTime();
+            return (HazeltaskTask) task;
         } else {
-            return new HazelcastWork(topology.getName(), workIdAdapter.createWorkId(task), task);
+            return new HazeltaskTask(topology.getName(), taskIdAdapter.createTaskId(task), task);
         }
     }
     
     @SuppressWarnings("unchecked")
-    private HazelcastWork createHazelcastWorkWrapper(Callable<?> task) {
-        return new HazelcastWork(topology.getName(), workIdAdapter.createWorkId(task), task);
+    private HazeltaskTask createHazeltaskTaskWrapper(Callable<?> task) {
+        return new HazeltaskTask(topology.getName(), taskIdAdapter.createTaskId(task), task);
     }
 
     public <T> Future<T> submit(Runnable task, T result) {
-        TimerContext ctx = workAddedTimer.time();
+        TimerContext ctx = taskAddedTimer.time();
         try {
             throw new RuntimeException("Not Implemented Yet");
         } finally {
@@ -185,21 +185,21 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
 
     public Future<?> submit(Runnable task) {
-        TimerContext ctx = workAddedTimer.time();
+        TimerContext ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
             
-            HazelcastWork work = createHazelcastWorkWrapper(task);
-            DistributedFuture<?> future = futureTracker.createFuture(work);
-            submitHazelcastWork(work, false);
+            HazeltaskTask taskWrapper = createHazeltaskTaskWrapper(task);
+            DistributedFuture<?> future = futureTracker.createFuture(taskWrapper);
+            submitHazeltaskTask(taskWrapper, false);
             return future;
         } finally {
             ctx.stop();
         }
     }
     
-    protected boolean submitHazelcastWork(HazelcastWork wrapper, boolean isResubmitting) {      
+    protected boolean submitHazeltaskTask(HazeltaskTask wrapper, boolean isResubmitting) {      
         
         //WorkId workKey = wrapper.getWorkId();
         boolean executeTask = true;
@@ -221,12 +221,12 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                 Member m = memberRouter.next();
                 if(m == null) {
                     LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
-                    worksRejected.mark();
+                    tasksRejected.mark();
                     return false;
                 }
                 
                 try {
-                    if(executorTopologyService.sendTask(wrapper, m, executorConfig.isAcknowlegeWorkSubmission())) {
+                    if(executorTopologyService.sendTask(wrapper, m, executorConfig.isAcknowlegeTaskSubmission())) {
                         return true;
                     } else {
                         isResubmitting = true;
@@ -237,12 +237,12 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                 }
             } else {
                 //do not submit
-                worksRejected.mark();
+                tasksRejected.mark();
                 return false;
             }
         }
         
-        worksRejected.mark();
+        tasksRejected.mark();
         throw new RuntimeException("Unable to submit work to nodes. I tried "+MAX_SUBMIT_TRIES+" times.");
     }
 

@@ -6,23 +6,23 @@ import com.yammer.metrics.util.PercentGauge;
 
 public class PercentDuplicateRateGuage extends PercentGauge {
 	private static final int ONE_HUNDRED = 100;
-	private Meter worksAdded;
-	private Timer worksSubmitted;
+	private Meter tasksAdded;
+	private Timer tasksSubmitted;
 	
 	
 	public PercentDuplicateRateGuage(Meter worksAdded, Timer worksSubmitted) {
-		this.worksAdded = worksAdded;
-		this.worksSubmitted = worksSubmitted;
+		this.tasksAdded = worksAdded;
+		this.tasksSubmitted = worksSubmitted;
 	}
 
 	@Override
 	protected double getNumerator() {
-		return worksAdded.oneMinuteRate();
+		return tasksAdded.oneMinuteRate();
 	}
 
 	@Override
 	protected double getDenominator() {
-		return worksSubmitted.oneMinuteRate();
+		return tasksSubmitted.oneMinuteRate();
 	}
 	
 	@Override

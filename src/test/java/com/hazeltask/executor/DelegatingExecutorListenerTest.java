@@ -11,21 +11,21 @@ import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkId;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskId;
 
 public class DelegatingExecutorListenerTest {
     
     private DelegatingExecutorListener listener;
     private ExecutorListener listener1;
     private ExecutorListener listener2;
-    private HazelcastWork task;
+    private HazeltaskTask task;
     
     @Before
     public void setup() {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
-        task = new HazelcastWork("test", new WorkId("1","1"), (Runnable) null);
+        task = new HazeltaskTask("test", new TaskId("1","1"), (Runnable) null);
         listener = new DelegatingExecutorListener(Arrays.asList(listener1, listener2));
     }
     

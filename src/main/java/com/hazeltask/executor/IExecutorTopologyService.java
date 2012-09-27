@@ -8,8 +8,8 @@ import java.util.concurrent.locks.Lock;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkResponse;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 
@@ -22,23 +22,23 @@ import com.hazeltask.hazelcast.MemberValuePair;
 public interface IExecutorTopologyService {
     //public boolean isMemberReady(Member member);
     
-    public boolean sendTask(HazelcastWork work, Member member, boolean waitForAck) throws TimeoutException;
+    public boolean sendTask(HazeltaskTask task, Member member, boolean waitForAck) throws TimeoutException;
     
     
     /**
      * 
-     * @param work
+     * @param task
      * @param replaceIfExists
      * @return
      */
-    public boolean addPendingTask(HazelcastWork work, boolean replaceIfExists);
+    public boolean addPendingTask(HazeltaskTask task, boolean replaceIfExists);
     
     /**
      * Retrive the hazeltasks in the local pending task map with the predicate restriction
      * @param predicate
      * @return
      */
-    public Collection<HazelcastWork> getLocalPendingTasks(String predicate);
+    public Collection<HazeltaskTask> getLocalPendingTasks(String predicate);
     
     /**
      * Get the local queue sizes for each member
@@ -51,22 +51,22 @@ public interface IExecutorTopologyService {
      * TODO: should this live in a different Service class?
      * @return
      */
-    public int getLocalPendingWorkMapSize();
+    public int getLocalPendingTaskMapSize();
     
     /**
      * 
-     * @param work
+     * @param task
      * @return true if removed, false it did not exist
      */
-    public boolean removePendingTask(HazelcastWork work);
+    public boolean removePendingTask(HazeltaskTask task);
     
-    public void broadcastTaskCompletion(String workId, Serializable response);
-    public void broadcastTaskCancellation(String workId);
-    public void broadcastTaskError(String workId, Throwable exception);
-    public void addTaskResponseMessageHandler(MessageListener<WorkResponse> listener);
+    public void broadcastTaskCompletion(String taskId, Serializable response);
+    public void broadcastTaskCancellation(String taskId);
+    public void broadcastTaskError(String taskId, Throwable exception);
+    public void addTaskResponseMessageHandler(MessageListener<TaskResponse> listener);
     
     public Lock getRebalanceTaskClusterLock();
     
-    public Collection<HazelcastWork> stealTasks(List<MemberValuePair<Long>> numToTake);
+    public Collection<HazeltaskTask> stealTasks(List<MemberValuePair<Long>> numToTake);
     //public boolean addTaskToLocalQueue(HazelcastWork task);
 }

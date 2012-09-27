@@ -3,7 +3,7 @@ package com.hazeltask.batch;
 import java.util.Collection;
 
 import com.hazeltask.executor.ExecutorListener;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 
 @Deprecated
 //do not use this .... its slow and shouldn't be needed
@@ -16,13 +16,13 @@ public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, E
         this.batchKeyAdapter = batchKeyAdapter;
     }
 
-    public boolean beforeExecute(HazelcastWork task) {return true;}
+    public boolean beforeExecute(HazeltaskTask task) {return true;}
 
-    public void afterExecute(HazelcastWork task, Throwable exception) {
+    public void afterExecute(HazeltaskTask task, Throwable exception) {
         Runnable runnable = task.getInnerRunnable();
-        if(runnable instanceof WorkBundle) {
+        if(runnable instanceof TaskBatch) {
             @SuppressWarnings("unchecked")
-            Collection<I> items = ((WorkBundle<I>) runnable).getItems();
+            Collection<I> items = ((TaskBatch<I>) runnable).getItems();
             //TODO: is it more efficient with hazelcast to put this in a transaction?
             //      ie: will it batch these updates up somehow?
            for(I item : items) { 

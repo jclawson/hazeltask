@@ -108,9 +108,9 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
 //          if(bundleSizeHistogram != null)
 //              bundleSizeHistogram.update(partitionedBundle.size());
           
-          WorkBundle<I> work = batchingConfig.getBundler().bundle(group, partitionedBundle);
+          TaskBatch<I> task = batchingConfig.getBundler().createBatch(group, partitionedBundle);
           
-          svc.execute(work);   
+          svc.execute(task);   
       }
       
       batchClusterService.removeItems(group, items);

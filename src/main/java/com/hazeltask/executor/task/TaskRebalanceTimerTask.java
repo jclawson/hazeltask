@@ -33,8 +33,8 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author jclawson
  */
-public class WorkRebalanceTimerTask extends BackoffTask {
-    private static ILogger LOGGER = Logger.getLogger(WorkRebalanceTimerTask.class.getName());
+public class TaskRebalanceTimerTask extends BackoffTask {
+    private static ILogger LOGGER = Logger.getLogger(TaskRebalanceTimerTask.class.getName());
     private final Member localMember;
     private final IExecutorTopologyService executorTopologyService;
     private final LocalTaskExecutorService localSvc;
@@ -50,7 +50,7 @@ public class WorkRebalanceTimerTask extends BackoffTask {
 	
 	private final Lock LOCK;
 	
-	public WorkRebalanceTimerTask(HazeltaskTopology topology, LocalTaskExecutorService localSvc, IExecutorTopologyService executorTopologyService) {
+	public TaskRebalanceTimerTask(HazeltaskTopology topology, LocalTaskExecutorService localSvc, IExecutorTopologyService executorTopologyService) {
 	    ExecutorMetrics metrics = topology.getExecutorMetrics();
 	    LOCK = executorTopologyService.getRebalanceTaskClusterLock();
 		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
@@ -150,10 +150,10 @@ public class WorkRebalanceTimerTask extends BackoffTask {
     	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
     		
     		//TODO: replace this with a completion service so we can process results as we get them
-    		Collection<HazelcastWork> stolenTasks = executorTopologyService.stealTasks(numToTake);
+    		Collection<HazeltaskTask> stolenTasks = executorTopologyService.stealTasks(numToTake);
     		//add to local queue
     		int totalAdded = 0;
-    		for(HazelcastWork task : stolenTasks) {
+    		for(HazeltaskTask task : stolenTasks) {
     		    localSvc.execute(task); //TODO: what if it returns false?
     		    totalAdded++;
     		}

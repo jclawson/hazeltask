@@ -10,9 +10,9 @@ import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
-import com.hazeltask.executor.StaleWorkFlushTimerTask;
+import com.hazeltask.executor.StaleTaskFlushTimerTask;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
-import com.hazeltask.executor.task.WorkRebalanceTimerTask;
+import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 import com.yammer.metrics.Metrics;
 
 /**
@@ -59,7 +59,7 @@ public class HazeltaskExecutorBuilder {
         //        lets rename topology service too.... 
         //        IExecutorTopologyService, IBatchTopologyService, ITopologyService
         
-        ITopologyService topologyService = new HazelcastTopologyService(hazeltaskConfig);
+        ITopologyService topologyService = new HazeltaskTopologyService(hazeltaskConfig);
         HazeltaskTopology topology = new HazeltaskTopology(hazeltaskConfig, topologyService, null);
         IExecutorTopologyService svc = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
         
@@ -83,8 +83,8 @@ public class HazeltaskExecutorBuilder {
     
     //TODO: combine with batching setup code?
     private void setup(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, ITopologyService topologySvc, IExecutorTopologyService execTopSvc, LocalTaskExecutorService localExeutorService) {
-        final StaleWorkFlushTimerTask bundleTask = new StaleWorkFlushTimerTask(topology, svc, execTopSvc);
-        final WorkRebalanceTimerTask rebalanceTask = new WorkRebalanceTimerTask(topology, localExeutorService, execTopSvc);
+        final StaleTaskFlushTimerTask bundleTask = new StaleTaskFlushTimerTask(topology, svc, execTopSvc);
+        final TaskRebalanceTimerTask rebalanceTask = new TaskRebalanceTimerTask(topology, localExeutorService, execTopSvc);
         final IsMemberReadyTimerTask getReadyMembersTask = new IsMemberReadyTimerTask(topologySvc, topology);
         
         hazeltaskConfig.getHazelcast().getCluster().addMembershipListener(getReadyMembersTask);

@@ -18,8 +18,8 @@ import com.yammer.metrics.core.TimerContext;
  *
  * @param <T>
  */
-public class DeferredBundleTask<T> extends BackoffTask {
-    private final TaskBatchingService<T> deferredWorkBundler;
+public class DeferredBatchTimerTask<T> extends BackoffTask {
+    private final TaskBatchingService<T> deferredTaskBundler;
     private final BundlerConfig<T> batchConfig;
     
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
@@ -28,8 +28,8 @@ public class DeferredBundleTask<T> extends BackoffTask {
     private Timer bundlerTimer;
    
     
-    public DeferredBundleTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredWorkBundler) {
-        this.deferredWorkBundler = deferredWorkBundler;
+    public DeferredBatchTimerTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredTaskBundler) {
+        this.deferredTaskBundler = deferredTaskBundler;
        // this.metricNamer = metricNamer;
         this.batchConfig = batchingConfig;
  
@@ -73,17 +73,17 @@ public class DeferredBundleTask<T> extends BackoffTask {
         	tCtx = bundlerTimer.time();
     	
         try {
-	    	Map<String, Integer> sizes = deferredWorkBundler.getNonZeroLocalGroupSizes();
+	    	Map<String, Integer> sizes = deferredTaskBundler.getNonZeroLocalGroupSizes();
 	        int flushSize = batchConfig.getFlushSize();
 	        for(Entry<String, Integer> entry : sizes.entrySet()) {
 	            if(entry.getValue() >= flushSize) {
 	                String group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
-	                int numFlushed = deferredWorkBundler.flush(group);
+	                int numFlushed = deferredTaskBundler.flush(group);
 	                //TODO: historgram this
 	                flushed = true;
 	            } else if (shouldTTLFlush(entry.getKey())) {
-	                int numFlushed = deferredWorkBundler.flush(entry.getKey());
+	                int numFlushed = deferredTaskBundler.flush(entry.getKey());
 	                //TODO: historgram this
 	                flushed = true;
 	            }

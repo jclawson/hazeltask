@@ -4,10 +4,10 @@ import java.io.Serializable;
 
 import com.hazelcast.core.Member;
 
-public class WorkResponse implements Serializable {
+public class TaskResponse implements Serializable {
     private static final long serialVersionUID = 1L;
     private final Member from;
-    private final String workId;
+    private final String taskId;
     private final Serializable response;
     private final Throwable error;
     private final Status status;
@@ -18,17 +18,17 @@ public class WorkResponse implements Serializable {
         CANCELLED
     }
     
-    public WorkResponse(Member from, String workId, Serializable response, Status status) {
+    public TaskResponse(Member from, String taskId, Serializable response, Status status) {
         this.from = from;
-        this.workId = workId;
+        this.taskId = taskId;
         this.response = response;
         this.error = null;
         this.status = status;
     }
     
-    public WorkResponse(Member from, String workId, Throwable error) {
+    public TaskResponse(Member from, String taskId, Throwable error) {
         this.from = from;
-        this.workId = workId;        
+        this.taskId = taskId;        
         this.error = error;
         this.response = null;
         this.status = Status.FAILURE;
@@ -38,8 +38,8 @@ public class WorkResponse implements Serializable {
         return from;
     }
 
-    public String getWorkId() {
-        return workId;
+    public String getTaskId() {
+        return taskId;
     }
 
     public Serializable getResponse() {

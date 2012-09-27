@@ -7,9 +7,9 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkResponse;
-import com.hazeltask.executor.task.WorkResponse.Status;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskResponse;
+import com.hazeltask.executor.task.TaskResponse.Status;
 
 /**
  * TODO: move the listener binding to DistributedExecutorService so that 
@@ -57,7 +57,7 @@ import com.hazeltask.executor.task.WorkResponse.Status;
  * MessageListener<WorkResponse>
  *
  */
-public class DistributedFutureTracker implements MessageListener<WorkResponse> {
+public class DistributedFutureTracker implements MessageListener<TaskResponse> {
     //private DistributedExecutorService service;
     //private final ITopologyService topologyService;
     
@@ -77,7 +77,7 @@ public class DistributedFutureTracker implements MessageListener<WorkResponse> {
 //        this.futures.put(id, future);
 //    }
     
-    public <T> DistributedFuture<T> createFuture(HazelcastWork task) {
+    public <T> DistributedFuture<T> createFuture(HazeltaskTask task) {
         DistributedFuture<T> future = new DistributedFuture<T>();
         this.futures.put(task.getUniqueIdentifier(), future);
         return future;
@@ -88,12 +88,12 @@ public class DistributedFutureTracker implements MessageListener<WorkResponse> {
     }
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
-	public void onMessage(Message<WorkResponse> message) {
-        WorkResponse response = message.getMessageObject();
-        String workId = response.getWorkId();
-        Collection<DistributedFuture<?>> workFutures = futures.removeAll(workId);
-        if(workFutures.size() > 0) {
-            for(DistributedFuture future : workFutures) {
+	public void onMessage(Message<TaskResponse> message) {
+        TaskResponse response = message.getMessageObject();
+        String taskId = response.getTaskId();
+        Collection<DistributedFuture<?>> taskFutures = futures.removeAll(taskId);
+        if(taskFutures.size() > 0) {
+            for(DistributedFuture future : taskFutures) {
                 if(response.getStatus() == Status.FAILURE) {
                     future.set(response.getError());
                 } else if(response.getStatus() == Status.SUCCESS) {

@@ -7,14 +7,14 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.task.HazelcastWork;
-import com.hazeltask.executor.task.WorkId;
+import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazeltask.executor.task.TaskId;
 
 public class HazelcastWorkTest {
     @Test
     public void testRunnable() {
         final AtomicInteger value = new AtomicInteger(0);
-        HazelcastWork work = new HazelcastWork("test", new WorkId("test"), new Runnable(){
+        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Runnable(){
             public void run() {
                 value.set(1);
             }
@@ -25,7 +25,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallable() {
-        HazelcastWork work = new HazelcastWork("test", new WorkId("test"), new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Callable<Integer>(){
             public Integer call() throws Exception {
                 return 1;
             }
@@ -40,7 +40,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallableError() {
-        HazelcastWork work = new HazelcastWork("test", new WorkId("test"), new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Callable<Integer>(){
             public Integer call() throws Exception {
                 throw new RuntimeException("Hello");
             }

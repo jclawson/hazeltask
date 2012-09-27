@@ -1,7 +1,7 @@
 package com.hazeltask.batch;
 
-import com.hazeltask.executor.task.WorkId;
-import com.hazeltask.executor.task.WorkIdAdapter;
+import com.hazeltask.executor.task.TaskId;
+import com.hazeltask.executor.task.TaskIdAdapter;
 
 /**
  * This class identifies the group and item belongs to and its unique id.  Items 
@@ -16,12 +16,12 @@ import com.hazeltask.executor.task.WorkIdAdapter;
  *
  * @param <I>
  */
-public abstract class BatchKeyAdapter<I> implements WorkIdAdapter<I> {
+public abstract class BatchKeyAdapter<I> implements TaskIdAdapter<I> {
     public abstract String getItemGroup(I o);
     public abstract String getItemId(I o);
     
-    public WorkId createWorkId(I groupable) {
-        return new WorkId(getItemId(groupable), getItemGroup(groupable));
+    public TaskId createTaskId(I groupable) {
+        return new TaskId(getItemId(groupable), getItemGroup(groupable));
     }
     
     /**

@@ -17,21 +17,21 @@ import com.hazeltask.core.concurrent.collections.grouped.Groupable;
  * @author jclawson
  *
  */
-public class HazelcastWork implements Groupable, Runnable, Work {
+public class HazeltaskTask implements Groupable, Runnable, Task {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable runTask;
 	private Callable<?> callTask;
 	
 	private long createdAtMillis;
-	private WorkId key;
+	private TaskId key;
 	private String topology;
 	private int submissionCount;
 	
 	private volatile transient Object result;
     private volatile transient Exception e;
 	
-	public HazelcastWork(String topology, WorkId key, Runnable task){
+	public HazeltaskTask(String topology, TaskId key, Runnable task){
 		this.runTask = task;
 		this.key = key;
 		this.topology = topology;
@@ -39,7 +39,7 @@ public class HazelcastWork implements Groupable, Runnable, Work {
 		this.submissionCount = 1;
 	}
 	
-	public HazelcastWork(String topology, WorkId key, Callable<?> task){
+	public HazeltaskTask(String topology, TaskId key, Callable<?> task){
         this.callTask = task;
         this.key = key;
         this.topology = topology;
@@ -107,7 +107,7 @@ public class HazelcastWork implements Groupable, Runnable, Work {
         return this.callTask;
     }
 
-	public WorkId getWorkId() {
+	public TaskId getTaskId() {
 		return key;
 	}
 

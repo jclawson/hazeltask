@@ -14,6 +14,6 @@ import java.util.Collection;
  *
  * @param <I>
  */
-public interface Bundler<I> {
-    public WorkBundle<I> bundle(String group, Collection<I> items);
+public interface IBatchFactory<I> {
+    public TaskBatch<I> createBatch(String group, Collection<I> items);
 }

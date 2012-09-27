@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
-import com.hazeltask.clustertasks.AbstractCallable;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.clustertasks.AbstractClusterTask;
+import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ShutdownTask extends AbstractCallable<Collection<HazelcastWork>> {
+public class ShutdownTask extends AbstractClusterTask<Collection<HazeltaskTask>> {
     private static final long serialVersionUID = 1L;
 
     private boolean isShutdownNow;
@@ -23,7 +23,7 @@ public class ShutdownTask extends AbstractCallable<Collection<HazelcastWork>> {
         this.isShutdownNow = isShutdownNow;
     }
 
-    public Collection<HazelcastWork> call() throws Exception {
+    public Collection<HazeltaskTask> call() throws Exception {
         try {
             if(isShutdownNow)
                 return this.getDistributedExecutorService().doShutdownNow();

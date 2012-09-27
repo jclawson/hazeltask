@@ -1,7 +1,7 @@
 package com.hazeltask.config;
 
 import com.hazeltask.batch.BatchKeyAdapter;
-import com.hazeltask.batch.Bundler;
+import com.hazeltask.batch.IBatchFactory;
 import com.hazeltask.batch.DefaultBatchKeyAdapter;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 
@@ -14,12 +14,12 @@ public class BundlerConfig<I> {
     private boolean              preventDuplicates             = false;
     private long                 duplicatePreventionExpireTime = 3600000;      // 20 minutes
     protected BatchKeyAdapter<I> batchKeyAdapter               = new DefaultBatchKeyAdapter<I>();
-    private final Bundler<I>     bundler;
+    private final IBatchFactory<I>     bundler;
 //    private BloomFilterConfig    preventDuplicatesBloomFilter  = null;
     
     private ExecutorConfig executorConfig = new ExecutorConfig();
 
-    public BundlerConfig(Bundler<I> bundler) {
+    public BundlerConfig(IBatchFactory<I> bundler) {
         this.bundler = bundler;
         /* We don't use futures with the bundling service 
          */
@@ -82,18 +82,18 @@ public class BundlerConfig<I> {
 
     public BundlerConfig<I> withBatchKeyAdapter(BatchKeyAdapter<I> batchKeyAdapter) {
         this.batchKeyAdapter = batchKeyAdapter;
-        this.executorConfig.withWorkIdAdapter(batchKeyAdapter);
+        this.executorConfig.withTaskIdAdapter(batchKeyAdapter);
         return this;
     }
     
     //ExecutorConfig fluent methods
-    public BundlerConfig<I> withAcknowlegeWorkSubmission(boolean acknowlegeWorkSubmission) {
-        this.executorConfig.withAcknowlegeWorkSubmission(acknowlegeWorkSubmission);
+    public BundlerConfig<I> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
+        this.executorConfig.withAcknowlegeTaskSubmission(acknowlegeTaskSubmission);
         return this;
     }
     
-    public BundlerConfig<I> acknowlegeWorkSubmission() {
-        this.executorConfig.acknowlegeWorkSubmission();
+    public BundlerConfig<I> acknowlegeTaskSubmission() {
+        this.executorConfig.acknowlegeTaskSubmission();
         return this;
     }
     
@@ -171,7 +171,7 @@ public class BundlerConfig<I> {
         return batchKeyAdapter;
     }
 
-    public Bundler<I> getBundler() {
+    public IBatchFactory<I> getBundler() {
         return bundler;
     }
     

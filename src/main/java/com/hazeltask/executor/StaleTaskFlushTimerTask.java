@@ -7,14 +7,14 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
-public class StaleWorkFlushTimerTask extends BackoffTask {
-	private static ILogger LOGGER = Logger.getLogger(StaleWorkFlushTimerTask.class.getName());
+public class StaleTaskFlushTimerTask extends BackoffTask {
+	private static ILogger LOGGER = Logger.getLogger(StaleTaskFlushTimerTask.class.getName());
 	
     private final com.hazeltask.executor.DistributedExecutorService svc;
     private final IExecutorTopologyService executorTopologyService;
@@ -25,9 +25,9 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleWorkFlushTimerTask(HazeltaskTopology topology, com.hazeltask.executor.DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
+    public StaleTaskFlushTimerTask(HazeltaskTopology topology, com.hazeltask.executor.DistributedExecutorService svc, IExecutorTopologyService executorTopologyService) {
         this.svc = svc;
-        this.flushTimer = topology.getExecutorMetrics().getStaleWorkFlushTimer().getMetric();
+        this.flushTimer = topology.getExecutorMetrics().getStaleTaskFlushTimer().getMetric();
         this.numFlushedHistogram = topology.getExecutorMetrics().getStaleFlushCountHistogram().getMetric();
         this.executorTopologyService = executorTopologyService;
     }
@@ -70,15 +70,15 @@ public class StaleWorkFlushTimerTask extends BackoffTask {
 //	        Set<String> keys = (Set<String>) map.localKeySet(pred);
 //	        Collection<HazelcastWork> works = map.getAll(keys).values();
 	        
-	        Collection<HazelcastWork> works = executorTopologyService.getLocalPendingTasks(sql);
+	        Collection<HazeltaskTask> works = executorTopologyService.getLocalPendingTasks(sql);
 	        
 	        if(works.size() > 0) {
 	            flushed = true;
 	            LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
 	        }
 	        
-	        for(HazelcastWork work : works) {
-	            svc.submitHazelcastWork(work, true);
+	        for(HazeltaskTask work : works) {
+	            svc.submitHazeltaskTask(work, true);
 	        }
 	        
 	        if(works.size() > 0)

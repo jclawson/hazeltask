@@ -15,11 +15,11 @@ import com.hazeltask.clustertasks.IsMemberReadyTask;
 import com.hazeltask.clustertasks.NoOpTask;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.ShutdownTask;
-import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 
-public class HazelcastTopologyService implements ITopologyService {
+public class HazeltaskTopologyService implements ITopologyService {
 private String topologyName;
     
     private final ExecutorService communicationExecutorService;
@@ -28,7 +28,7 @@ private String topologyName;
     //TOOD: pass in the communication service?
     //or make the svc accessible to the ExecutorTopologyService? so we don't have to manage
     //the name in 2 places
-    public HazelcastTopologyService(HazeltaskConfig hazeltaskConfig) {
+    public HazeltaskTopologyService(HazeltaskConfig hazeltaskConfig) {
         topologyName = hazeltaskConfig.getTopologyName();
         hazelcast = hazeltaskConfig.getHazelcast();
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
@@ -69,13 +69,13 @@ private String topologyName;
         );
     }
     
-    public List<HazelcastWork> shutdownNow() {
-        Collection<MemberResponse<Collection<HazelcastWork>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
+    public List<HazeltaskTask> shutdownNow() {
+        Collection<MemberResponse<Collection<HazeltaskTask>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
             hazelcast.getCluster().getMembers(), 
             new ShutdownTask(topologyName, true)
         );
-        List<HazelcastWork> tasks = new ArrayList<HazelcastWork>();
-        for(MemberResponse<Collection<HazelcastWork>> response : responses) {
+        List<HazeltaskTask> tasks = new ArrayList<HazeltaskTask>();
+        for(MemberResponse<Collection<HazeltaskTask>> response : responses) {
             tasks.addAll(response.getValue());
         }
         return tasks;
