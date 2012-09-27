@@ -59,6 +59,10 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
         return didAdd;
     }
     
+    public BatchingContext<I> createBatch() {
+        return new BatchingContext<I>(svc, batchingConfig);
+    }
+    
     public DistributedExecutorService getDistributedExecutorService() {
         return svc;
     }

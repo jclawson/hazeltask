@@ -6,17 +6,16 @@ import java.util.Set;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.hazeltask.config.BundlerConfig;
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 
-public class BatchContext<I extends Groupable> {
+public class BatchingContext<I> {
     private final IBatchFactory<I>             bundler;
     private final BatchKeyAdapter<I>     batchKeyAdapter;
     private final SetMultimap<String, I> multimap;
     private final BundlerConfig<I> batchingConfig;
     private final DistributedExecutorService svc;
 
-    protected BatchContext(DistributedExecutorService svc, BundlerConfig<I> batchingConfig) {
+    protected BatchingContext(DistributedExecutorService svc, BundlerConfig<I> batchingConfig) {
         this.batchingConfig = batchingConfig;
         this.bundler = batchingConfig.getBundler();
         this.batchKeyAdapter = batchingConfig.getBatchKeyAdapter();
