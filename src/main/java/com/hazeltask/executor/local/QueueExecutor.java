@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.local;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,6 +13,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.hazeltask.executor.ExecutorListener;
+import com.hazeltask.executor.task.HazelcastWork;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 

@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.metrics.Metric;
 import com.hazeltask.core.metrics.MetricNamer;
+import com.hazeltask.executor.task.WorkRebalanceTimerTask;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;

@@ -3,6 +3,8 @@ package com.hazeltask.executor;
 import java.util.Arrays;
 import java.util.Collection;
 
+import com.hazeltask.executor.task.HazelcastWork;
+
 
 
 public class DelegatingExecutorListener implements ExecutorListener {

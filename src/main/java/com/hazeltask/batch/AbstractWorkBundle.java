@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.hazeltask.executor.WorkId;
+import com.hazeltask.executor.task.WorkId;
 
 public abstract class AbstractWorkBundle<I> implements WorkBundle<I> {
 	private static final long serialVersionUID = 1L;

@@ -7,7 +7,9 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import com.hazeltask.executor.WorkResponse.Status;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkResponse;
+import com.hazeltask.executor.task.WorkResponse.Status;
 
 /**
  * TODO: move the listener binding to DistributedExecutorService so that 

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.hazelcast.core.Member;
-import com.hazeltask.executor.HazelcastWork;
+import com.hazeltask.executor.task.HazelcastWork;
 
 /**
  * Methods here that act on multiple members will query for ready members

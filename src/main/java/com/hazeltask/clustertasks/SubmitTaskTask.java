@@ -5,8 +5,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import com.hazelcast.nio.SerializationHelper;
-import com.hazeltask.executor.HazelcastWork;
-import com.hazeltask.executor.LocalTaskExecutorService;
+import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.task.HazelcastWork;
 
 public class SubmitTaskTask extends AbstractCallable<Boolean> {
     private static final long serialVersionUID = 1L;

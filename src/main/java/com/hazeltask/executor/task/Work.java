@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.task;
 
 import java.io.Serializable;
 

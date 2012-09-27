@@ -1,4 +1,5 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.task;
+
 
 
 public class DefaultWorkIdAdapter implements WorkIdAdapter<Object> {

@@ -11,6 +11,9 @@ import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkId;
+
 public class DelegatingExecutorListenerTest {
     
     private DelegatingExecutorListener listener;

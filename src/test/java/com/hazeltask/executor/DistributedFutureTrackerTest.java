@@ -11,6 +11,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazelcast.core.Message;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkId;
+import com.hazeltask.executor.task.WorkResponse;
 
 public class DistributedFutureTrackerTest {
     private WorkId workOneId;

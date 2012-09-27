@@ -10,7 +10,7 @@ import org.junit.Test;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
-import com.hazeltask.executor.HazelcastWork;
+import com.hazeltask.executor.task.HazelcastWork;
 
 public class HazelcastWorkGroupedQueueTest {
     

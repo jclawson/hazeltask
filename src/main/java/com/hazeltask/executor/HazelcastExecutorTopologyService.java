@@ -30,6 +30,8 @@ import com.hazeltask.clustertasks.GetLocalQueueSizesTask;
 import com.hazeltask.clustertasks.StealTasksTask;
 import com.hazeltask.clustertasks.SubmitTaskTask;
 import com.hazeltask.config.HazeltaskConfig;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkResponse;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;

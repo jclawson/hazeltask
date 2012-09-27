@@ -4,8 +4,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
-import com.hazeltask.executor.DefaultWorkIdAdapter;
-import com.hazeltask.executor.WorkIdAdapter;
+import com.hazeltask.executor.task.DefaultWorkIdAdapter;
+import com.hazeltask.executor.task.WorkIdAdapter;
 
 public class ExecutorConfig {
     protected boolean          acknowlegeWorkSubmission = false;

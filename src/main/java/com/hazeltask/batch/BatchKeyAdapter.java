@@ -1,7 +1,7 @@
 package com.hazeltask.batch;
 
-import com.hazeltask.executor.WorkId;
-import com.hazeltask.executor.WorkIdAdapter;
+import com.hazeltask.executor.task.WorkId;
+import com.hazeltask.executor.task.WorkIdAdapter;
 
 /**
  * This class identifies the group and item belongs to and its unique id.  Items 

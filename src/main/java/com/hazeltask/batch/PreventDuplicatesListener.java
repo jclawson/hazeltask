@@ -3,7 +3,7 @@ package com.hazeltask.batch;
 import java.util.Collection;
 
 import com.hazeltask.executor.ExecutorListener;
-import com.hazeltask.executor.HazelcastWork;
+import com.hazeltask.executor.task.HazelcastWork;
 
 @Deprecated
 //do not use this .... its slow and shouldn't be needed

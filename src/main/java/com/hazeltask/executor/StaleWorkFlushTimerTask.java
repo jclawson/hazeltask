@@ -7,6 +7,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.hazeltask.executor.task.HazelcastWork;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;

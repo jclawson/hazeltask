@@ -19,6 +19,9 @@ import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.ServiceListenable;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
+import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkIdAdapter;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.TimerContext;
 

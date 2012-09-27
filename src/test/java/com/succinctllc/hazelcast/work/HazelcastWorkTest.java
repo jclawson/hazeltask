@@ -7,8 +7,8 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.HazelcastWork;
-import com.hazeltask.executor.WorkId;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkId;
 
 public class HazelcastWorkTest {
     @Test

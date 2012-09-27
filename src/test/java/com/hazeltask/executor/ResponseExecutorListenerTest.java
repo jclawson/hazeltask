@@ -13,6 +13,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazelcast.logging.LoggingService;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkId;
 
 public class ResponseExecutorListenerTest {
     

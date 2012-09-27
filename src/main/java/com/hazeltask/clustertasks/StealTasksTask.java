@@ -5,8 +5,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collection;
 
-import com.hazeltask.executor.HazelcastWork;
-import com.hazeltask.executor.LocalTaskExecutorService;
+import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.task.HazelcastWork;
 
 public class StealTasksTask extends AbstractCallable<Collection<HazelcastWork>> {
     private static final long serialVersionUID = 1L;

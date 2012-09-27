@@ -8,6 +8,8 @@ import java.util.concurrent.locks.Lock;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
+import com.hazeltask.executor.task.HazelcastWork;
+import com.hazeltask.executor.task.WorkResponse;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 

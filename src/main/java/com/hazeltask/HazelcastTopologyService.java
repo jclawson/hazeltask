@@ -14,8 +14,8 @@ import com.hazelcast.core.Member;
 import com.hazeltask.clustertasks.IsMemberReadyTask;
 import com.hazeltask.clustertasks.NoOpTask;
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.executor.HazelcastWork;
 import com.hazeltask.executor.ShutdownTask;
+import com.hazeltask.executor.task.HazelcastWork;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 

@@ -10,7 +10,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.HazelcastWork;
+import com.hazeltask.executor.task.HazelcastWork;
 
 import data.FooItem;
 

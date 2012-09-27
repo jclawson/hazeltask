@@ -14,9 +14,9 @@ import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
-import com.hazeltask.executor.LocalTaskExecutorService;
 import com.hazeltask.executor.StaleWorkFlushTimerTask;
-import com.hazeltask.executor.WorkRebalanceTimerTask;
+import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.task.WorkRebalanceTimerTask;
 import com.yammer.metrics.Metrics;
 
 public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {

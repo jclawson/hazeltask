@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.task;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -10,6 +10,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.hazeltask.executor.ExecutorMetrics;
+import com.hazeltask.executor.IExecutorTopologyService;
+import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 import com.yammer.metrics.core.Histogram;

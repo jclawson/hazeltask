@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import com.hazeltask.clustertasks.AbstractCallable;
+import com.hazeltask.executor.task.HazelcastWork;
 
 public class ShutdownTask extends AbstractCallable<Collection<HazelcastWork>> {
     private static final long serialVersionUID = 1L;
