@@ -52,6 +52,7 @@ public class Hazeltask {
      * 
      * @param config
      */
+    @SuppressWarnings("deprecation")
     private static void validateHazeltaskConfig(HazeltaskConfig config) {
         if (config.getHazelcast() == null) {
             config.withHazelcastInstance(Hazelcast.getDefaultInstance());

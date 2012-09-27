@@ -302,10 +302,11 @@ public class QueueExecutor {
         private Thread thread;
         private volatile long completedTasks;
         private volatile boolean isTerminated;
-        
-        boolean isActive() {
-            return runLock.isLocked();
-        }
+
+//TODO: method it currently unused
+//        boolean isActive() {
+//            return runLock.isLocked();
+//        }
         
         public boolean isTerminated() {
             return isTerminated;

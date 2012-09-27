@@ -26,6 +26,7 @@ public class HazeltaskExecutorBuilder {
     private final HazeltaskConfig hazeltaskConfig;
     private ExecutorConfig executorConfig = new ExecutorConfig();
     
+    @SuppressWarnings("deprecation")
     public HazeltaskExecutorBuilder(HazeltaskConfig config) {
         this.hazeltaskConfig = config;
         if(config.getHazelcast() == null) {

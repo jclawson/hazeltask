@@ -4,7 +4,6 @@ import com.hazelcast.core.Hazelcast;
 import com.hazeltask.batch.DeferredBatchTimerTask;
 import com.hazeltask.batch.HazelcastBatchClusterService;
 import com.hazeltask.batch.IBatchClusterService;
-import com.hazeltask.batch.PreventDuplicatesListener;
 import com.hazeltask.batch.TaskBatchingService;
 import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.config.HazeltaskConfig;
@@ -23,6 +22,7 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
     private final HazeltaskConfig hazeltaskConfig;
     private final BundlerConfig<I> batchingConfig;
     
+    @SuppressWarnings("deprecation")
     public HazeltaskBatchingExecutorBuilder(HazeltaskConfig config, BundlerConfig<I> batchingConfig) {
         this.batchingConfig = batchingConfig;
         this.hazeltaskConfig = config;
@@ -59,9 +59,11 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         //and then the remove was never called
         //we should do the prevent duplicates listener last
         if(batchingConfig.isPreventDuplicates()) {
-            PreventDuplicatesListener<I> listener = new PreventDuplicatesListener<I>(batchClusterService, batchingConfig.getBatchKeyAdapter());
-            eSvc.addListener(listener);
-            svc.addListener(listener);
+            throw new RuntimeException("Not supporting preventDuplicates this right now because it causes a lot of contention");
+//            @SuppressWarnings("deprecation")
+//            PreventDuplicatesListener<I> listener = new PreventDuplicatesListener<I>(batchClusterService, batchingConfig.getBatchKeyAdapter());
+//            eSvc.addListener(listener);
+//            svc.addListener(listener);
         }
         
         Hazeltask.registerInstance(topology, svc);
