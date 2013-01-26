@@ -3,6 +3,7 @@ package com.hazeltask.core.concurrent;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Similar to java.util.Timer and TimerTask only this Timer does an exponential backoff on how often it
@@ -22,8 +23,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class BackoffTimer {
 
+    private static final int NOT_STARTED = 0;
+    private static final int STARTED = 1;
+    private static final int STOPPED = 2;
+    
     DelayQueue<DelayedTimerTask> queue = new DelayQueue<DelayedTimerTask>();
-    private boolean started = false;
+    private AtomicInteger state = new AtomicInteger(NOT_STARTED);
     private String name;
     private TimerThread timerThread;
     
@@ -31,9 +36,8 @@ public class BackoffTimer {
         this.name = name;
     }
     
-    public void start() {
-        if(!started) {
-            started = true;
+    private void start() {
+        if(state.compareAndSet(NOT_STARTED, STARTED)) {
             timerThread = new TimerThread(queue);
             timerThread.setDaemon(true);
             timerThread.setName(BackoffTimer.class.getSimpleName()+"-"+name);
@@ -41,17 +45,19 @@ public class BackoffTimer {
         }
     }
     
-    //FIXME: fix this concurrency race condition bug. need state lock
     public void stop() {
-        if(started) {
-            started = false;
+        if(state.compareAndSet(STARTED, STOPPED)) {
             timerThread.shutdown();
             timerThread = null;
         }
     }
     
     public void schedule(BackoffTask task, long minDelay, long maxDelay, double backoffMultiplier) {
-        queue.put(new DelayedTimerTask(task, minDelay, maxDelay, backoffMultiplier));
+        start();
+        if(state.get() == STARTED)
+            queue.put(new DelayedTimerTask(task, minDelay, maxDelay, backoffMultiplier));
+        else
+            throw new IllegalStateException("The timer thread has been stopped");
     }
     
     /**
@@ -62,7 +68,11 @@ public class BackoffTimer {
      * @param fixedDelay
      */
     public void schedule(BackoffTask task, long initialDelay, long fixedDelay) {
-        queue.put(new DelayedTimerTask(task, initialDelay, fixedDelay));
+        start();
+        if(state.get() == STARTED)
+            queue.put(new DelayedTimerTask(task, initialDelay, fixedDelay));
+        else
+            throw new IllegalStateException("The timer thread has been stopped");
     }
     
     public boolean unschedule(BackoffTask task) {

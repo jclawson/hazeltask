@@ -67,7 +67,7 @@ public class HazeltaskBatchingExecutorBuilder<I extends Groupable> {
         }
         
         Hazeltask.registerInstance(topology, svc);
-        hazeltaskTimer.start();
+        //hazeltaskTimer.start();
         
         //if autoStart... we need to start
         if(batchingConfig.getExecutorConfig().isAutoStart()) {

@@ -73,7 +73,7 @@ public class HazeltaskExecutorBuilder {
         setup(topology, hazeltaskTimer, eSvc, topologyService, svc, localExeutorService);
         
         Hazeltask.registerInstance(topology, eSvc);
-        hazeltaskTimer.start();
+        //hazeltaskTimer.start();
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
