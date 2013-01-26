@@ -4,6 +4,11 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+/**
+ * This cluster operation helps members determine the other members that are ready
+ * to receive tasks
+ * @author jclawson
+ */
 public class IsMemberReadyOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 2L;
 

@@ -7,12 +7,14 @@ import java.io.IOException;
 import com.hazelcast.nio.SerializationHelper;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.HazeltaskTask;
-
+/**
+ * Used for sending a HazeltaskTask to a member
+ * @author jclawson
+ *
+ */
 public class SubmitTaskOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 1L;
     private HazeltaskTask task;
-    
-    protected SubmitTaskOp(){super(null);}
     
     public SubmitTaskOp(HazeltaskTask task, String topology) {
         super(topology);

@@ -8,6 +8,11 @@ import java.util.Collection;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.HazeltaskTask;
 
+/**
+ * This cluster operation allows a member to take tasks from another member
+ * @author jclawson
+ *
+ */
 public class StealTasksOp extends AbstractClusterOp<Collection<HazeltaskTask>> {
     private static final long serialVersionUID = 1L;
     

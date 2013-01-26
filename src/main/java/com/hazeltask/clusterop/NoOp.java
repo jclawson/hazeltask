@@ -7,6 +7,11 @@ import java.util.concurrent.Callable;
 
 import com.hazelcast.nio.DataSerializable;
 
+/**
+ * This cluster task does nothing
+ * @author jclawson
+ *
+ */
 public class NoOp implements Callable<Object>, DataSerializable {
     private static final long serialVersionUID = 1L;
 

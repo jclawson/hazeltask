@@ -6,6 +6,11 @@ import java.io.IOException;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
+/**
+ * Get the size of a partitioned queue
+ * @author jclawson
+ *
+ */
 public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
     private static final long serialVersionUID = 1L;
 

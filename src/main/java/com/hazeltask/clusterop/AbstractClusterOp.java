@@ -10,6 +10,12 @@ import com.hazeltask.Hazeltask;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.executor.DistributedExecutorService;
 
+/**
+ * Provides some utility methods for retrieving the executor service and holding the topology.
+ * Basically, common necessities for the subclasses.
+ * @author jclawson
+ * @param <T> return type
+ */
 public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializable {
     private static final long serialVersionUID = 1L;
     private String topologyName;
