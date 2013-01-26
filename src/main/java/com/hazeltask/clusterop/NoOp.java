@@ -1,4 +1,4 @@
-package com.hazeltask.clustertasks;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -7,7 +7,7 @@ import java.util.concurrent.Callable;
 
 import com.hazelcast.nio.DataSerializable;
 
-public class NoOpTask implements Callable<Object>, DataSerializable {
+public class NoOp implements Callable<Object>, DataSerializable {
     private static final long serialVersionUID = 1L;
 
     public Object call() throws Exception {

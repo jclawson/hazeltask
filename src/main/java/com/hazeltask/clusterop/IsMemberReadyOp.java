@@ -1,13 +1,13 @@
-package com.hazeltask.clustertasks;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class IsMemberReadyTask extends AbstractClusterTask<Boolean> {
+public class IsMemberReadyOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 2L;
 
-    public IsMemberReadyTask(String topology) {
+    public IsMemberReadyOp(String topology) {
         super(topology);
     }
 

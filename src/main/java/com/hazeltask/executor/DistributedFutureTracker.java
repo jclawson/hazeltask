@@ -12,15 +12,12 @@ import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.executor.task.TaskResponse.Status;
 
 /**
- * TODO: move the listener binding to DistributedExecutorService so that 
- * this class will be more easily testable.  Or we can pass in an ITopic
- * that does NoOp
  * 
- * TODO: instead of taking String id, take a HazelcastWork
  * 
- * TODO: instead of add(id, future) make it createFuture(hazelcastWork)
+ * there is a race condition in how we do future tracking... if we want to support duplicate
+ * futures for one work item.  (submit the same work 2x but only do it once and pass the result to both futures)
+ * --- this is currently not supported... we just fail the second submitting future
  * 
- * FIXME: there is a nasty race condition in how we do future tracking...
  *   1) HOW WE CREATE THE FUTURE TRACK
  *      a) add future to 
  *      b) submit work for execution

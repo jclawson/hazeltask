@@ -1,4 +1,4 @@
-package com.hazeltask.clustertasks;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -10,13 +10,11 @@ import com.hazeltask.Hazeltask;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.executor.DistributedExecutorService;
 
-public abstract class AbstractClusterTask<T> implements Callable<T>, DataSerializable {
+public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializable {
     private static final long serialVersionUID = 1L;
     private String topologyName;
-    //private transient DistributedExecutorService svc;
-    //private transient HazeltaskTopology topology;
     
-    public AbstractClusterTask(String topology) {
+    public AbstractClusterOp(String topology) {
         this.topologyName = topology;
     }
 
@@ -25,7 +23,6 @@ public abstract class AbstractClusterTask<T> implements Callable<T>, DataSeriali
     }
 
     public void writeData(DataOutput out) throws IOException {
-        //SerializationHelper.writeObject(out, obj)
         out.writeUTF(topologyName);
         writChildData(out);
     }

@@ -1,36 +1,39 @@
-package com.hazeltask.clustertasks;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Collection;
 
+import com.hazelcast.nio.SerializationHelper;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class StealTasksTask extends AbstractClusterTask<Collection<HazeltaskTask>> {
+public class SubmitTaskOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 1L;
+    private HazeltaskTask task;
     
-    private long numberOfTasks;
+    protected SubmitTaskOp(){super(null);}
     
-    public StealTasksTask(String topology, long numberOfTasks) {
+    public SubmitTaskOp(HazeltaskTask task, String topology) {
         super(topology);
-        this.numberOfTasks = numberOfTasks;
+        this.task = task;
     }
-
-    public Collection<HazeltaskTask> call() throws Exception {
+    
+    public Boolean call() throws Exception {
         LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         
-        return localSvc.stealTasks(numberOfTasks);
+        localSvc.execute(task);
+        //TODO: should this ever return false?
+        return true;
     }
 
     @Override
     protected void readChildData(DataInput in) throws IOException {
-        this.numberOfTasks = in.readLong();
+        task = (HazeltaskTask) SerializationHelper.readObject(in);
     }
 
     @Override
     protected void writChildData(DataOutput out) throws IOException {
-        out.writeLong(numberOfTasks);
-    }    
+        SerializationHelper.writeObject(out, task);
+    }
 }

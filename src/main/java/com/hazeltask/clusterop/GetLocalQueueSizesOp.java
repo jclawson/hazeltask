@@ -1,4 +1,4 @@
-package com.hazeltask.clustertasks;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -6,10 +6,10 @@ import java.io.IOException;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
-public class GetLocalQueueSizesTask extends AbstractClusterTask<Long> {
+public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
     private static final long serialVersionUID = 1L;
 
-    public GetLocalQueueSizesTask(String topology) {
+    public GetLocalQueueSizesOp(String topology) {
         super(topology);
     }
 

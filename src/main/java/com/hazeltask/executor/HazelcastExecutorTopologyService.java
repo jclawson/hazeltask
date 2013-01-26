@@ -26,9 +26,9 @@ import com.hazelcast.core.MessageListener;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
-import com.hazeltask.clustertasks.GetLocalQueueSizesTask;
-import com.hazeltask.clustertasks.StealTasksTask;
-import com.hazeltask.clustertasks.SubmitTaskTask;
+import com.hazeltask.clusterop.GetLocalQueueSizesOp;
+import com.hazeltask.clusterop.StealTasksOp;
+import com.hazeltask.clusterop.SubmitTaskOp;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
@@ -99,7 +99,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     
     public boolean sendTask(HazeltaskTask task, Member member, boolean waitForAck) throws TimeoutException {
         @SuppressWarnings("unchecked")
-        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskTask(task, topologyName), member));
+        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskOp(task, topologyName), member));
         if(!waitForAck) {
             try {
                 return future.get(5, TimeUnit.SECONDS);
@@ -176,7 +176,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return MemberTasks.executeOptimistic(
                 communicationExecutorService, 
                 topology.getReadyMembers(),
-                new GetLocalQueueSizesTask(topology.getName())
+                new GetLocalQueueSizesOp(topology.getName())
         );
     }
 
@@ -198,7 +198,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         Collection<Future<Collection<HazeltaskTask>>> futures = new ArrayList<Future<Collection<HazeltaskTask>>>(numToTake.size());
         for(MemberValuePair<Long> entry : numToTake) {
             futures.add((Future<Collection<HazeltaskTask>>)
-                    communicationExecutorService.submit(MemberTasks.create(new StealTasksTask(topology.getName(), entry.getValue()), entry.getMember())));
+                    communicationExecutorService.submit(MemberTasks.create(new StealTasksOp(topology.getName(), entry.getValue()), entry.getMember())));
         }
         
         for(Future<Collection<HazeltaskTask>> f : futures) {

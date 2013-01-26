@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
-import com.hazeltask.clustertasks.AbstractClusterTask;
+import com.hazeltask.clusterop.AbstractClusterOp;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ShutdownTask extends AbstractClusterTask<Collection<HazeltaskTask>> {
+public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask>> {
     private static final long serialVersionUID = 1L;
 
     private boolean isShutdownNow;

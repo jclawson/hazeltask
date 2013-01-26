@@ -11,8 +11,8 @@ import java.util.concurrent.TimeUnit;
 import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
-import com.hazeltask.clustertasks.IsMemberReadyTask;
-import com.hazeltask.clustertasks.NoOpTask;
+import com.hazeltask.clusterop.IsMemberReadyOp;
+import com.hazeltask.clusterop.NoOp;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.ShutdownTask;
 import com.hazeltask.executor.task.HazeltaskTask;
@@ -42,7 +42,7 @@ private String topologyName;
     public long pingMember(Member member) {
         try {
             long start = System.currentTimeMillis();
-            DistributedTask<Object> ping = new DistributedTask<Object>(new NoOpTask(), member);
+            DistributedTask<Object> ping = new DistributedTask<Object>(new NoOp(), member);
             communicationExecutorService.submit(ping).get(4, TimeUnit.SECONDS);
             return System.currentTimeMillis() - start;
         } catch (Exception e) {
@@ -53,7 +53,7 @@ private String topologyName;
     public Set<Member> getReadyMembers() {
         Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
                 communicationExecutorService, hazelcast.getCluster().getMembers(),
-                new IsMemberReadyTask(topologyName));
+                new IsMemberReadyOp(topologyName));
         Set<Member> result = new HashSet<Member>(responses.size());
         for(MemberResponse<Boolean> response : responses) {
             if(response.getValue())
