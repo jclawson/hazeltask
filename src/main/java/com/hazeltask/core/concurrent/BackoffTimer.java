@@ -1,63 +1,91 @@
 package com.hazeltask.core.concurrent;
 
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Similar to java.util.Timer and TimerTask only this Timer does an exponential backoff on how often it
  * runs a task.  This allows you to create polling tasks that if they have nothing to do, don't run as often
- * until they do!
+ * until they do!  This will help tasks autobalance themselves!
  * 
- * this thread will shutdown if there are no tasks in its queue for 5 minutes
+ * This thread will shutdown if there are no tasks in its queue for 5 minutes.  So, if you schedule something, then unschedule it
+ * it will shutdown.  You may schedule it again and a new thread will be spawned for it as long as stop() hasn't been called
  * 
- * NOTE: the functionality of adding tasks after the timer is started is currently undefined
- * 
- * TODO: add checks to prevent you from adding tasks after the timer is shutdown
- * 
- * TODO: start automatically when a task is submitted instead of calling start()
  * 
  * @author jclawson
  *
  */
 public class BackoffTimer {
-
-    private static final int NOT_STARTED = 0;
-    private static final int STARTED = 1;
-    private static final int STOPPED = 2;
     
     DelayQueue<DelayedTimerTask> queue = new DelayQueue<DelayedTimerTask>();
-    private AtomicInteger state = new AtomicInteger(NOT_STARTED);
     private String name;
-    private TimerThread timerThread;
+    private TimerRunnable timerRunnable;
+    private final ThreadFactory threadFactory;
+    private Thread workerThread;
+    private boolean isShutdown = false;
+    
+    /**
+     * This is kinda ghetto... I know I need to just write my own DelayQueue impl in this class in order to 
+     * handle the concurrency things I want to acheive here.
+     */
+    private CopyOnWriteArrayList<BackoffTask> toRemove = new CopyOnWriteArrayList<BackoffTimer.BackoffTask>();
     
     public BackoffTimer(String name) {
+        this(name, null);
+    }
+    
+    public BackoffTimer(String name, ThreadFactory threadFactory) {
         this.name = name;
+        this.threadFactory = threadFactory;
     }
     
     private void start() {
-        if(state.compareAndSet(NOT_STARTED, STARTED)) {
-            timerThread = new TimerThread(queue);
-            timerThread.setDaemon(true);
-            timerThread.setName(BackoffTimer.class.getSimpleName()+"-"+name);
-            timerThread.start();
-        }
+    	if(timerRunnable == null || !timerRunnable.newTasksMayBeScheduled) {
+	    	synchronized (queue) {
+	    		if(isShutdown) {
+	        		throw new IllegalStateException("BackoffTimer has been shutdown");
+	        	}
+	    		
+	        	if(timerRunnable == null || !timerRunnable.newTasksMayBeScheduled) {
+	            	timerRunnable = new TimerRunnable();
+	            	if(threadFactory != null) {        		
+	            		workerThread = threadFactory.newThread(timerRunnable);
+	            	} else {        	
+	    	        	//threadFactory.newThread(r)
+	    	        	//timerThread = new TimerThread(queue);
+	            		workerThread = new Thread(timerRunnable);
+	            		workerThread.setDaemon(false);
+	            		workerThread.setName(BackoffTimer.class.getSimpleName()+"-"+name);
+	            		workerThread.start();
+	            	}
+	            }
+			}    
+    	}
     }
-    
+        
     public void stop() {
-        if(state.compareAndSet(STARTED, STOPPED)) {
-            timerThread.shutdown();
-            timerThread = null;
-        }
+    	if(timerRunnable != null) { 
+	    	synchronized (queue) {
+	            if(timerRunnable != null) {
+	            	isShutdown = true;
+	            	queue.clear();
+		            workerThread.interrupt();
+		            timerRunnable = null;
+		            workerThread = null;
+		            queue.clear();
+	            }
+	        }
+    	}
     }
     
     public void schedule(BackoffTask task, long minDelay, long maxDelay, double backoffMultiplier) {
-        start();
-        if(state.get() == STARTED)
-            queue.put(new DelayedTimerTask(task, minDelay, maxDelay, backoffMultiplier));
-        else
-            throw new IllegalStateException("The timer thread has been stopped");
+    	synchronized (queue) {
+	    	start();
+	        queue.put(new DelayedTimerTask(task, minDelay, maxDelay, backoffMultiplier));
+    	}
     }
     
     /**
@@ -68,16 +96,27 @@ public class BackoffTimer {
      * @param fixedDelay
      */
     public void schedule(BackoffTask task, long initialDelay, long fixedDelay) {
-        start();
-        if(state.get() == STARTED)
-            queue.put(new DelayedTimerTask(task, initialDelay, fixedDelay));
-        else
-            throw new IllegalStateException("The timer thread has been stopped");
+    	synchronized (queue) {
+	    	start();
+	        queue.put(new DelayedTimerTask(task, initialDelay, fixedDelay));
+    	}
     }
     
     public boolean unschedule(BackoffTask task) {
-        //throw new RuntimeException("not implemented yet");
-        return queue.remove(task);
+    	synchronized(queue) {
+    		DelayedTimerTask wrappedTask = new DelayedTimerTask(task, 0, 0);    		
+    		if(!queue.remove(wrappedTask)) {
+    			//if it wasn't removed from the queue... this task may be currently running...
+    			DelayedTimerTask currentTask = timerRunnable.currentTask;
+    			if(currentTask != null && wrappedTask.equals(currentTask)) {
+    				currentTask.forceCancel = true;
+    				return true;
+    			}
+    		} else {
+    			return true;
+    		}
+    		return false;
+    	}
     }
     
     public static abstract class BackoffTask {
@@ -100,13 +139,14 @@ public class BackoffTimer {
     
     public static class DelayedTimerTask implements Delayed, Runnable {
 
-        private BackoffTask task;
+        private final BackoffTask task;
         private long minDelay;
         private final long maxDelay;
         private final double backoffMultiplier;
         
         private long nextExecution;
         private long currentDelay;
+        private boolean forceCancel = false;
         
         DelayedTimerTask(BackoffTask task, long minDelay, long maxDelay, double backoffMultiplier) {
             this.task = task;
@@ -157,50 +197,97 @@ public class BackoffTimer {
         }
         
         public boolean isCancelled() {
-            return task.isCancelled();
-        }
-        
-    }
-    
-    class TimerThread extends Thread {
-        private DelayQueue<DelayedTimerTask> queue;
-        private volatile boolean shutdown = false;
-        
-        TimerThread(DelayQueue<DelayedTimerTask> queue) {
-            this.queue = queue;
-        }
-        
-        public void shutdown() {
-            shutdown = true;
+            return task.isCancelled() || forceCancel;
         }
 
-        public void run() {
-            while (!shutdown) {
-                try {
-                    DelayedTimerTask task = queue.poll(5, TimeUnit.MINUTES);
-                    if(task != null) {
-                        boolean cancelled = task.isCancelled();
-                        if(!cancelled) {
-                            //if the task throws an exception, it will never be run again 
-                            task.run();
-                            //put that task back so we run it again later
-                            cancelled = task.isCancelled();
-                            if(!cancelled)
-                                queue.offer(task);
-                        }
-                    }
-                } catch(InterruptedException e) {
-                    //someone interrupted us... lets stop
-                    return;
-                }
-                
-                if(queue.isEmpty()) {
-                    //nothing left to do... shutdown
-                    return;
-                }
-            }
-        }
+        //delegate these methods to the internal task so that we may easily find and remove based on this
+        //internal task
+        
+		@Override
+		public int hashCode() {
+			return task.hashCode();
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			DelayedTimerTask other = (DelayedTimerTask) obj;
+			if (task == null) {
+				if (other.task != null)
+					return false;
+			} else if (!task.equals(other.task))
+				return false;
+			return true;
+		}
+
+		        
+       
+        
+		
+        
+        
+        
     }
     
+    class TimerRunnable implements Runnable {
+        
+    	private DelayedTimerTask currentTask;
+    	
+    	//only access this variable in the queue monitor
+    	private boolean newTasksMayBeScheduled = true;
+    	
+               
+        /**
+         * This loop will end if the queue is empty or the thread is interrupted
+         * @throws InterruptedException
+         */
+        public void run() {
+        	while (true) {
+        		try {
+        			currentTask = null;
+        			currentTask = queue.poll(5, TimeUnit.MINUTES);
+        			if(currentTask != null) {
+        				long expiredDelay = currentTask.getDelay(TimeUnit.MILLISECONDS);
+        				//expired delay should optimally be 0
+        				if(Math.abs(expiredDelay) >= currentTask.maxDelay / 2) {
+        					//TODO: warn that the timer thread can't keep up with task execution....
+        				}
+
+        				//if the task throws an exception, it will never be run again
+        				currentTask.run();
+
+        				//task could have been cancelled via unschedule or the task itself
+        				synchronized (queue) {
+        					//put that task back so we run it again later
+        					if(!currentTask.isCancelled())
+        						queue.offer(currentTask);
+        				}
+        			} else {
+        				//if the queue is empty, then end our thread loop
+        				synchronized(queue) {
+        					if(queue.isEmpty()) {
+        						newTasksMayBeScheduled = false;
+        						return;
+        					}
+        				}
+        			}
+        		} catch(InterruptedException e) {
+        			//we were interrupted... see if its time to stop this thread
+        			synchronized(queue) {
+    					if(queue.isEmpty()) {
+    						newTasksMayBeScheduled = false;
+    						return;
+    					}
+    				}
+        		}
+        	}
+        }
+    }
+
 
 }
