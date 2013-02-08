@@ -27,6 +27,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.clusterop.GetLocalQueueSizesOp;
+import com.hazeltask.clusterop.GetOldestTimestampOp;
 import com.hazeltask.clusterop.StealTasksOp;
 import com.hazeltask.clusterop.SubmitTaskOp;
 import com.hazeltask.config.HazeltaskConfig;
@@ -100,7 +101,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     public boolean sendTask(HazeltaskTask task, Member member, boolean waitForAck) throws TimeoutException {
         @SuppressWarnings("unchecked")
         Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskOp(task, topologyName), member));
-        if(!waitForAck) {
+        if(waitForAck) {
             try {
                 return future.get(5, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -223,6 +224,14 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 
     public int getLocalPendingTaskMapSize() {
         return pendingTask.localKeySet().size();
+    }
+
+    public Collection<MemberResponse<Long>> getOldestTaskTimestamps() {
+        return MemberTasks.executeOptimistic(
+             communicationExecutorService, 
+             topology.getReadyMembers(),
+             new GetOldestTimestampOp(topology.getName())
+        );
     }
 
 }

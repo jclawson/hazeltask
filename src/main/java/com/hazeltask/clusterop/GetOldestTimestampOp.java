@@ -6,25 +6,19 @@ import java.io.IOException;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
-/**
- * Get the size of a partitioned queue
- * @author jclawson
- *
- */
-public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
+public class GetOldestTimestampOp extends AbstractClusterOp<Long> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor
-    private GetLocalQueueSizesOp(){super(null);}
+    private GetOldestTimestampOp(){super(null);}
     
-    public GetLocalQueueSizesOp(String topology) {
+    public GetOldestTimestampOp(String topology) {
         super(topology);
     }
-
+    
     public Long call() throws Exception {
         LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
-        
-        return localSvc.getQueueSize();
+        return localSvc.getOldestTaskCreatedTime();
     }
 
     @Override
@@ -33,5 +27,6 @@ public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
 
     @Override
     protected void writChildData(DataOutput out) throws IOException {    
-    }       
+    }   
+
 }

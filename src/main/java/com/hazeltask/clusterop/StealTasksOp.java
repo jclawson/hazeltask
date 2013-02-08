@@ -18,6 +18,9 @@ public class StealTasksOp extends AbstractClusterOp<Collection<HazeltaskTask>> {
     
     private long numberOfTasks;
     
+    //hazelcast dataserializable requires a default constructor
+    private StealTasksOp(){super(null);}
+    
     public StealTasksOp(String topology, long numberOfTasks) {
         super(topology);
         this.numberOfTasks = numberOfTasks;

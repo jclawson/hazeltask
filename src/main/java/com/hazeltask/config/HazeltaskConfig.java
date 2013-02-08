@@ -1,18 +1,26 @@
 package com.hazeltask.config;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazeltask.Hazeltask;
 import com.hazeltask.core.metrics.MetricNamer;
-import com.hazeltask.core.metrics.ScopeFirstMetricNamer;
 import com.yammer.metrics.core.MetricsRegistry;
 
 public class HazeltaskConfig {
     private HazelcastInstance hazelcast = null; //we will pull the default hazelcast later
-    private String topologyName         = "DefaultTopology";
-    private MetricNamer metricNamer     = new ScopeFirstMetricNamer();
-    private MetricsRegistry   metricsRegistry;
+    private String topologyName         = Hazeltask.DEFAULT_TOPOLOGY;
+//    private MetricNamer metricNamer     = new ScopeFirstMetricNamer();
+//    private MetricsRegistry   metricsRegistry;
+    private ExecutorConfig executorConfig = new ExecutorConfig();
+    private MetricsConfig metricsConfig = new MetricsConfig();
+    private BundlerConfig<?> bundlerConfig;
     
     public HazeltaskConfig withTopologyName(String name) {
         this.topologyName = name;
+        return this;
+    }
+    
+    public HazeltaskConfig withExecutorConfig(ExecutorConfig executorConfig) {
+        this.executorConfig = executorConfig;
         return this;
     }
     
@@ -21,22 +29,36 @@ public class HazeltaskConfig {
         return this;
     }
     
-    public HazeltaskConfig withMetricNamer(MetricNamer metricNamer) {
-        this.metricNamer = metricNamer;
+    public HazeltaskConfig withMetricsConfig(MetricsConfig metricsConfig) {
+        this.metricsConfig = metricsConfig;
         return this;
     }
+    
+    public <I> HazeltaskConfig withBundlerConfig(BundlerConfig<I> bundlerConfig) {
+        this.bundlerConfig = bundlerConfig;
+        return this;
+    }
+    
+//    public HazeltaskConfig withMetricNamer(MetricNamer metricNamer) {
+//        this.metricNamer = metricNamer;
+//        return this;
+//    }
     
     public MetricNamer getMetricNamer() {
-        return this.metricNamer;
+        return this.metricsConfig.metricNamer;
     }
     
-    public HazeltaskConfig withMetricsRegistry(MetricsRegistry metricsRegistry) {
-        this.metricsRegistry = metricsRegistry;
-        return this;
+    public MetricsConfig getMetricsConfig() {
+        return this.metricsConfig;
     }
+    
+//    public HazeltaskConfig withMetricsRegistry(MetricsRegistry metricsRegistry) {
+//        this.metricsRegistry = metricsRegistry;
+//        return this;
+//    }
     
     public MetricsRegistry getMetricsRegistry() {
-        return this.metricsRegistry;
+        return this.metricsConfig.metricsRegistry;
     }
 
     public HazelcastInstance getHazelcast() {
@@ -45,5 +67,14 @@ public class HazeltaskConfig {
 
     public String getTopologyName() {
         return topologyName;
+    }
+    
+    public ExecutorConfig getExecutorConfig() {
+        return this.executorConfig;
+    }
+    
+    @SuppressWarnings("unchecked")
+    public <I> BundlerConfig<I> getBundlerConfig() {
+        return (BundlerConfig<I>) this.bundlerConfig;
     }
 }

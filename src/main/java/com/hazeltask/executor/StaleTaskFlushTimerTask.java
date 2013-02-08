@@ -48,7 +48,9 @@ public class StaleTaskFlushTimerTask extends BackoffTask {
 //	        Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(topology.getCommunicationExecutorService(),
 //	                topology.getReadyMembers(), new GetOldestTime(topology.getName()));
     	    
-    	    Collection<MemberResponse<Long>> results = executorTopologyService.getLocalQueueSizes();
+//    	    Collection<MemberResponse<Long>> results = executorTopologyService.getLocalQueueSizes();
+    	    
+    	    Collection<MemberResponse<Long>> results = executorTopologyService.getOldestTaskTimestamps();
 	
 	        long min = Long.MAX_VALUE;
 	        for(MemberResponse<Long> result : results) {
@@ -92,21 +94,4 @@ public class StaleTaskFlushTimerTask extends BackoffTask {
     	
     	return flushed;
     }
-    
-//    private static class GetOldestTime implements Callable<Long>, Serializable {
-//        private static final long serialVersionUID = 1L;
-//        private String topologyName;
-//        private GetOldestTime(String topologyName){
-//            this.topologyName = topologyName;
-//        }
-//        
-//        public Long call() throws Exception {
-//            LocalTaskExecutorService svc = HazelcastWorkManager
-//                    .getDistributedExecutorService(topologyName)
-//                    .getLocalExecutorService();           
-//            Long result = svc.getOldestWorkCreatedTime();
-//            return result;
-//        }
-//    }
-
 }

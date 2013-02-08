@@ -16,6 +16,9 @@ public class SubmitTaskOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 1L;
     private HazeltaskTask task;
     
+    //hazelcast dataserializable requires a default constructor
+    private SubmitTaskOp(){super(null);}
+    
     public SubmitTaskOp(HazeltaskTask task, String topology) {
         super(topology);
         this.task = task;

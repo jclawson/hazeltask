@@ -12,6 +12,9 @@ import java.io.IOException;
 public class IsMemberReadyOp extends AbstractClusterOp<Boolean> {
     private static final long serialVersionUID = 2L;
 
+    //hazelcast dataserializable requires a default constructor
+    private IsMemberReadyOp(){super(null);}
+    
     public IsMemberReadyOp(String topology) {
         super(topology);
     }

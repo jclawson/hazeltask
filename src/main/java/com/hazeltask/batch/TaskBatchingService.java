@@ -28,8 +28,8 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
     private final ILogger LOGGER;
     
     @SuppressWarnings("unchecked")
-    public TaskBatchingService(HazeltaskConfig hazeltaskConfig, BundlerConfig<I> batchingConfig, DistributedExecutorService eSvc, HazeltaskTopology topology) {
-        this.batchingConfig = batchingConfig;
+    public TaskBatchingService(HazeltaskConfig hazeltaskConfig, DistributedExecutorService eSvc, HazeltaskTopology topology) {
+        this.batchingConfig = hazeltaskConfig.getBundlerConfig();
         this.svc = eSvc;
         this.topology = topology;
         this.batchClusterService = topology.getBatchClusterService();

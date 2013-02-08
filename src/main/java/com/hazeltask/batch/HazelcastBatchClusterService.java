@@ -17,8 +17,9 @@ public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> 
     private final String topologyName;
     private final BatchKeyAdapter<I> keyer;
     
-    public HazelcastBatchClusterService(HazeltaskConfig htConfig, BundlerConfig<I> config) {
+    public HazelcastBatchClusterService(HazeltaskConfig htConfig) {
         this.topologyName = htConfig.getTopologyName();
+        BundlerConfig<I> config = htConfig.getBundlerConfig();
         this.keyer = config.getBatchKeyAdapter();
         
         if(config.isLocalBuffering()) {

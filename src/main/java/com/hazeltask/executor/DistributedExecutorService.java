@@ -275,7 +275,6 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
             listener.onBeginStart(this);
         
         localExecutorService.startup();
-        //FIXME: startup
         
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onEndStart(this);

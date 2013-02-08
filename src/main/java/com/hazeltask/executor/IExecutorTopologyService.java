@@ -53,6 +53,8 @@ public interface IExecutorTopologyService {
      */
     public int getLocalPendingTaskMapSize();
     
+    public Collection<MemberResponse<Long>> getOldestTaskTimestamps();
+    
     /**
      * 
      * @param task

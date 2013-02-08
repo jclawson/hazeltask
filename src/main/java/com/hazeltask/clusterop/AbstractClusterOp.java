@@ -7,6 +7,7 @@ import java.util.concurrent.Callable;
 
 import com.hazelcast.nio.DataSerializable;
 import com.hazeltask.Hazeltask;
+import com.hazeltask.HazeltaskInstance;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.executor.DistributedExecutorService;
 
@@ -34,7 +35,7 @@ public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializa
     }
     
     protected DistributedExecutorService getDistributedExecutorService() {
-        Hazeltask ht = Hazeltask.getHazeltaskInstanceByName(topologyName);
+        HazeltaskInstance<?> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
             return (DistributedExecutorService) ht.getExecutorService();
         }
@@ -42,9 +43,9 @@ public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializa
     }
     
     protected HazeltaskTopology getHazeltaskTopology() {
-        Hazeltask ht = Hazeltask.getHazeltaskInstanceByName(topologyName);
+        HazeltaskInstance<?> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
-            return ht.getHazelcastTopology();
+            return ht.getTopology();
         }
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
