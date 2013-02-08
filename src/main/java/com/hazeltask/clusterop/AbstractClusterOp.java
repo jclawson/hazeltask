@@ -35,7 +35,7 @@ public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializa
     }
     
     protected DistributedExecutorService getDistributedExecutorService() {
-        HazeltaskInstance<?> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+        HazeltaskInstance ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
             return (DistributedExecutorService) ht.getExecutorService();
         }
@@ -43,7 +43,7 @@ public abstract class AbstractClusterOp<T> implements Callable<T>, DataSerializa
     }
     
     protected HazeltaskTopology getHazeltaskTopology() {
-        HazeltaskInstance<?> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+        HazeltaskInstance ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
             return ht.getTopology();
         }

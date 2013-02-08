@@ -20,15 +20,15 @@ import com.hazeltask.executor.StaleTaskFlushTimerTask;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
-public class HazeltaskInstance<I> {
+public class HazeltaskInstance {
     private final DistributedExecutorService       executor;
-    private final TaskBatchingService<I>           taskBatchService;
+    private final TaskBatchingService<?>           taskBatchService;
     private final HazeltaskTopology                topology;
     private final HazeltaskConfig hazeltaskConfig;
     private final UUID hazeltaskInstanceId = UUID.randomUUID();
     
     
-    protected HazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
+    protected <I> HazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
         this.hazeltaskConfig = hazeltaskConfig;
         
         Validator.validate(hazeltaskConfig);
@@ -126,7 +126,7 @@ public class HazeltaskInstance<I> {
         });
     }
     
-    private void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I> svc) {
+    private <I> void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I> svc) {
         @SuppressWarnings("unchecked")
         final DeferredBatchTimerTask<I> bundleTask = new DeferredBatchTimerTask<I>((BundlerConfig<I>)hazeltaskConfig.getBundlerConfig(), svc);
         svc.addServiceListener(new HazeltaskServiceListener<TaskBatchingService<I>>(){
@@ -146,8 +146,9 @@ public class HazeltaskInstance<I> {
         return executor;
     }
 
-    public TaskBatchingService<I> getTaskBatchService() {
-        return taskBatchService;
+    @SuppressWarnings("unchecked")
+    public <I> TaskBatchingService<I> getTaskBatchService() {
+        return (TaskBatchingService<I>) taskBatchService;
     }
 
     public HazeltaskTopology getTopology() {

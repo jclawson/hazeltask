@@ -5,6 +5,7 @@ import com.hazeltask.core.metrics.MetricNamer;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 
+//TODO: add more metrics in here
 public class BatchMetrics {
     private final MetricNamer namer;
     private final String topologyName;

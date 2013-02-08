@@ -13,7 +13,7 @@ public final class Hazeltask {
 
     }
 
-    public static <I> HazeltaskInstance<I> getHazeltaskInstanceByTopology(String topology) {
+    public static HazeltaskInstance getHazeltaskInstanceByTopology(String topology) {
         return instances.get(topology);
     }
     
@@ -42,8 +42,8 @@ public final class Hazeltask {
         return instance;
     }
     
-    public static <I> HazeltaskInstance<I> newHazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
-        HazeltaskInstance<I> instance = new HazeltaskInstance<I>(hazeltaskConfig);
+    public static HazeltaskInstance newHazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
+        HazeltaskInstance instance = new HazeltaskInstance(hazeltaskConfig);
         HazeltaskTopology topology = instance.getTopology();
         if(instances.putIfAbsent(topology.getName(), instance) != null) {
             throw new IllegalStateException("An instance for the topology "+topology+" already exists!");

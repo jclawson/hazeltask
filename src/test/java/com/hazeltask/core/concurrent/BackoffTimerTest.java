@@ -1,12 +1,10 @@
 package com.hazeltask.core.concurrent;
 
-import java.lang.ref.WeakReference;
-
 import org.junit.Test;
 
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 
-//TODO: implement this
+//TODO: really implement this
 public class BackoffTimerTest {
 
 	static class OneSecondTask extends BackoffTask {
@@ -36,7 +34,7 @@ public class BackoffTimerTest {
 	}
 	
 	@Test
-	public void setupData() throws InterruptedException {
+	public void scheduleUnschedule() throws InterruptedException {
 		BackoffTimer timer = new BackoffTimer("jason");
 		
 		OneSecondTask task = new OneSecondTask();
@@ -49,15 +47,15 @@ public class BackoffTimerTest {
 		System.out.println("unschedule");
 		timer.unschedule(task2);
 		System.out.println("done unschedule");
-		timer.stop();
-		Thread.currentThread().sleep(6000);
-		System.out.println("new task...");
-		timer.schedule(task2, 1000, 1000);
+		////timer.stop();
+		//Thread.currentThread().sleep(6000);
+		//System.out.println("new task...");
+		//timer.schedule(task2, 1000, 1000);
 		
 		//System.out.println((timer.get().isRunning()?"timer is running":"timer is stopped"));
 		
 		
 		
-		Thread.currentThread().join();
+		//Thread.currentThread().join();
 	}
 }

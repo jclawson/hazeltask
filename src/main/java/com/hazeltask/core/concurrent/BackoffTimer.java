@@ -1,6 +1,5 @@
 package com.hazeltask.core.concurrent;
 
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ThreadFactory;
@@ -26,12 +25,6 @@ public class BackoffTimer {
     private final ThreadFactory threadFactory;
     private Thread workerThread;
     private boolean isShutdown = false;
-    
-    /**
-     * This is kinda ghetto... I know I need to just write my own DelayQueue impl in this class in order to 
-     * handle the concurrency things I want to acheive here.
-     */
-    private CopyOnWriteArrayList<BackoffTask> toRemove = new CopyOnWriteArrayList<BackoffTimer.BackoffTask>();
     
     public BackoffTimer(String name) {
         this(name, null);
