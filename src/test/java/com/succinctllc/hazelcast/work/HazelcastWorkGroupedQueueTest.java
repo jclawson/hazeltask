@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
+import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
+import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.hazeltask.executor.task.HazeltaskTask;
 
@@ -18,7 +20,8 @@ public class HazelcastWorkGroupedQueueTest {
     
     @Before
     public void setupData() {
-        taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.RoundRobinPartition<HazeltaskTask>(),
+        ListRouterFactory<String> routerFactory = RoundRobinRouter.newFactory();
+        taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(routerFactory),
                 new TimeCreatedAdapter<HazeltaskTask>(){
             public long getTimeCreated(HazeltaskTask item) {
                 return item.getTimeCreated();

@@ -36,6 +36,12 @@ public class HazeltaskInstance {
         ExecutorConfig executorConfig = hazeltaskConfig.getExecutorConfig();
         BundlerConfig<I> bundlerConfig = hazeltaskConfig.getBundlerConfig();
         
+        if(bundlerConfig != null) {
+            //if are not using the bundler, then we want to make sure we are not tracking futures
+            executorConfig.disableFutureSupport();
+            executorConfig.withTaskIdAdapter(bundlerConfig.getBatchKeyAdapter());
+        }
+        
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
         ITopologyService topologyService = new HazeltaskTopologyService(hazeltaskConfig);
         IBatchClusterService<I> batchClusterService = null;
@@ -49,8 +55,8 @@ public class HazeltaskInstance {
         
         DistributedFutureTracker futureTracker = null;
         
-        //if we are not using the bundler, then we want to make sure we are tracking futures
-        if(bundlerConfig == null) {
+
+        if(executorConfig.isFutureSupportEnabled()) {
             futureTracker = new DistributedFutureTracker();
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
         }

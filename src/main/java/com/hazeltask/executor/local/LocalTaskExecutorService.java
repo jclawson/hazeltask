@@ -81,7 +81,7 @@ public class LocalTaskExecutorService {
 		
 		DefaultThreadFactory factory = new DefaultThreadFactory("Hazeltask", topology.getName());
 		
-		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.RoundRobinPartition<HazeltaskTask>(),
+		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(executorConfig.getTaskRouterFactory()),
                 new TimeCreatedAdapter<HazeltaskTask>(){
             public long getTimeCreated(HazeltaskTask item) {
                 return item.getTimeCreated();

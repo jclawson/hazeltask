@@ -74,6 +74,17 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return groups;
     }
     
+    //TODO: is it worth it to track sizes as we go?
+    public List<String> getNonEmptyGroups() {
+        List<String> groups = new ArrayList<String>();
+        for(Entry<String, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
+            if(qEntry.getValue().size() > 0) {
+                groups.add(qEntry.getKey());
+            }
+        }
+        return groups;
+    }
+    
     private Queue<E> getOrCreateGroupQueue(String group) {
         Queue<E> q = queuesByGroup.get(group);
         if(q == null) {

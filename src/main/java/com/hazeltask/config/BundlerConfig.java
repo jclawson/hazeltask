@@ -1,9 +1,8 @@
 package com.hazeltask.config;
 
 import com.hazeltask.batch.BatchKeyAdapter;
-import com.hazeltask.batch.IBatchFactory;
 import com.hazeltask.batch.DefaultBatchKeyAdapter;
-import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
+import com.hazeltask.batch.IBatchFactory;
 
 public class BundlerConfig<I> {
     private int                  flushSize                     = 100;
@@ -15,15 +14,9 @@ public class BundlerConfig<I> {
     private long                 duplicatePreventionExpireTime = 3600000;      // 20 minutes
     protected BatchKeyAdapter<I> batchKeyAdapter               = new DefaultBatchKeyAdapter<I>();
     private final IBatchFactory<I>     bundler;
-//    private BloomFilterConfig    preventDuplicatesBloomFilter  = null;
-    
-    private ExecutorConfig executorConfig = new ExecutorConfig();
 
     public BundlerConfig(IBatchFactory<I> bundler) {
         this.bundler = bundler;
-        /* We don't use futures with the bundling service 
-         */
-        this.executorConfig.disableFutureSupport();
     }
     
     public BundlerConfig<I> withFlushSize(int flushSize) {
@@ -62,18 +55,6 @@ public class BundlerConfig<I> {
         this.preventDuplicates = preventDuplicates;
         return this;
     }
-    
-//    /**
-//     * TODO: how can we implement a distributed bloom filter that is fast?
-//     * 
-//     * @param config
-//     * @return
-//     */
-//    public BundlerConfig<I> withPreventDuplicatesUsingBloomFilter(BloomFilterConfig config) {
-//        this.preventDuplicatesBloomFilter = config;
-//        this.preventDuplicates = true;
-//        return this;
-//    }
 
     public BundlerConfig<I> withDuplicatePreventionExpireTime(long duplicatePreventionExpireTime) {
         this.duplicatePreventionExpireTime = duplicatePreventionExpireTime;
@@ -82,63 +63,10 @@ public class BundlerConfig<I> {
 
     public BundlerConfig<I> withBatchKeyAdapter(BatchKeyAdapter<I> batchKeyAdapter) {
         this.batchKeyAdapter = batchKeyAdapter;
-        this.executorConfig.withTaskIdAdapter(batchKeyAdapter);
         return this;
     }
     
-    //ExecutorConfig fluent methods
-    public BundlerConfig<I> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
-        this.executorConfig.withAcknowlegeTaskSubmission(acknowlegeTaskSubmission);
-        return this;
-    }
     
-    public BundlerConfig<I> acknowlegeTaskSubmission() {
-        this.executorConfig.acknowlegeTaskSubmission();
-        return this;
-    }
-    
-    public BundlerConfig<I> withDisableWorkers(boolean disableWorkers) {
-        this.executorConfig.withDisableWorkers(disableWorkers);
-        return this;
-    }
-    
-    public BundlerConfig<I> disableWorkers() {
-        this.executorConfig.disableWorkers();
-        return this;
-    }
-    
-    public BundlerConfig<I> withThreadCount(int threadCount) {
-        this.executorConfig.withThreadCount(threadCount);
-        return this;
-    }
-    
-    /**
-     * @see ExecutorConfig.withAutoStart
-     */
-    public BundlerConfig<I> withAutoStart(boolean autoStart) {
-        this.executorConfig.withAutoStart(autoStart);
-        return this;
-    }
-    
-    /**
-     * @see ExecutorConfig.withAutoStart
-     */
-    public BundlerConfig<I> disableAutoStart() {
-        this.executorConfig.disableAutoStart();
-        return this;
-    }
-    
-    public BundlerConfig<I> withMemberRouterFactory(ListRouterFactory factory) {
-        this.executorConfig.withMemberRouterFactory(factory);
-        return this;
-    }
-    
-    //End ExecutorConfig fluent methods
-    
-    public ExecutorConfig getExecutorConfig() {
-        return this.executorConfig;
-    }
-
     public int getFlushSize() {
         return flushSize;
     }

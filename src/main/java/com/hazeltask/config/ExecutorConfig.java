@@ -2,6 +2,7 @@ package com.hazeltask.config;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import com.hazelcast.core.Member;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
@@ -14,9 +15,10 @@ public class ExecutorConfig {
     @SuppressWarnings("rawtypes")
     protected TaskIdAdapter    taskIdAdapter            = new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
-    private ListRouterFactory  memberRouterFactory      = RoundRobinRouter.FACTORY;
+    private ListRouterFactory<Member>  memberRouterFactory      = RoundRobinRouter.newFactory();
     private boolean            enableFutureTracking     = true;
     private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
+    private ListRouterFactory<String>  taskRouterFactory        = RoundRobinRouter.newFactory();
 
     // TODO: support autoStartDelay
     // protected long autoStartDelay = 0;
@@ -62,12 +64,12 @@ public class ExecutorConfig {
         return this;
     }
     
-    public ExecutorConfig withMemberRouterFactory(ListRouterFactory factory) {
+    public ExecutorConfig withMemberRouterFactory(ListRouterFactory<Member> factory) {
         this.memberRouterFactory = factory;
         return this;
     }
     
-    public ListRouterFactory getMemberRouterFactory() {
+    public ListRouterFactory<Member> getMemberRouterFactory() {
         return this.memberRouterFactory;
     }
 
@@ -113,11 +115,21 @@ public class ExecutorConfig {
         return autoStart;
     }
     
-    public void withRebalanceTaskPeriod(long rebalanceTaskPeriod) {
+    public ExecutorConfig withRebalanceTaskPeriod(long rebalanceTaskPeriod) {
         this.rebalanceTaskPeriod = rebalanceTaskPeriod;
+        return this;
     }
     
     public long getRebalanceTaskPeriod() {
         return this.rebalanceTaskPeriod;
+    }
+    
+    public ExecutorConfig withTaskRouterFactory(ListRouterFactory<String> router) {
+        this.taskRouterFactory = router;
+        return this;
+    }
+    
+    public ListRouterFactory<String> getTaskRouterFactory() {
+        return this.taskRouterFactory;
     }
 }

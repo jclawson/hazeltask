@@ -5,13 +5,21 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * TODO: make this more efficient... its not good enough that we find the heaviest weight...
+ * We need to find the heaviest weight that has messages in the list... ie that we don't wish to skip
+ * 
+ * Perhaps the fetchList callback needs to filter out groups that have no items beforehand
+ * 
+ * @author jclawson
+ *
+ * @param <T>
+ */
 public class LoadBalancedRouter<T> implements ListRouter<T> {
 
 	private final Comparator<T> comparator;
 	private final List<T> list;
     private final Callable<List<T>> fetchList;
-	
-	
 	
 	public LoadBalancedRouter(List<T> list, Comparator<T> comparator) {
 		this.comparator = comparator;

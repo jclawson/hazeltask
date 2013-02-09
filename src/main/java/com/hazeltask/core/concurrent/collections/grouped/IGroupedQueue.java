@@ -17,6 +17,8 @@ public interface IGroupedQueue<E extends Groupable> {
 
     public List<String> getGroups();
     
+    public List<String> getNonEmptyGroups();
+    
     public ITrackedQueue<E> getQueueByGroup(String group);
     
     public Map<String, ITrackedQueue<E>> getQueuesByGroup();

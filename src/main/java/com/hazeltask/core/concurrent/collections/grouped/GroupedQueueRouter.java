@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
-import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
+import com.hazeltask.core.concurrent.collections.router.ListRouter;
+import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RouteSkipAdapter;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
@@ -46,35 +49,45 @@ public class GroupedQueueRouter {
 	}
 	
 	
-	public static class RoundRobinPartition<E extends Groupable> implements GroupedRouter<E> {
-		//private final AtomicReference lastPartition = new AtomicReference();
+	public static class GroupRouterAdapter<E extends Groupable> implements GroupedRouter<E> {
+	    ILogger logger = Logger.getLogger(GroupRouterAdapter.class.getName());
 		private IGroupedQueue<E> queue;
+		private ListRouter<String> router;		
+		private final ListRouterFactory<String> routerFactory;
 		
-		private RoundRobinRouter<String> router;
+		public GroupRouterAdapter(ListRouterFactory<String> routerFactory) {
+		    this.routerFactory = routerFactory;
+		}
 		
+		private ITrackedQueue<E> nextPartition(int tryNumber) {
+		    String partition = router.next();
+            if(partition == null)
+                return null;
+            ITrackedQueue<E> q = queue.getQueueByGroup(partition);
+            if(q.size() == 0) {
+                if(tryNumber >= 10) {
+                    return null;
+                }
+                q = nextPartition(tryNumber + 1);
+            }
+            
+            return q;
+		}
 		
 		public ITrackedQueue<E> nextPartition() {
-		    String partition = router.next();
-		    if(partition == null)
-		        return null;
-		    return queue.getQueueByGroup(partition);
+		    return nextPartition(0);
 		}	
 		
-		//TODO: it would be nice if peek really worked... but not necessary
 		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
 		}
 
         public void setPartitionedQueueue(final IGroupedQueue<E> queue) {
             this.queue = queue;
-            router = new RoundRobinRouter<String>(new Callable<List<String>>(){
+            this.router = routerFactory.createRouter(new Callable<List<String>>(){
                 public List<String> call() throws Exception {
-                    return queue.getGroups();
-                }}, new RouteSkipAdapter<String>() {
-                    public boolean shouldSkip(String item) {
-                        return queue.getQueueByGroup(item).size() == 0;
-                    }
-                });
+                    return queue.getNonEmptyGroups();
+                }});
         }
 	}
 	

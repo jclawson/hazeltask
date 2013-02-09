@@ -24,40 +24,34 @@ import com.hazelcast.logging.Logger;
  */
 public class RoundRobinRouter<T> implements ListRouter<T> {
     
-    public static ListRouterFactory FACTORY = new ListRouterFactory() {        
-        public <E> ListRouter<E> createRouter(Callable<List<E>> list) {
-            return new RoundRobinRouter<E>(list);
+    private static ListRouterFactory<Object> FACTORY = new ListRouterFactory<Object>() {        
+        public ListRouter<Object> createRouter(Callable<List<Object>> list) {
+            return new RoundRobinRouter<Object>(list);
         }
         
-        public <E> ListRouter<E> createRouter(List<E> list) {
-            return new RoundRobinRouter<E>(list);
+        public ListRouter<Object> createRouter(List<Object> list) {
+            return new RoundRobinRouter<Object>(list);
         }
     };
     
+    @SuppressWarnings("unchecked")
+    public static <E> ListRouterFactory<E> newFactory() {
+        return (ListRouterFactory<E>) FACTORY;
+    }
+    
     private List<T> list;
     private Callable<List<T>> fetchList;
-    private RouteSkipAdapter<T> skipper;
     private static final int MAX_TRIES = 100;
     ILogger logger = Logger.getLogger(RoundRobinRouter.class.getName());
     
     private AtomicInteger lastIndex = new AtomicInteger(-1);
     
     public RoundRobinRouter(List<T> list){
-        this(list, null);
+        this.list = list;
     }
     
     public RoundRobinRouter(Callable<List<T>> fetchList){
-        this(fetchList, null);
-    }
-    
-    public RoundRobinRouter(List<T> list, RouteSkipAdapter<T> skipper){
-        this.list = list;
-        this.skipper = skipper;
-    }
-    
-    public RoundRobinRouter(Callable<List<T>> fetchList, RouteSkipAdapter<T> skipper){
         this.fetchList = fetchList;
-        this.skipper = skipper;
     }
     
     public T next(){
@@ -81,11 +75,12 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         
         try {             
             T result = list.get(index);
-            if(skipper != null && skipper.shouldSkip(result)) {
+            /*if(skipper != null && skipper.shouldSkip(result)) {
                 return next(1, numSkipped+1);
             } else {
                 return result;
-            }
+            }*/
+            return result;
         } catch(IndexOutOfBoundsException e) {
             //list changed under us... try again          
             return next(tries+1, numSkipped);
