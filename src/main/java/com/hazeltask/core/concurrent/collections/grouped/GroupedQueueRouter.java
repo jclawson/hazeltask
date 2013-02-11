@@ -9,6 +9,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
+import com.hazeltask.core.concurrent.collections.router.RouteCondition;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
 public class GroupedQueueRouter {
@@ -66,7 +67,9 @@ public class GroupedQueueRouter {
             ITrackedQueue<E> q = partition.getValue();
             if(q.size() == 0) {
                 //is this adapter responsible for this, or is the router?
-                if(tryNumber >= queue.size()) {
+                //perhaps we need types of adapters to indicate whether we should try again
+                //and again... or expect the router to do it
+                if(tryNumber >= 10) {
                     return null;
                 }
                 q = nextPartition(tryNumber + 1);
@@ -89,7 +92,20 @@ public class GroupedQueueRouter {
                 public List<Entry<String, ITrackedQueue<E>>> call() throws Exception {   
                     return queue.getGroups();
                 }});
+            checkNotNull(this.router);
+            
+            this.router.setRouteCondition(new RouteCondition<Entry<String,ITrackedQueue<E>>>() {
+                public boolean isRoutable(Entry<String, ITrackedQueue<E>> route) {
+                    return route.getValue().size() > 0;
+                }     
+            });
         }
+        
+        static void checkNotNull(Object o) {
+            if (o == null) {
+              throw new NullPointerException();
+            }
+          }
 	}
 	
 //	public static class WeightedPartitionRouter<E extends Groupable> implements GroupedRouter<E> {

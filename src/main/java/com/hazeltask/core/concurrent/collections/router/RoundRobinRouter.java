@@ -42,6 +42,8 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
     private List<T> list;
     private Callable<List<T>> fetchList;
     private static final int MAX_TRIES = 100;
+    private RouteCondition<T> condition;
+    
     ILogger logger = Logger.getLogger(RoundRobinRouter.class.getName());
     
     private AtomicInteger lastIndex = new AtomicInteger(-1);
@@ -58,7 +60,7 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         return next(1, 0);
     }
     
-    public T next(int tries, int numSkipped) {
+    private T next(int tries, int numSkipped) {
         List<T> list = getList();
         int size = list.size();
         
@@ -66,21 +68,20 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
             return null;
         }
         
-        if(tries >= MAX_TRIES) {
-            logger.log(Level.WARNING, "RoundRobin Router exceeded MAX_TRIES while attempting to get the next item");
-            return null;
-        }
+//        if(tries >= MAX_TRIES) {
+//            logger.log(Level.WARNING, "RoundRobin Router exceeded MAX_TRIES while attempting to get the next item");
+//            return null;
+//        }
         
         int index = lastIndex.incrementAndGet() % size;
         
         try {             
             T result = list.get(index);
-            /*if(skipper != null && skipper.shouldSkip(result)) {
+            if(condition != null && !condition.isRoutable(result)) {
                 return next(1, numSkipped+1);
             } else {
                 return result;
-            }*/
-            return result;
+            }
         } catch(IndexOutOfBoundsException e) {
             //list changed under us... try again          
             return next(tries+1, numSkipped);
@@ -93,5 +94,9 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void setRouteCondition(RouteCondition<T> condition) {
+        this.condition = condition;
     }
 }
