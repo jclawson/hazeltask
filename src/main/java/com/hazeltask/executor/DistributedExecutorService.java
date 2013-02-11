@@ -109,10 +109,12 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         
         //TODO: is everything shutdown?
         List<HazeltaskTask> tasks = null;
-        if(shutdownNow)
-            tasks = this.localExecutorService.shutdownNow();
-        else
-            this.localExecutorService.shutdown();
+        if(!executorConfig.isDisableWorkers()) {
+            if(shutdownNow)
+                tasks = this.localExecutorService.shutdownNow();
+            else
+                this.localExecutorService.shutdown();
+        }
         
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onEndShutdown(this);
@@ -274,7 +276,8 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onBeginStart(this);
         
-        localExecutorService.startup();
+        if(!executorConfig.isDisableWorkers())
+            localExecutorService.startup();
         
         for(HazeltaskServiceListener<DistributedExecutorService> listener : listeners)
             listener.onEndStart(this);
@@ -285,7 +288,8 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
     }
     
     public void addListener(ExecutorListener listener) {
-        this.localExecutorService.addListener(listener);
+        if(!executorConfig.isDisableWorkers())
+            this.localExecutorService.addListener(listener);
     }
     
     public LocalTaskExecutorService getLocalTaskExecutorService() {

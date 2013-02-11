@@ -54,7 +54,10 @@ public class HazeltaskInstance {
         
         this.topology = new HazeltaskTopology(hazeltaskConfig, topologyService, batchClusterService);
         IExecutorTopologyService executorTopologyService = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
-        LocalTaskExecutorService localExeutorService = new LocalTaskExecutorService(topology, executorConfig, executorTopologyService);
+        
+        LocalTaskExecutorService localExeutorService = null;
+        if(!executorConfig.isDisableWorkers())
+            localExeutorService = new LocalTaskExecutorService(topology, executorConfig, executorTopologyService);
         
         DistributedFutureTracker futureTracker = null;
         
@@ -110,7 +113,11 @@ public class HazeltaskInstance {
     
     private void setupDistributedExecutor(final HazeltaskTopology topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService svc, ITopologyService topologySvc, IExecutorTopologyService executorTopologyService, LocalTaskExecutorService localExeutorService) {
         final StaleTaskFlushTimerTask bundleTask = new StaleTaskFlushTimerTask(topology, svc, executorTopologyService);
-        final TaskRebalanceTimerTask rebalanceTask = new TaskRebalanceTimerTask(topology, localExeutorService, executorTopologyService);
+        final TaskRebalanceTimerTask rebalanceTask;
+        if(!svc.getExecutorConfig().isDisableWorkers())
+            rebalanceTask = new TaskRebalanceTimerTask(topology, localExeutorService, executorTopologyService);
+        else
+            rebalanceTask = null;
         final IsMemberReadyTimerTask getReadyMembersTask = new IsMemberReadyTimerTask(topologySvc, topology);
         
         hazeltaskConfig.getHazelcast().getCluster().addMembershipListener(getReadyMembersTask);
@@ -119,16 +126,20 @@ public class HazeltaskInstance {
             @Override
             public void onEndStart(DistributedExecutorService svc) {
                 hazeltaskTimer.schedule(bundleTask, 1000, 30000, 2);
-                hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getRebalanceTaskPeriod());
+                if(rebalanceTask != null)
+                    hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getRebalanceTaskPeriod());
                 hazeltaskTimer.schedule(getReadyMembersTask, 500, 20000);
-                topology.iAmReady();
+                
+                if(!svc.getExecutorConfig().isDisableWorkers())
+                   topology.iAmReady();
             }
 
             @Override
             public void onBeginShutdown(DistributedExecutorService svc) {
                 topology.shutdown();
                 hazeltaskTimer.unschedule(bundleTask);
-                hazeltaskTimer.unschedule(rebalanceTask);
+                if(rebalanceTask != null)
+                    hazeltaskTimer.unschedule(rebalanceTask);
                 hazeltaskTimer.unschedule(getReadyMembersTask);
                 hazeltaskTimer.stop();//this would stop after 5 min anyways
             }      

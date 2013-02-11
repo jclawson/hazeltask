@@ -23,8 +23,9 @@ public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
 
     public Long call() throws Exception {
         LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
-        
-        return localSvc.getQueueSize();
+        if(localSvc != null)
+            return localSvc.getQueueSize();
+        return 0L;
     }
 
     @Override
