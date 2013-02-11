@@ -3,7 +3,6 @@ package com.hazeltask.core.concurrent.collections.router;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -41,7 +40,6 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
     
     private List<T> list;
     private Callable<List<T>> fetchList;
-    private static final int MAX_TRIES = 100;
     private RouteCondition<T> condition;
     
     ILogger logger = Logger.getLogger(RoundRobinRouter.class.getName());
@@ -67,11 +65,6 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
         if(numSkipped >= size) {
             return null;
         }
-        
-//        if(tries >= MAX_TRIES) {
-//            logger.log(Level.WARNING, "RoundRobin Router exceeded MAX_TRIES while attempting to get the next item");
-//            return null;
-//        }
         
         int index = lastIndex.incrementAndGet() % size;
         

@@ -1,6 +1,5 @@
 package com.hazeltask.core.concurrent.collections.grouped;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
@@ -52,7 +51,6 @@ public class GroupedQueueRouter {
 	
 	public static class GroupRouterAdapter<E extends Groupable> implements GroupedRouter<E> {
 	    ILogger logger = Logger.getLogger(GroupRouterAdapter.class.getName());
-		private IGroupedQueue<E> queue;
 		private ListRouter<Entry<String, ITrackedQueue<E>>> router;		
 		private final ListRouterFactory<Entry<String, ITrackedQueue<E>>> routerFactory;
 		
@@ -87,7 +85,6 @@ public class GroupedQueueRouter {
 		}
 
         public void setPartitionedQueueue(final IGroupedQueue<E> queue) {
-            this.queue = queue;
             this.router = routerFactory.createRouter(new Callable<List<Entry<String, ITrackedQueue<E>>>>(){
                 public List<Entry<String, ITrackedQueue<E>>> call() throws Exception {   
                     return queue.getGroups();
