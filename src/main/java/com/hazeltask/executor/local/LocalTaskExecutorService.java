@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -15,7 +16,6 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
-import com.hazeltask.core.concurrent.DefaultThreadFactory;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
@@ -81,7 +81,7 @@ public class LocalTaskExecutorService {
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
 		this.executorTopologyService = executorTopologyService;
 		
-		DefaultThreadFactory factory = new DefaultThreadFactory("Hazeltask", topology.getName());
+		ThreadFactory factory = executorConfig.getThreadFactory();
 		//List<Entry<String, ITrackedQueue<E>>>
 		ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> router = executorConfig.getTaskRouterFactory();
 		

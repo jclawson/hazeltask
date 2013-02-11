@@ -3,6 +3,7 @@ package com.hazeltask.config;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import java.util.Map.Entry;
+import java.util.concurrent.ThreadFactory;
 
 import com.hazelcast.core.Member;
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
@@ -24,7 +25,8 @@ public class ExecutorConfig {
     private boolean            enableFutureTracking     = true;
     private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
     private ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
-
+    private ThreadFactory threadFactory = null;
+    
     // TODO: support autoStartDelay
     // protected long autoStartDelay = 0;
     // TODO: Allow developers to provide all the threads we need
@@ -136,5 +138,14 @@ public class ExecutorConfig {
     
     public ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> getTaskRouterFactory() {
         return this.taskRouterFactory;
+    }
+    
+    public ExecutorConfig withThreadFactory(ThreadFactory threadFactory) {
+        this.threadFactory = threadFactory;
+        return this;
+    }
+    
+    public ThreadFactory getThreadFactory() {
+        return this.threadFactory;
     }
 }

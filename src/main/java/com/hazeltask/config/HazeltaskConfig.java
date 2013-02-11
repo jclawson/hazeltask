@@ -1,5 +1,7 @@
 package com.hazeltask.config;
 
+import java.util.concurrent.ThreadFactory;
+
 import com.hazelcast.core.HazelcastInstance;
 import com.hazeltask.Hazeltask;
 import com.hazeltask.core.metrics.MetricNamer;
@@ -13,6 +15,7 @@ public class HazeltaskConfig {
     private ExecutorConfig executorConfig = new ExecutorConfig();
     private MetricsConfig metricsConfig = new MetricsConfig();
     private BundlerConfig<?> bundlerConfig;
+    private ThreadFactory threadFactory;
     
     public HazeltaskConfig withTopologyName(String name) {
         this.topologyName = name;
@@ -76,5 +79,14 @@ public class HazeltaskConfig {
     @SuppressWarnings("unchecked")
     public <I> BundlerConfig<I> getBundlerConfig() {
         return (BundlerConfig<I>) this.bundlerConfig;
+    }
+    
+    public HazeltaskConfig withThreadFactory(ThreadFactory threadFactory) {
+        this.threadFactory = threadFactory;
+        return this;
+    }
+    
+    public ThreadFactory getThreadFactory() {
+        return this.threadFactory;
     }
 }

@@ -6,6 +6,7 @@ import java.util.Map.Entry;
 
 import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
@@ -25,28 +26,16 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
     private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
     //private final MetricNamer metricNamer;
     
-    private Timer bundlerTimer;
-   
+    private final Timer bundlerTimer;
+    private final Histogram batchSizeHistogram;
     
-    public DeferredBatchTimerTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredTaskBundler) {
+    public DeferredBatchTimerTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredTaskBundler, BatchMetrics metrics) {
         this.deferredTaskBundler = deferredTaskBundler;
-       // this.metricNamer = metricNamer;
         this.batchConfig = batchingConfig;
- 
-//FIXME: add this metric
-//        if(metrics != null) {
-//        	bundlerTimer = metrics.newTimer(createName("Bundle timer"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);        	
-//        }        
+        this.bundlerTimer = metrics.getBatchBundleTimer().getMetric();   
+        this.batchSizeHistogram = metrics.getBatchSizeHistogram().getMetric();
     }
-    
-//    private MetricName createName(String name) {
-//		return metricNamer.createMetricName(
-//			"hazelcast-work", 
-//			deferredWorkBundler.getTopology().getName(), 
-//			"DeferredBundleTask", 
-//			name
-//		);
-//	}
+
     
     /**
      * This method also updates the next flush time
@@ -80,11 +69,11 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
 	                String group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
 	                int numFlushed = deferredTaskBundler.flush(group);
-	                //TODO: historgram this
+	                batchSizeHistogram.update(numFlushed);
 	                flushed = true;
 	            } else if (shouldTTLFlush(entry.getKey())) {
 	                int numFlushed = deferredTaskBundler.flush(entry.getKey());
-	                //TODO: historgram this
+	                batchSizeHistogram.update(numFlushed);
 	                flushed = true;
 	            }
 	        }

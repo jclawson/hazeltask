@@ -3,6 +3,7 @@ package com.hazeltask;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
+import com.hazeltask.batch.BatchMetrics;
 import com.hazeltask.batch.DeferredBatchTimerTask;
 import com.hazeltask.batch.HazelcastBatchClusterService;
 import com.hazeltask.batch.IBatchClusterService;
@@ -45,7 +46,7 @@ public class HazeltaskInstance {
             executorConfig.withTaskIdAdapter(bundlerConfig.getBatchKeyAdapter());
         }
         
-        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName());
+        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
         ITopologyService topologyService = new HazeltaskTopologyService(hazeltaskConfig);
         IBatchClusterService<I> batchClusterService = null;
         if(bundlerConfig != null) {
@@ -73,7 +74,7 @@ public class HazeltaskInstance {
         
         if(bundlerConfig != null) {
             taskBatchService = new TaskBatchingService<I>(hazeltaskConfig, executor, topology);
-            setupBatching(hazeltaskTimer, taskBatchService);
+            setupBatching(hazeltaskTimer, taskBatchService, topology.getBatchMetrics());
             
 //            if(bundlerConfig.isPreventDuplicates()) {
 //                throw new RuntimeException("Not supporting preventDuplicates this right now because it causes a lot of contention");
@@ -146,9 +147,9 @@ public class HazeltaskInstance {
         });
     }
     
-    private <I> void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I> svc) {
+    private <I> void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I> svc, BatchMetrics metrics) {
         @SuppressWarnings("unchecked")
-        final DeferredBatchTimerTask<I> bundleTask = new DeferredBatchTimerTask<I>((BundlerConfig<I>)hazeltaskConfig.getBundlerConfig(), svc);
+        final DeferredBatchTimerTask<I> bundleTask = new DeferredBatchTimerTask<I>((BundlerConfig<I>)hazeltaskConfig.getBundlerConfig(), svc, metrics);
         svc.addServiceListener(new HazeltaskServiceListener<TaskBatchingService<I>>(){
             @Override
             public void onEndStart(TaskBatchingService<I> svc) {
