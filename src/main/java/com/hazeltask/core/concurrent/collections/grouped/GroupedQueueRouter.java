@@ -1,5 +1,6 @@
 package com.hazeltask.core.concurrent.collections.grouped;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
@@ -8,7 +9,6 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
-import com.hazeltask.core.concurrent.collections.router.RouteSkipAdapter;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
 public class GroupedQueueRouter {
@@ -52,20 +52,21 @@ public class GroupedQueueRouter {
 	public static class GroupRouterAdapter<E extends Groupable> implements GroupedRouter<E> {
 	    ILogger logger = Logger.getLogger(GroupRouterAdapter.class.getName());
 		private IGroupedQueue<E> queue;
-		private ListRouter<String> router;		
-		private final ListRouterFactory<String> routerFactory;
+		private ListRouter<Entry<String, ITrackedQueue<E>>> router;		
+		private final ListRouterFactory<Entry<String, ITrackedQueue<E>>> routerFactory;
 		
-		public GroupRouterAdapter(ListRouterFactory<String> routerFactory) {
+		public GroupRouterAdapter(ListRouterFactory<Entry<String, ITrackedQueue<E>>> routerFactory) {
 		    this.routerFactory = routerFactory;
 		}
 		
 		private ITrackedQueue<E> nextPartition(int tryNumber) {
-		    String partition = router.next();
+		    Entry<String, ITrackedQueue<E>> partition = router.next();
             if(partition == null)
                 return null;
-            ITrackedQueue<E> q = queue.getQueueByGroup(partition);
+            ITrackedQueue<E> q = partition.getValue();
             if(q.size() == 0) {
-                if(tryNumber >= 10) {
+                //is this adapter responsible for this, or is the router?
+                if(tryNumber >= queue.size()) {
                     return null;
                 }
                 q = nextPartition(tryNumber + 1);
@@ -84,9 +85,9 @@ public class GroupedQueueRouter {
 
         public void setPartitionedQueueue(final IGroupedQueue<E> queue) {
             this.queue = queue;
-            this.router = routerFactory.createRouter(new Callable<List<String>>(){
-                public List<String> call() throws Exception {
-                    return queue.getNonEmptyGroups();
+            this.router = routerFactory.createRouter(new Callable<List<Entry<String, ITrackedQueue<E>>>>(){
+                public List<Entry<String, ITrackedQueue<E>>> call() throws Exception {   
+                    return queue.getGroups();
                 }});
         }
 	}

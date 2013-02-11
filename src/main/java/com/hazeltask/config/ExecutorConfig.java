@@ -2,10 +2,15 @@ package com.hazeltask.config;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import java.util.Map.Entry;
+
 import com.hazelcast.core.Member;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
+import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
+import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
 public class ExecutorConfig {
@@ -18,7 +23,7 @@ public class ExecutorConfig {
     private ListRouterFactory<Member>  memberRouterFactory      = RoundRobinRouter.newFactory();
     private boolean            enableFutureTracking     = true;
     private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
-    private ListRouterFactory<String>  taskRouterFactory        = RoundRobinRouter.newFactory();
+    private ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
 
     // TODO: support autoStartDelay
     // protected long autoStartDelay = 0;
@@ -124,12 +129,12 @@ public class ExecutorConfig {
         return this.rebalanceTaskPeriod;
     }
     
-    public ExecutorConfig withTaskRouterFactory(ListRouterFactory<String> router) {
+    public <E extends Groupable> ExecutorConfig withTaskRouterFactory(ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> router) {
         this.taskRouterFactory = router;
         return this;
     }
     
-    public ListRouterFactory<String> getTaskRouterFactory() {
+    public ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> getTaskRouterFactory() {
         return this.taskRouterFactory;
     }
 }

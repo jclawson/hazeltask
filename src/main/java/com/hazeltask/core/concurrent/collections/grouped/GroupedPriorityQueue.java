@@ -1,5 +1,6 @@
 package com.hazeltask.core.concurrent.collections.grouped;
 
+import java.util.AbstractMap.SimpleEntry;
 import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,7 +42,8 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlocking
  */
 public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> implements IGroupedQueue<E>, BlockingQueue<E> {
     private final ConcurrentMap<String, ITrackedQueue<E>> queuesByGroup;
-    private final CopyOnWriteArrayList<String> groups = new CopyOnWriteArrayList<String>();
+    private final CopyOnWriteArrayList<Entry<String, ITrackedQueue<E>>> groups = 
+            new CopyOnWriteArrayList<Entry<String, ITrackedQueue<E>>>();
     private GroupedRouter<E> groupRouter;
     private final TimeCreatedAdapter<E> timeAdapter;
     
@@ -70,11 +72,10 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return this.queuesByGroup.get(group);
     }
     
-    public List<String> getGroups() {
+    public List<Entry<String, ITrackedQueue<E>>> getGroups() {
         return groups;
     }
     
-    //TODO: is it worth it to track sizes as we go?
     public List<String> getNonEmptyGroups() {
         List<String> groups = new ArrayList<String>();
         for(Entry<String, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
@@ -91,7 +92,10 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
             ITrackedQueue<E> newQ = new TrackedPriorityBlockingQueue<E>(timeAdapter);
             if(queuesByGroup.putIfAbsent(group, newQ) == null) {
                 q = newQ;
-                groups.add(group);
+                SimpleEntry<String, ITrackedQueue<E>> entry = 
+                        new SimpleEntry<String, ITrackedQueue<E>>(group, newQ);
+                
+                groups.add(entry);
             } else {
                 q = queuesByGroup.get(group);
             }

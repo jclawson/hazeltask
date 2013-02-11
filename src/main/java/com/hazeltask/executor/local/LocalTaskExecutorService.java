@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -17,6 +18,7 @@ import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.DefaultThreadFactory;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
+import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.hazeltask.core.metrics.MetricNamer;
@@ -80,8 +82,10 @@ public class LocalTaskExecutorService {
 		this.executorTopologyService = executorTopologyService;
 		
 		DefaultThreadFactory factory = new DefaultThreadFactory("Hazeltask", topology.getName());
+		//List<Entry<String, ITrackedQueue<E>>>
+		ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> router = executorConfig.getTaskRouterFactory();
 		
-		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(executorConfig.getTaskRouterFactory()),
+		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(router),
                 new TimeCreatedAdapter<HazeltaskTask>(){
             public long getTimeCreated(HazeltaskTask item) {
                 return item.getTimeCreated();
@@ -171,8 +175,8 @@ public class LocalTaskExecutorService {
 	
 	public Map<String, Integer> getGroupSizes() {
 		Map<String, Integer> result = new HashMap<String, Integer>();
-		for(String group : this.taskQueue.getGroups()) {
-			result.put(group, this.taskQueue.getQueueByGroup(group).size());
+		for(Entry<String, ITrackedQueue<HazeltaskTask>> group : this.taskQueue.getGroups()) {
+			result.put(group.getKey(), group.getValue().size());
 		}
 		return result;
 	}

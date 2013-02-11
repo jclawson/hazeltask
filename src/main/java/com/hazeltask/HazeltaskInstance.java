@@ -27,7 +27,10 @@ public class HazeltaskInstance {
     private final HazeltaskConfig hazeltaskConfig;
     private final UUID hazeltaskInstanceId = UUID.randomUUID();
     
-    
+    /**
+     * FIXME: fix  executorConfig.isDisableWorkers()
+     * @param hazeltaskConfig
+     */
     protected <I> HazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
         this.hazeltaskConfig = hazeltaskConfig;
         
@@ -83,7 +86,7 @@ public class HazeltaskInstance {
         
         
         //if autoStart... we need to start
-        if(executorConfig.isAutoStart() && !executorConfig.isDisableWorkers()) {
+        if(executorConfig.isAutoStart()) {
 //            TODO: is it useful to only auto-start after hazelcast is done starting?
 //            LifecycleService lifecycleService = hazeltaskConfig.getHazelcast().getLifecycleService();
 //            final ReentrantLock autoStartLock = new ReentrantLock();

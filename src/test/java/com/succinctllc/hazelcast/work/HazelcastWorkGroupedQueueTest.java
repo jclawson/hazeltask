@@ -2,6 +2,9 @@ package com.succinctllc.hazelcast.work;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.util.Map.Entry;
+
 import junit.framework.Assert;
 
 import org.junit.Before;
@@ -11,6 +14,7 @@ import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
+import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.hazeltask.executor.task.HazeltaskTask;
 
@@ -20,7 +24,7 @@ public class HazelcastWorkGroupedQueueTest {
     
     @Before
     public void setupData() {
-        ListRouterFactory<String> routerFactory = RoundRobinRouter.newFactory();
+        ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> routerFactory = RoundRobinRouter.newFactory();
         taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(routerFactory),
                 new TimeCreatedAdapter<HazeltaskTask>(){
             public long getTimeCreated(HazeltaskTask item) {
