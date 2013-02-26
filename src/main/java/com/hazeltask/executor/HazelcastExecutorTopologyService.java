@@ -49,7 +49,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 
     private final ExecutorService taskDistributor;
     //private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final IMap<String, HazeltaskTask>                            pendingTask;
+    private final IMap<Serializable, HazeltaskTask>                            pendingTask;
     private final ILock rebalanceTasksLock;
     private final ITopic<TaskResponse>      taskResponseTopic;
     private final HazelcastInstance hazelcast;
@@ -121,9 +121,9 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
      */
     public boolean addPendingTask(HazeltaskTask task, boolean replaceIfExists) {
         if(!replaceIfExists)
-            return pendingTask.putIfAbsent(task.getUniqueIdentifier(), task) == null;
+            return pendingTask.putIfAbsent(task.getId(), task) == null;
         
-        pendingTask.put(task.getUniqueIdentifier(), task);
+        pendingTask.put(task.getId(), task);
         return true;
     }
     
@@ -134,11 +134,11 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
      * @return
      */
     public Future<HazeltaskTask> addPendingTaskAsync(HazeltaskTask task) {
-        return pendingTask.putAsync(task.getUniqueIdentifier(), task);
+        return pendingTask.putAsync(task.getId(), task);
     }
 
     public boolean removePendingTask(HazeltaskTask task) {
-        pendingTask.removeAsync(task.getUniqueIdentifier());
+        pendingTask.removeAsync(task.getId());
         return true;
     }
 
@@ -153,23 +153,23 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return false;
     }
 
-    public void broadcastTaskCompletion(String taskId, Serializable response) {
+    public void broadcastTaskCompletion(Serializable taskId, Serializable response) {
         TaskResponse message = new TaskResponse(me, taskId, response, TaskResponse.Status.SUCCESS);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskCancellation(String taskId) {
+    public void broadcastTaskCancellation(Serializable taskId) {
         TaskResponse message = new TaskResponse(me, taskId, null, TaskResponse.Status.CANCELLED);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskError(String taskId, Throwable exception) {
+    public void broadcastTaskError(Serializable taskId, Throwable exception) {
         TaskResponse message = new TaskResponse(me, taskId, exception);
         taskResponseTopic.publish(message);
     }
 
     public Collection<HazeltaskTask> getLocalPendingTasks(String predicate) {
-        Set<String> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
+        Set<Serializable> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
         return pendingTask.getAll(keys).values();
     }
 

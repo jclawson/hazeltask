@@ -1,5 +1,6 @@
 package com.hazeltask.batch;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -9,19 +10,19 @@ public interface IBatchClusterService<I> {
      * 
      * @return true if the item was not already present
      */
-    public boolean addToPreventDuplicateSet(String itemId);
+    public boolean addToPreventDuplicateSet(Serializable itemId);
     
     /**
      * 
      * @return true if the item is present
      */
-    public boolean isInPreventDuplicateSet(String itemId);
+    public boolean isInPreventDuplicateSet(Serializable itemId);
     
     /**
      * 
      * @return true if the item was removed
      */
-    public boolean removePreventDuplicateItem(String itemId);
+    public boolean removePreventDuplicateItem(Serializable itemId);
     
     /**
      * buffers this item in a multimap.  drain(group) will remove items
@@ -34,7 +35,7 @@ public interface IBatchClusterService<I> {
      * Gets all the non-zero sizes of all the groups in the batch service
      * @return
      */
-    public Map<String, Integer> getNonZeroLocalGroupSizes();
+    public Map<Serializable, Integer> getNonZeroLocalGroupSizes();
     
     /**
      * Get items in group
@@ -42,7 +43,7 @@ public interface IBatchClusterService<I> {
      * @param group
      * @return
      */
-    public List<I> getItems(String group);
+    public List<I> getItems(Serializable group);
     
     /**
      * Remove the given items from the given group
@@ -51,5 +52,5 @@ public interface IBatchClusterService<I> {
      * @param items
      * @return number of items actually removed
      */
-    public int removeItems(String group, Collection<I> items);
+    public int removeItems(Serializable group, Collection<I> items);
 }

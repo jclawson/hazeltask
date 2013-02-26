@@ -1,5 +1,6 @@
 package com.hazeltask.config;
 
+import java.io.Serializable;
 import java.util.concurrent.ThreadFactory;
 
 import com.hazelcast.core.HazelcastInstance;
@@ -14,7 +15,7 @@ public class HazeltaskConfig {
 //    private MetricsRegistry   metricsRegistry;
     private ExecutorConfig executorConfig = new ExecutorConfig();
     private MetricsConfig metricsConfig = new MetricsConfig();
-    private BundlerConfig<?> bundlerConfig;
+    private BundlerConfig<?,?,?,?> bundlerConfig;
     private ThreadFactory threadFactory;
     
     public HazeltaskConfig withTopologyName(String name) {
@@ -37,7 +38,7 @@ public class HazeltaskConfig {
         return this;
     }
     
-    public <I> HazeltaskConfig withBundlerConfig(BundlerConfig<I> bundlerConfig) {
+    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> HazeltaskConfig withBundlerConfig(BundlerConfig<I, ID, ITEM_ID, GROUP> bundlerConfig) {
         this.bundlerConfig = bundlerConfig;
         return this;
     }
@@ -77,8 +78,8 @@ public class HazeltaskConfig {
     }
     
     @SuppressWarnings("unchecked")
-    public <I> BundlerConfig<I> getBundlerConfig() {
-        return (BundlerConfig<I>) this.bundlerConfig;
+    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> BundlerConfig<I, ID, ITEM_ID, GROUP> getBundlerConfig() {
+        return (BundlerConfig<I, ID, ITEM_ID, GROUP>) this.bundlerConfig;
     }
     
     public HazeltaskConfig withThreadFactory(ThreadFactory threadFactory) {

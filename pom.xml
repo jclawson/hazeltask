@@ -5,6 +5,11 @@
   <version>0.9.2-SNAPSHOT</version>
   <name>Hazelcast Work</name>
   <description>Hazelcast Work</description>
+  
+  <properties>
+		<maven.compiler.source>1.6</maven.compiler.source>
+		<maven.compiler.target>1.6</maven.compiler.target>
+	</properties>
 
 <developers>
         <developer>

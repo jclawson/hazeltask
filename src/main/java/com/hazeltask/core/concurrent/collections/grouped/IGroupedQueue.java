@@ -9,18 +9,18 @@ import java.util.concurrent.BlockingQueue;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
 
-public interface IGroupedQueue<E extends Groupable> extends BlockingQueue<E>{
+public interface IGroupedQueue<E extends Groupable<G>, G> extends BlockingQueue<E>{
 
     public abstract Long getOldestQueueTime();
 
-    public abstract int drainTo(String partition, Collection<? super E> toCollection);
+    public abstract int drainTo(G partition, Collection<? super E> toCollection);
 
-    public abstract int drainTo(String partition, Collection<? super E> toCollection, int max);
+    public abstract int drainTo(G partition, Collection<? super E> toCollection, int max);
 
-    public List<Entry<String, ITrackedQueue<E>>> getGroups();
+    public List<Entry<G, ITrackedQueue<E>>> getGroups();
     
-    public ITrackedQueue<E> getQueueByGroup(String group);
+    public ITrackedQueue<E> getQueueByGroup(G group);
     
-    public Map<String, ITrackedQueue<E>> getQueuesByGroup();
+    public Map<G, ITrackedQueue<E>> getQueuesByGroup();
     
 }

@@ -22,6 +22,10 @@ public class LoadBalancedRouter<T> implements ListRouter<T> {
     private final Callable<List<T>> fetchList;
     private RouteCondition<T> condition;
 	
+    public static <T2> LoadBalancedRouter<T2> newInstance(List<T2> list, Comparator<T2> comparator) {
+        return new LoadBalancedRouter<T2>(list, comparator);
+    }
+    
 	public LoadBalancedRouter(List<T> list, Comparator<T> comparator) {
 		this.comparator = comparator;
 		this.list = list;

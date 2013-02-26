@@ -50,7 +50,7 @@ public class PreventDuplicatesTest {
             .thenReturn(true);
         
         
-        TaskBatch<FooItem> bundle = mock(TaskBatch.class);
+        TaskBatch<FooItem, String, String> bundle = mock(TaskBatch.class);
         when(bundle.getItems()).thenReturn(Arrays.asList(item));
         
         HazeltaskTask work = mock(HazeltaskTask.class);

@@ -12,20 +12,19 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazeltask.executor.task.HazeltaskTask;
-import com.hazeltask.executor.task.TaskId;
 
 public class DelegatingExecutorListenerTest {
     
     private DelegatingExecutorListener listener;
     private ExecutorListener listener1;
     private ExecutorListener listener2;
-    private HazeltaskTask task;
+    private HazeltaskTask<String,String> task;
     
     @Before
     public void setup() {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
-        task = new HazeltaskTask("test", new TaskId("1","1"), (Runnable) null);
+        task = new HazeltaskTask<String,String>("test", "1","1", (Runnable) null);
         listener = new DelegatingExecutorListener(Arrays.asList(listener1, listener2));
     }
     

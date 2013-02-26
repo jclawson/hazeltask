@@ -8,7 +8,7 @@ public class Validator {
     @SuppressWarnings("deprecation")
     public static void validate(HazeltaskConfig config) {
         ExecutorConfig executorConfig = config.getExecutorConfig();
-        BundlerConfig<?> bundlerConfig = config.getBundlerConfig();
+        BundlerConfig<?, ?, ?, ?> bundlerConfig = config.getBundlerConfig();
         MetricsConfig metricsConfig = config.getMetricsConfig();
         
         if(config.getHazelcast() == null) {

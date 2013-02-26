@@ -40,11 +40,11 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlocking
  *
  * @param <E>
  */
-public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> implements IGroupedQueue<E>, BlockingQueue<E> {
-    private final ConcurrentMap<String, ITrackedQueue<E>> queuesByGroup;
-    private final CopyOnWriteArrayList<Entry<String, ITrackedQueue<E>>> groups = 
-            new CopyOnWriteArrayList<Entry<String, ITrackedQueue<E>>>();
-    private GroupedRouter<E> groupRouter;
+public class GroupedPriorityQueue<E extends Groupable<G>, G> extends AbstractQueue<E> implements IGroupedQueue<E, G>, BlockingQueue<E> {
+    private final ConcurrentMap<G, ITrackedQueue<E>> queuesByGroup;
+    private final CopyOnWriteArrayList<Entry<G, ITrackedQueue<E>>> groups = 
+            new CopyOnWriteArrayList<Entry<G, ITrackedQueue<E>>>();
+    private GroupedRouter<E, G> groupRouter;
     private final TimeCreatedAdapter<E> timeAdapter;
     
     /**
@@ -54,31 +54,31 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
     private final ReentrantLock lock = new ReentrantLock(false);
     private final Condition notEmpty = lock.newCondition();
     
-    public GroupedPriorityQueue(GroupedRouter<E> partitionRouter, TimeCreatedAdapter<E> timeAdapter){
-        queuesByGroup = new ConcurrentHashMap<String, ITrackedQueue<E>>();
+    public GroupedPriorityQueue(GroupedRouter<E,G> partitionRouter, TimeCreatedAdapter<E> timeAdapter){
+        queuesByGroup = new ConcurrentHashMap<G, ITrackedQueue<E>>();
         this.groupRouter = partitionRouter == null 
-                                    ? new GroupedQueueRouter.InOrderRouter<E>() 
+                                    ? new GroupedQueueRouter.InOrderRouter<E,G>() 
                                     : partitionRouter;
                                     
         this.groupRouter.setPartitionedQueueue(this);
         this.timeAdapter = timeAdapter;
     }
     
-    public Map<String, ITrackedQueue<E>> getQueuesByGroup() {
+    public Map<G, ITrackedQueue<E>> getQueuesByGroup() {
         return Collections.unmodifiableMap(this.queuesByGroup);
     }
     
-    public ITrackedQueue<E> getQueueByGroup(String group){
+    public ITrackedQueue<E> getQueueByGroup(G group){
         return this.queuesByGroup.get(group);
     }
     
-    public List<Entry<String, ITrackedQueue<E>>> getGroups() {
+    public List<Entry<G, ITrackedQueue<E>>> getGroups() {
         return groups;
     }
     
-    public List<String> getNonEmptyGroups() {
-        List<String> groups = new ArrayList<String>();
-        for(Entry<String, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
+    public List<G> getNonEmptyGroups() {
+        List<G> groups = new ArrayList<G>();
+        for(Entry<G, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
             if(qEntry.getValue().size() > 0) {
                 groups.add(qEntry.getKey());
             }
@@ -86,14 +86,14 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return groups;
     }
     
-    private Queue<E> getOrCreateGroupQueue(String group) {
+    private Queue<E> getOrCreateGroupQueue(G group) {
         Queue<E> q = queuesByGroup.get(group);
         if(q == null) {
             ITrackedQueue<E> newQ = new TrackedPriorityBlockingQueue<E>(timeAdapter);
             if(queuesByGroup.putIfAbsent(group, newQ) == null) {
                 q = newQ;
-                SimpleEntry<String, ITrackedQueue<E>> entry = 
-                        new SimpleEntry<String, ITrackedQueue<E>>(group, newQ);
+                SimpleEntry<G, ITrackedQueue<E>> entry = 
+                        new SimpleEntry<G, ITrackedQueue<E>>(group, newQ);
                 
                 groups.add(entry);
             } else {
@@ -111,7 +111,7 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
      * is empty
      */
     public boolean offer(E e) {
-        String partition = e.getGroup();
+        G partition = e.getGroup();
         Queue<E> q = getOrCreateGroupQueue(partition);
         lock.lock();
         try {
@@ -215,7 +215,7 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
      */
     public Long getOldestQueueTime() {
         long oldestTime = Long.MAX_VALUE;
-        for(Entry<String, ITrackedQueue<E>> entry : this.queuesByGroup.entrySet()) {
+        for(Entry<G, ITrackedQueue<E>> entry : this.queuesByGroup.entrySet()) {
             Long oldest = entry.getValue().getOldestItemTime();
             if(oldest != null && oldest < oldestTime)
                 oldestTime = oldest;
@@ -236,10 +236,7 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return size;
     }
     
-    /* (non-Javadoc)
-     * @see com.succinctllc.core.concurrent.collections.IGroupedQueue#drainTo(java.lang.String, java.util.Collection)
-     */
-    public int drainTo(String partition, Collection<? super E> toCollection) {
+    public int drainTo(G partition, Collection<? super E> toCollection) {
         E elem = null;
         int num = 0;
         Queue<E> q = getQueuesByGroup().get(partition);
@@ -250,10 +247,7 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         return num;
     }
 
-    /* (non-Javadoc)
-     * @see com.succinctllc.core.concurrent.collections.IGroupedQueue#drainTo(java.lang.String, java.util.Collection, int)
-     */
-    public int drainTo(String partition, Collection<? super E> toCollection, int max) {
+    public int drainTo(G partition, Collection<? super E> toCollection, int max) {
         E elem = null;
         int num = 0;
         Queue<E> q = getQueuesByGroup().get(partition);
@@ -329,4 +323,5 @@ public class GroupedPriorityQueue<E extends Groupable> extends AbstractQueue<E> 
         }
         return i;
     }
+
 }

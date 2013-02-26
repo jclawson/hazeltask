@@ -1,5 +1,6 @@
 package com.hazeltask.batch;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,16 +15,15 @@ import com.hazeltask.config.BundlerConfig;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.DistributedExecutorService;
 
-//TODO: can we create StatsTaskBatchingService that attaches stats tracking?
-//use listeners too
 
-public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingService<I>> {
+//TODO: add better generics...
+public class TaskBatchingService<I, ID extends Serializable, GROUP extends Serializable> implements ServiceListenable<TaskBatchingService<I,ID,GROUP>> {
     
-    private final BundlerConfig<I> batchingConfig;
+    private final BundlerConfig<I,ID,?,GROUP> batchingConfig;
     private final DistributedExecutorService svc;
     private final HazeltaskTopology topology;
     private final IBatchClusterService<I> batchClusterService;
-    private CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I>>>();
+    private CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ID, GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>>>();
     private final CopyOnWriteArrayList<BatchExecutorListener<I>> batchListeners = new CopyOnWriteArrayList<BatchExecutorListener<I>>();
     private final ILogger LOGGER;
     
@@ -36,7 +36,7 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
         LOGGER = topology.getLoggingService().getLogger(TaskBatchingService.class.getName());
     }
 
-    public BundlerConfig<I> getBatchingExecutorServiceConfig() {
+    public BundlerConfig<I,?,?,?> getBatchingExecutorServiceConfig() {
         return this.batchingConfig;
     }
     
@@ -67,17 +67,17 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
         return svc;
     }
     
-    public void addServiceListener(HazeltaskServiceListener<TaskBatchingService<I>> listener) {
+    public void addServiceListener(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener) {
         this.listeners.add(listener);
     }
     
     public void startup() {
-        for(HazeltaskServiceListener<TaskBatchingService<I>> listener : listeners)
+        for(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener : listeners)
             listener.onBeginStart(this);
         
         svc.startup();
         
-        for(HazeltaskServiceListener<TaskBatchingService<I>> listener : listeners)
+        for(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener : listeners)
             listener.onEndStart(this);
     }
     
@@ -85,7 +85,7 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
         this.batchListeners.add(listener);
     }
     
-    protected int flush(String group) {
+    protected int flush(GROUP group) {
         int numNodes = topology.getReadyMembers().size();
         if (numNodes == 0) {
             LOGGER.log(Level.WARNING,
@@ -112,7 +112,8 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
 //          if(bundleSizeHistogram != null)
 //              bundleSizeHistogram.update(partitionedBundle.size());
           
-          TaskBatch<I> task = batchingConfig.getBundler().createBatch(group, partitionedBundle);
+          IBatchFactory<I,ID,GROUP> batcher = batchingConfig.getBundler();
+          TaskBatch<I,ID,GROUP> task = batcher.createBatch(group, partitionedBundle);
           
           svc.execute(task);   
       }
@@ -124,7 +125,7 @@ public class TaskBatchingService<I> implements ServiceListenable<TaskBatchingSer
       return items.size();
     }
     
-    public Map<String, Integer> getNonZeroLocalGroupSizes() {
+    public Map<Serializable, Integer> getNonZeroLocalGroupSizes() {
         return batchClusterService.getNonZeroLocalGroupSizes();
     }
 }

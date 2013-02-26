@@ -20,16 +20,14 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 /**
- * TODO: for this, lets lock the cluster down so we can figure out exactly 
- * what to do without other memebers running this task and altering the metrics
- * what would happen if we didn't lock?
+ * Is there a way we can do this without locking?
  * 
  * We will only take work if we find a node that has PERCENT_THRESHOLD more work than 
  * this node.
  * 
  * We lock these tasks with a cluster wide lock so that only one per node may run
  * 
- * FIXME: lets have TaskStealPolicies so this is customizable, when and how much to steal
+ * TODO: lets have TaskStealPolicies so this is customizable, when and how much to steal
  * 
  * @author jclawson
  */

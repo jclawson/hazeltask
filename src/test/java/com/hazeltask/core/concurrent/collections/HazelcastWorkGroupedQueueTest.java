@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work;
+package com.hazeltask.core.concurrent.collections;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -20,22 +20,22 @@ import com.hazeltask.executor.task.HazeltaskTask;
 
 public class HazelcastWorkGroupedQueueTest {
     
-    private GroupedPriorityQueue<HazeltaskTask> taskQueue;
+    private GroupedPriorityQueue<HazeltaskTask<String,String>, String> taskQueue;
     
     @Before
     public void setupData() {
-        ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> routerFactory = RoundRobinRouter.newFactory();
-        taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(routerFactory),
-                new TimeCreatedAdapter<HazeltaskTask>(){
-            public long getTimeCreated(HazeltaskTask item) {
+        ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask<String,String>>>> routerFactory = RoundRobinRouter.newFactory();
+        taskQueue = new GroupedPriorityQueue<HazeltaskTask<String,String>, String>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask<String,String>, String>(routerFactory),
+                new TimeCreatedAdapter<HazeltaskTask<String,String>>(){
+            public long getTimeCreated(HazeltaskTask<String,String> item) {
                 return item.getTimeCreated();
             }            
         });
         
-        HazeltaskTask work1 = mock(HazeltaskTask.class);
-        HazeltaskTask work2 = mock(HazeltaskTask.class);
-        HazeltaskTask work3 = mock(HazeltaskTask.class);
-        HazeltaskTask work4 = mock(HazeltaskTask.class);
+        HazeltaskTask<String,String> work1 = mock(HazeltaskTask.class);
+        HazeltaskTask<String,String> work2 = mock(HazeltaskTask.class);
+        HazeltaskTask<String,String> work3 = mock(HazeltaskTask.class);
+        HazeltaskTask<String,String> work4 = mock(HazeltaskTask.class);
         
         when(work1.getGroup()).thenReturn("1");
         when(work2.getGroup()).thenReturn("1");

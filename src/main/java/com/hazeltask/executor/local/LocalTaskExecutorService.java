@@ -1,5 +1,6 @@
 package com.hazeltask.executor.local;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -59,13 +60,13 @@ import com.yammer.metrics.core.TimerContext;
  *       or total up all queues of a certain priority number
  *
  */
-public class LocalTaskExecutorService {
+public class LocalTaskExecutorService<ID extends Serializable, G extends Serializable> {
 
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
 	private final HazeltaskTopology topology;
-	private QueueExecutor localExecutorPool;
-	private GroupedPriorityQueue<HazeltaskTask> taskQueue;
+	private QueueExecutor<ID,G> localExecutorPool;
+	private GroupedPriorityQueue<HazeltaskTask<ID, G>, G> taskQueue;
 	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
 	private final IExecutorTopologyService executorTopologyService;
 	
@@ -83,11 +84,11 @@ public class LocalTaskExecutorService {
 		
 		ThreadFactory factory = executorConfig.getThreadFactory();
 		//List<Entry<String, ITrackedQueue<E>>>
-		ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> router = executorConfig.getTaskRouterFactory();
+		ListRouterFactory<Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>>> router = executorConfig.getTaskRouterFactory();
 		
-		taskQueue = new GroupedPriorityQueue<HazeltaskTask>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask>(router),
-                new TimeCreatedAdapter<HazeltaskTask>(){
-            public long getTimeCreated(HazeltaskTask item) {
+		taskQueue = new GroupedPriorityQueue<HazeltaskTask<ID, G>,G>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask<ID, G>,G>(router),
+                new TimeCreatedAdapter<HazeltaskTask<ID, G>>(){
+            public long getTimeCreated(HazeltaskTask<ID, G> item) {
                 return item.getTimeCreated();
             }
         });
@@ -101,7 +102,7 @@ public class LocalTaskExecutorService {
 			metrics.newGauge(createName("queue-size"), new CollectionSizeGauge(taskQueue));
 		}
 		
-		localExecutorPool = new QueueExecutor(taskQueue, maxThreads, factory, taskExecutedTimer);
+		localExecutorPool = new QueueExecutor<ID,G>(taskQueue, maxThreads, factory, taskExecutedTimer);
 		localExecutorPool.addListener(new DelegatingExecutorListener(listeners));
 		
 		if(executorConfig.isFutureSupportEnabled())
@@ -173,9 +174,9 @@ public class LocalTaskExecutorService {
 	    return this.taskQueue.size();
 	}
 	
-	public Map<String, Integer> getGroupSizes() {
-		Map<String, Integer> result = new HashMap<String, Integer>();
-		for(Entry<String, ITrackedQueue<HazeltaskTask>> group : this.taskQueue.getGroups()) {
+	public Map<G, Integer> getGroupSizes() {
+		Map<G, Integer> result = new HashMap<G, Integer>();
+		for(Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>> group : this.taskQueue.getGroups()) {
 			result.put(group.getKey(), group.getValue().size());
 		}
 		return result;
@@ -198,11 +199,11 @@ public class LocalTaskExecutorService {
 		}
 	}
 	
-	public Collection<HazeltaskTask> stealTasks(long numberOfTasks) {
+	public Collection<HazeltaskTask<ID,G>> stealTasks(long numberOfTasks) {
 	    if(!this.localExecutorPool.isShutdown()) {
     	    long totalSize = taskQueue.size();
-    	    ArrayList<HazeltaskTask> result = new ArrayList<HazeltaskTask>((int)numberOfTasks);
-    	    for(ITrackedQueue<HazeltaskTask> q : this.taskQueue.getQueuesByGroup().values()) {
+    	    ArrayList<HazeltaskTask<ID,G>> result = new ArrayList<HazeltaskTask<ID,G>>((int)numberOfTasks);
+    	    for(ITrackedQueue<HazeltaskTask<ID,G>> q : this.taskQueue.getQueuesByGroup().values()) {
     	        int qSize = q.size();
     	        if(qSize == 0) continue;
     	        
@@ -211,7 +212,7 @@ public class LocalTaskExecutorService {
     	        
     	        for(int i=0; i < tasksToTake; i++) {
     	            //TODO: this really sucks that we use q.poll() ... why can't this be a dequeue????
-    	            HazeltaskTask task = q.poll();
+    	            HazeltaskTask<ID,G> task = q.poll();
     	            if(task == null)
     	                break;
     	            result.add(task);

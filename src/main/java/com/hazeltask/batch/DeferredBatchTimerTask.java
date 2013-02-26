@@ -1,5 +1,6 @@
 package com.hazeltask.batch;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -15,21 +16,23 @@ import com.yammer.metrics.core.TimerContext;
  * to bundle up the groups into work to submit to the distributed executor
  * service
  * 
+ * TODO: add better generics
+ * 
  * @author jclawson
  *
  * @param <T>
  */
 public class DeferredBatchTimerTask<T> extends BackoffTask {
-    private final TaskBatchingService<T> deferredTaskBundler;
-    private final BundlerConfig<T> batchConfig;
+    private final TaskBatchingService deferredTaskBundler;
+    private final BundlerConfig<T,?,?,?> batchConfig;
     
-    private final Map<String, Long> lastFlushedTimes = new HashMap<String, Long>();
+    private final Map<Serializable, Long> lastFlushedTimes = new HashMap<Serializable, Long>();
     //private final MetricNamer metricNamer;
     
     private final Timer bundlerTimer;
     private final Histogram batchSizeHistogram;
     
-    public DeferredBatchTimerTask(BundlerConfig<T> batchingConfig, TaskBatchingService<T> deferredTaskBundler, BatchMetrics metrics) {
+    public DeferredBatchTimerTask(BundlerConfig<T,?,?,?> batchingConfig, TaskBatchingService<T,?,?> deferredTaskBundler, BatchMetrics metrics) {
         this.deferredTaskBundler = deferredTaskBundler;
         this.batchConfig = batchingConfig;
         this.bundlerTimer = metrics.getBatchBundleTimer().getMetric();   
@@ -42,7 +45,7 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
      * @param group
      * @return
      */
-    private boolean shouldTTLFlush(String group) {
+    private boolean shouldTTLFlush(Serializable group) {
         Long lastFlushed = lastFlushedTimes.get(group);
         long currentTime = System.currentTimeMillis();
         if(lastFlushed == null || currentTime - lastFlushed > batchConfig.getFlushTTL()) {
@@ -62,11 +65,11 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
         	tCtx = bundlerTimer.time();
     	
         try {
-	    	Map<String, Integer> sizes = deferredTaskBundler.getNonZeroLocalGroupSizes();
+	    	Map<Serializable, Integer> sizes = deferredTaskBundler.getNonZeroLocalGroupSizes();
 	        int flushSize = batchConfig.getFlushSize();
-	        for(Entry<String, Integer> entry : sizes.entrySet()) {
+	        for(Entry<Serializable, Integer> entry : sizes.entrySet()) {
 	            if(entry.getValue() >= flushSize) {
-	                String group = entry.getKey();
+	                Serializable group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
 	                int numFlushed = deferredTaskBundler.flush(group);
 	                batchSizeHistogram.update(numFlushed);

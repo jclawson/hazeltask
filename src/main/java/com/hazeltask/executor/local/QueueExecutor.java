@@ -1,5 +1,6 @@
 package com.hazeltask.executor.local;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,8 +20,8 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 
-public class QueueExecutor {
-    private final BlockingQueue<HazeltaskTask> queue;
+public class QueueExecutor<ID extends Serializable, G extends Serializable> {
+    private final BlockingQueue<HazeltaskTask<ID,G>> queue;
     private final ThreadFactory threadFactory;
     private volatile int coreThreads;
     private Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
@@ -53,7 +54,7 @@ public class QueueExecutor {
      */
     private final Condition termination = mainLock.newCondition();
     
-    public QueueExecutor(BlockingQueue<HazeltaskTask> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
+    public QueueExecutor(BlockingQueue<HazeltaskTask<ID,G>> queue, int coreThreads, ThreadFactory threadFactory, Timer workExecutedTimer) {
         this.coreThreads = coreThreads;
         this.queue = queue;
         this.threadFactory = threadFactory;
@@ -197,7 +198,7 @@ public class QueueExecutor {
          * we need to create a new iterator for each element removed.
          */
         while (!queue.isEmpty()) {
-            Iterator<HazeltaskTask> it = queue.iterator();
+            Iterator<HazeltaskTask<ID,G>> it = queue.iterator();
             try {
                 if (it.hasNext()) {
                     HazeltaskTask r = it.next();
@@ -251,10 +252,10 @@ public class QueueExecutor {
      */
     protected void terminated() { }
     
-    public Collection<HazeltaskTask> getTasksInProgress() {
-        List<HazeltaskTask> result = new ArrayList<HazeltaskTask>(workers.size());
+    public Collection<HazeltaskTask<ID,G>> getTasksInProgress() {
+        List<HazeltaskTask<ID,G>> result = new ArrayList<HazeltaskTask<ID,G>>(workers.size());
         for (Worker w : workers) {
-            HazeltaskTask task = w.getCurrentTask();
+            HazeltaskTask<ID,G> task = w.getCurrentTask();
             if(task != null)
                 result.add(task);
         }
@@ -297,7 +298,7 @@ public class QueueExecutor {
     }
 
     private final class Worker implements Runnable {
-        private volatile HazeltaskTask currentTask;
+        private volatile HazeltaskTask<ID,G> currentTask;
         private final ReentrantLock runLock = new ReentrantLock();
         private Thread thread;
         private volatile long completedTasks;
@@ -316,7 +317,7 @@ public class QueueExecutor {
             thread.interrupt();
         }
         
-        public HazeltaskTask getCurrentTask() {
+        public HazeltaskTask<ID,G> getCurrentTask() {
             return this.currentTask;
         }
         

@@ -19,13 +19,13 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlocking
 
 //TODO: fix this... check to make sure we visit every group
 public class GroupedQueueRouterTest {
-    GroupRouterAdapter<Foo> adapter;
-    GroupedPriorityQueue<Foo> queue;
+    GroupRouterAdapter<Foo,String> adapter;
+    GroupedPriorityQueue<Foo,String> queue;
     
     @Before
     public void setupData() {
-        GroupRouterAdapter<Foo> adapter = new GroupRouterAdapter<Foo>(new MyListRouterFactory());        
-        GroupedPriorityQueue<Foo> queue = new GroupedPriorityQueue<Foo>(adapter, new TimeCreatedAdapter<Foo>(){
+        GroupRouterAdapter<Foo,String> adapter = new GroupRouterAdapter<Foo,String>(new MyListRouterFactory());        
+        GroupedPriorityQueue<Foo,String> queue = new GroupedPriorityQueue<Foo,String>(adapter, new TimeCreatedAdapter<Foo>(){
             public long getTimeCreated(Foo item) {
                 return item.time;
             }
@@ -102,7 +102,7 @@ public class GroupedQueueRouterTest {
     
     
     
-    static class Foo implements Groupable {
+    static class Foo implements Groupable<String> {
         int id;
         int group;
         long time;

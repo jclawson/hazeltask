@@ -62,9 +62,9 @@ public interface IExecutorTopologyService {
      */
     public boolean removePendingTask(HazeltaskTask task);
     
-    public void broadcastTaskCompletion(String taskId, Serializable response);
-    public void broadcastTaskCancellation(String taskId);
-    public void broadcastTaskError(String taskId, Throwable exception);
+    public void broadcastTaskCompletion(Serializable taskId, Serializable response);
+    public void broadcastTaskCancellation(Serializable taskId);
+    public void broadcastTaskError(Serializable taskId, Throwable exception);
     public void addTaskResponseMessageHandler(MessageListener<TaskResponse> listener);
     
     public Lock getRebalanceTaskClusterLock();

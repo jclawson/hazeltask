@@ -7,7 +7,7 @@ import com.hazelcast.core.Member;
 public class TaskResponse implements Serializable {
     private static final long serialVersionUID = 1L;
     private final Member from;
-    private final String taskId;
+    private final Serializable taskId;
     private final Serializable response;
     private final Throwable error;
     private final Status status;
@@ -18,7 +18,7 @@ public class TaskResponse implements Serializable {
         CANCELLED
     }
     
-    public TaskResponse(Member from, String taskId, Serializable response, Status status) {
+    public TaskResponse(Member from, Serializable taskId, Serializable response, Status status) {
         this.from = from;
         this.taskId = taskId;
         this.response = response;
@@ -26,7 +26,7 @@ public class TaskResponse implements Serializable {
         this.status = status;
     }
     
-    public TaskResponse(Member from, String taskId, Throwable error) {
+    public TaskResponse(Member from, Serializable taskId, Throwable error) {
         this.from = from;
         this.taskId = taskId;        
         this.error = error;
@@ -38,7 +38,7 @@ public class TaskResponse implements Serializable {
         return from;
     }
 
-    public String getTaskId() {
+    public Serializable getTaskId() {
         return taskId;
     }
 

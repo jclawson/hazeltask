@@ -1,5 +1,6 @@
 package com.hazeltask.executor;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.google.common.collect.HashMultimap;
@@ -58,9 +59,9 @@ public class DistributedFutureTracker implements MessageListener<TaskResponse> {
     //private DistributedExecutorService service;
     //private final ITopologyService topologyService;
     
-    private SetMultimap<String, DistributedFuture<?>> futures = 
-            Multimaps.<String, DistributedFuture<?>>synchronizedSetMultimap(
-                HashMultimap.<String, DistributedFuture<?>>create()
+    private SetMultimap<Serializable, DistributedFuture<?>> futures = 
+            Multimaps.<Serializable, DistributedFuture<?>>synchronizedSetMultimap(
+                HashMultimap.<Serializable, DistributedFuture<?>>create()
             );
     
     public DistributedFutureTracker() {
@@ -76,18 +77,18 @@ public class DistributedFutureTracker implements MessageListener<TaskResponse> {
     
     public <T> DistributedFuture<T> createFuture(HazeltaskTask task) {
         DistributedFuture<T> future = new DistributedFuture<T>();
-        this.futures.put(task.getUniqueIdentifier(), future);
+        this.futures.put(task.getId(), future);
         return future;
     }
     
-    protected boolean removeAll(String id) {
+    protected boolean removeAll(Serializable id) {
         return this.futures.removeAll(id).size() > 0;
     }
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
 	public void onMessage(Message<TaskResponse> message) {
         TaskResponse response = message.getMessageObject();
-        String taskId = response.getTaskId();
+        Serializable taskId = response.getTaskId();
         Collection<DistributedFuture<?>> taskFutures = futures.removeAll(taskId);
         if(taskFutures.size() > 0) {
             for(DistributedFuture future : taskFutures) {

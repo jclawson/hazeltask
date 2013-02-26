@@ -4,6 +4,12 @@ import java.io.Serializable;
 
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
-public interface Task extends Runnable, TaskIdentifyable, Groupable, Serializable {
+public interface Task<ID extends Serializable, G extends Serializable> 
+    extends 
+        Runnable,
+        Groupable<G>, 
+        Serializable {
     
+    public ID getId();
+
 }

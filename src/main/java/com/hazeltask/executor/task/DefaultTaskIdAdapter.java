@@ -1,9 +1,19 @@
 package com.hazeltask.executor.task;
 
+import java.util.UUID;
 
 
-public class DefaultTaskIdAdapter implements TaskIdAdapter<Object> {
-    public TaskId createTaskId(Object task) {
-        return new TaskId("$$DefaultGroup$$");
+
+
+
+public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, String, String> {
+    @Override
+    public String getTaskId(Object task) {
+        return UUID.randomUUID().toString();
+    }
+
+    @Override
+    public String getTaskGroup(Object task) {
+        return "$$DefaultGroup$$";
     }
 }

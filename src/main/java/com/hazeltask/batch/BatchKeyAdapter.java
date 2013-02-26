@@ -1,6 +1,7 @@
 package com.hazeltask.batch;
 
-import com.hazeltask.executor.task.TaskId;
+import java.io.Serializable;
+
 import com.hazeltask.executor.task.TaskIdAdapter;
 
 /**
@@ -11,19 +12,24 @@ import com.hazeltask.executor.task.TaskIdAdapter;
  * 
  * This will work as both the bundler adapter and the DistributedExecutorService 
  * adapter to fetch the group & id.
- *   
+ * 
+ * 
+ * 
  * @author jclawson
  *
- * @param <I>
+ * @param <ITEM>     The class of the items that will be bundled into a task
+ * @param <TASK>     The class of the task that items will get bundled into to run
+ * @param <ITEM_ID>  The class of the id type used in items
+ * @param <ID>       The class of the id type used in the bundled task
+ * @param <GROUP>    The class of the group that is used in items and tasks (must be the same)
  */
-public abstract class BatchKeyAdapter<I> implements TaskIdAdapter<I> {
-    public abstract String getItemGroup(I o);
-    public abstract String getItemId(I o);
+public abstract class BatchKeyAdapter<ITEM, TASK extends TaskBatch<ITEM, ID, GROUP>, ITEM_ID extends Serializable, ID extends Serializable, GROUP extends Serializable> implements TaskIdAdapter<TASK, ID,GROUP> {
     
-    public TaskId createTaskId(I groupable) {
-        return new TaskId(getItemId(groupable), getItemGroup(groupable));
-    }
+    public abstract GROUP getItemGroup(ITEM o);
+    public abstract ITEM_ID getItemId(ITEM o);
     
+    
+       
     /**
      * 'true'  if this key adapter will return the same id, for the same item
      * 'false' if it will return a different id 

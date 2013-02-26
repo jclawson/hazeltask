@@ -2,7 +2,7 @@ package com.hazeltask.batch;
 
 import java.util.UUID;
 
-public class DefaultBatchKeyAdapter<I> extends BatchKeyAdapter<I> {
+public class DefaultBatchKeyAdapter<I> extends BatchKeyAdapter<I, TaskBatch<I, String, String>, String, String, String> {
     @Override
     public String getItemGroup(I o) {
         return "$$DefaultGroup$$";
@@ -16,6 +16,16 @@ public class DefaultBatchKeyAdapter<I> extends BatchKeyAdapter<I> {
     @Override
     public boolean isConsistent() {
         return false;
+    }
+
+    @Override
+    public String getTaskId(TaskBatch<I, String, String> task) {
+        return task.getId();
+    }
+
+    @Override
+    public String getTaskGroup(TaskBatch<I, String, String> task) {
+        return task.getGroup();
     }
 
 }

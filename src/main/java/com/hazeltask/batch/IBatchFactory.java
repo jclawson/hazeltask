@@ -1,5 +1,6 @@
 package com.hazeltask.batch;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 
@@ -14,6 +15,6 @@ import java.util.Collection;
  *
  * @param <I>
  */
-public interface IBatchFactory<I> {
-    public TaskBatch<I> createBatch(String group, Collection<I> items);
+public interface IBatchFactory<ITEM, ID extends Serializable, GROUP extends Serializable> {
+    public TaskBatch<ITEM, ID, GROUP> createBatch(GROUP group, Collection<ITEM> items);
 }

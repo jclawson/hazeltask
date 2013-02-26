@@ -1,10 +1,13 @@
 package com.hazeltask.config;
 
+import java.io.Serializable;
+
 import com.hazeltask.batch.BatchKeyAdapter;
 import com.hazeltask.batch.DefaultBatchKeyAdapter;
 import com.hazeltask.batch.IBatchFactory;
+import com.hazeltask.batch.TaskBatch;
 
-public class BundlerConfig<I> {
+public class BundlerConfig<I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> {
     private int                  flushSize                     = 100;
     private int                  minBundleSize                 = 25;
     private int                  maxBundleSize                 = 100;
@@ -12,34 +15,36 @@ public class BundlerConfig<I> {
     private boolean              localBuffering                = false;
     private boolean              preventDuplicates             = false;
     private long                 duplicatePreventionExpireTime = 3600000;      // 20 minutes
-    protected BatchKeyAdapter<I> batchKeyAdapter               = new DefaultBatchKeyAdapter<I>();
-    private final IBatchFactory<I>     bundler;
+    
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected BatchKeyAdapter<I, ? extends TaskBatch<I, ID, GROUP>, ITEM_ID, ID, GROUP> batchKeyAdapter               = new DefaultBatchKeyAdapter();
+    private final IBatchFactory<I, ID, GROUP>     bundler;
 
-    public BundlerConfig(IBatchFactory<I> bundler) {
+    public <G extends Serializable> BundlerConfig(IBatchFactory<I, ID, GROUP> bundler) {
         this.bundler = bundler;
     }
     
-    public BundlerConfig<I> withFlushSize(int flushSize) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withFlushSize(int flushSize) {
         this.flushSize = flushSize;
         return this;
     }
 
-    public BundlerConfig<I> withMinBundleSize(int minBundleSize) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withMinBundleSize(int minBundleSize) {
         this.minBundleSize = minBundleSize;
         return this;
     }
 
-    public BundlerConfig<I> withMaxBundleSize(int maxBundleSize) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withMaxBundleSize(int maxBundleSize) {
         this.maxBundleSize = maxBundleSize;
         return this;
     }
 
-    public BundlerConfig<I> withFlushTTL(long flushTTL) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withFlushTTL(long flushTTL) {
         this.flushTTL = flushTTL;
         return this;
     }
 
-    public BundlerConfig<I> withLocalBuffering(boolean localBuffering) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withLocalBuffering(boolean localBuffering) {
         this.localBuffering = localBuffering;
         return this;
     }
@@ -51,17 +56,17 @@ public class BundlerConfig<I> {
      * @param preventDuplicates
      * @return
      */
-    public BundlerConfig<I> withPreventDuplicates(boolean preventDuplicates) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withPreventDuplicates(boolean preventDuplicates) {
         this.preventDuplicates = preventDuplicates;
         return this;
     }
 
-    public BundlerConfig<I> withDuplicatePreventionExpireTime(long duplicatePreventionExpireTime) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withDuplicatePreventionExpireTime(long duplicatePreventionExpireTime) {
         this.duplicatePreventionExpireTime = duplicatePreventionExpireTime;
         return this;
     }
 
-    public BundlerConfig<I> withBatchKeyAdapter(BatchKeyAdapter<I> batchKeyAdapter) {
+    public BundlerConfig<I, ID, ITEM_ID, GROUP> withBatchKeyAdapter(BatchKeyAdapter<I, ? extends TaskBatch<I, ID, GROUP>, ITEM_ID, ID, GROUP> batchKeyAdapter) {
         this.batchKeyAdapter = batchKeyAdapter;
         return this;
     }
@@ -95,11 +100,16 @@ public class BundlerConfig<I> {
         return duplicatePreventionExpireTime;
     }
 
-    public BatchKeyAdapter<I> getBatchKeyAdapter() {
+    public BatchKeyAdapter<I, ? extends TaskBatch<I, ID, GROUP>, ITEM_ID, ID, GROUP> getBatchKeyAdapter() {
         return batchKeyAdapter;
     }
 
-    public IBatchFactory<I> getBundler() {
+    /**
+     * I cast this to Serializable because for all intents and purposes, thats
+     * all I need to know for the internals.
+     * @return
+     */
+    public IBatchFactory<I, ID, GROUP> getBundler() {
         return bundler;
     }
     

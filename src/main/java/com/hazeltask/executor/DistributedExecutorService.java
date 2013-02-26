@@ -154,7 +154,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
                 //    so if you don't care about the result, no harm
                 LOGGER.log(Level.SEVERE, "Unable to submit HazeltaskTask to worker member");
                 future.setCancelled();
-                futureTracker.removeAll(taskWrapper.getUniqueIdentifier());
+                futureTracker.removeAll(taskWrapper.getId());
             }
             return future;
         } finally {
@@ -168,13 +168,19 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
             ((HazeltaskTask) task).updateCreatedTime();
             return (HazeltaskTask) task;
         } else {
-            return new HazeltaskTask(topology.getName(), taskIdAdapter.createTaskId(task), task);
+            return new HazeltaskTask(topology.getName(), 
+                                     taskIdAdapter.getTaskId(task), 
+                                     taskIdAdapter.getTaskGroup(task), 
+                                     task);
         }
     }
     
     @SuppressWarnings("unchecked")
     private HazeltaskTask createHazeltaskTaskWrapper(Callable<?> task) {
-        return new HazeltaskTask(topology.getName(), taskIdAdapter.createTaskId(task), task);
+        return new HazeltaskTask(topology.getName(), 
+                                 taskIdAdapter.getTaskId(task), 
+                                 taskIdAdapter.getTaskGroup(task), 
+                                 task);
     }
 
     public <T> Future<T> submit(Runnable task, T result) {

@@ -12,14 +12,14 @@ import com.hazeltask.core.concurrent.collections.router.RouteCondition;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
 public class GroupedQueueRouter {
-	public static interface GroupedRouter<E extends Groupable> {
+	public static interface GroupedRouter<E extends Groupable<G>, G> {
 		public ITrackedQueue<E> nextPartition();
 		public ITrackedQueue<E> peekPartition();
-		public void setPartitionedQueueue(IGroupedQueue<E> queue);
+		public void setPartitionedQueueue(IGroupedQueue<E, G> queue);
 	}
 	
-	public static class InOrderRouter<E extends Groupable> implements GroupedRouter<E> {
-		private IGroupedQueue<E> queue;
+	public static class InOrderRouter<E extends Groupable<G>,G> implements GroupedRouter<E,G> {
+		private IGroupedQueue<E,G> queue;
 		
 		public ITrackedQueue<E> peekPartition() {
 			return nextPartition();
@@ -32,7 +32,7 @@ public class GroupedQueueRouter {
 		protected ITrackedQueue<E> getOldestQueue(){
 			long oldest = Long.MAX_VALUE;
 			ITrackedQueue<E> oldestQueue = null;
-			for(Entry<String, ITrackedQueue<E>> partitionQueue : this.queue.getQueuesByGroup().entrySet()) {
+			for(Entry<G, ITrackedQueue<E>> partitionQueue : this.queue.getQueuesByGroup().entrySet()) {
 				ITrackedQueue<E> queue = partitionQueue.getValue();
 				if(queue.getOldestItemTime() < oldest) {
 					oldest = queue.getOldestItemTime();
@@ -42,24 +42,24 @@ public class GroupedQueueRouter {
 			return oldestQueue;
 		}
 
-        public void setPartitionedQueueue(IGroupedQueue<E> queue) {
+        public void setPartitionedQueueue(IGroupedQueue<E,G> queue) {
             this.queue = queue;
         }
 		
 	}
 	
 	
-	public static class GroupRouterAdapter<E extends Groupable> implements GroupedRouter<E> {
+	public static class GroupRouterAdapter<E extends Groupable<G>, G> implements GroupedRouter<E,G> {
 	    ILogger logger = Logger.getLogger(GroupRouterAdapter.class.getName());
-		private ListRouter<Entry<String, ITrackedQueue<E>>> router;		
-		private final ListRouterFactory<Entry<String, ITrackedQueue<E>>> routerFactory;
+		private ListRouter<Entry<G, ITrackedQueue<E>>> router;		
+		private final ListRouterFactory<Entry<G, ITrackedQueue<E>>> routerFactory;
 		
-		public GroupRouterAdapter(ListRouterFactory<Entry<String, ITrackedQueue<E>>> routerFactory) {
+		public GroupRouterAdapter(ListRouterFactory<Entry<G, ITrackedQueue<E>>> routerFactory) {
 		    this.routerFactory = routerFactory;
 		}
 		
 		private ITrackedQueue<E> nextPartition(int tryNumber) {
-		    Entry<String, ITrackedQueue<E>> partition = router.next();
+		    Entry<G, ITrackedQueue<E>> partition = router.next();
             if(partition == null)
                 return null;
             ITrackedQueue<E> q = partition.getValue();
@@ -84,15 +84,15 @@ public class GroupedQueueRouter {
 			return nextPartition();
 		}
 
-        public void setPartitionedQueueue(final IGroupedQueue<E> queue) {
-            this.router = routerFactory.createRouter(new Callable<List<Entry<String, ITrackedQueue<E>>>>(){
-                public List<Entry<String, ITrackedQueue<E>>> call() throws Exception {   
+        public void setPartitionedQueueue(final IGroupedQueue<E,G> queue) {
+            this.router = routerFactory.createRouter(new Callable<List<Entry<G, ITrackedQueue<E>>>>(){
+                public List<Entry<G, ITrackedQueue<E>>> call() throws Exception {   
                     return queue.getGroups();
                 }});
             checkNotNull(this.router);
             
-            this.router.setRouteCondition(new RouteCondition<Entry<String,ITrackedQueue<E>>>() {
-                public boolean isRoutable(Entry<String, ITrackedQueue<E>> route) {
+            this.router.setRouteCondition(new RouteCondition<Entry<G,ITrackedQueue<E>>>() {
+                public boolean isRoutable(Entry<G, ITrackedQueue<E>> route) {
                     return route.getValue().size() > 0;
                 }     
             });

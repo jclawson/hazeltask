@@ -1,47 +1,44 @@
 package com.hazeltask.executor.task;
 
+import java.io.Serializable;
 import java.util.concurrent.Callable;
-
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
  * in the distributed map.
  * 
- * FIXME: handling the completion tasks here is wrong... We need to move that logic out
- * so we can handle things like cancellation too!
- * 
- * FIXME: make DataSerializable, use SerializationHelper for runTask / callTask... 
- *        write boolean to indicate if runnable / callable
- * 
  * @author jclawson
  *
  */
-public class HazeltaskTask implements Groupable, Runnable, Task {
+public class HazeltaskTask<ID extends Serializable, G extends Serializable> 
+    implements Runnable, Task<ID,G> {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable runTask;
 	private Callable<?> callTask;
 	
 	private long createdAtMillis;
-	private TaskId key;
+	private ID id;
+	private G group;
 	private String topology;
 	private int submissionCount;
 	
 	private volatile transient Object result;
     private volatile transient Exception e;
 	
-	public HazeltaskTask(String topology, TaskId key, Runnable task){
+	public HazeltaskTask(String topology, ID id, G group, Runnable task){
 		this.runTask = task;
-		this.key = key;
+		this.id = id;
+		this.group = group;
 		this.topology = topology;
 		createdAtMillis = System.currentTimeMillis();
 		this.submissionCount = 1;
 	}
 	
-	public HazeltaskTask(String topology, TaskId key, Callable<?> task){
+	public HazeltaskTask(String topology, ID id, G group, Callable<?> task){
         this.callTask = task;
-        this.key = key;
+        this.id = id;
+        this.group = group;
         this.topology = topology;
         createdAtMillis = System.currentTimeMillis();
         this.submissionCount = 1;
@@ -67,8 +64,8 @@ public class HazeltaskTask implements Groupable, Runnable, Task {
 		return topology;
 	}
 
-	public String getGroup() {
-		return key.getGroup();
+	public G getGroup() {
+		return group;
 	}
 
 	public Object getResult() {
@@ -78,10 +75,6 @@ public class HazeltaskTask implements Groupable, Runnable, Task {
     public Exception getException() {
         return e;
     }
-
-    public String getUniqueIdentifier() {
-		return key.getId();
-	}
 	
 	public long getTimeCreated(){
 		return createdAtMillis;
@@ -107,10 +100,9 @@ public class HazeltaskTask implements Groupable, Runnable, Task {
         return this.callTask;
     }
 
-	public TaskId getTaskId() {
-		return key;
-	}
-
-	
+    @Override
+    public ID getId() {
+        return id;
+    }
 	
 }

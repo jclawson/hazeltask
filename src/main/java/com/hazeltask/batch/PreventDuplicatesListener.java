@@ -9,9 +9,9 @@ import com.hazeltask.executor.task.HazeltaskTask;
 //do not use this .... its slow and shouldn't be needed
 public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, ExecutorListener {
     private final IBatchClusterService<I> svc;
-    private final BatchKeyAdapter<I> batchKeyAdapter;
+    private final BatchKeyAdapter<I,?,?,?,?> batchKeyAdapter;
     
-    public PreventDuplicatesListener(IBatchClusterService<I> topologyService, BatchKeyAdapter<I> batchKeyAdapter ) {
+    public PreventDuplicatesListener(IBatchClusterService<I> topologyService, BatchKeyAdapter<I,?,?,?,?> batchKeyAdapter ) {
         this.svc = topologyService;
         this.batchKeyAdapter = batchKeyAdapter;
     }
@@ -22,7 +22,7 @@ public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, E
         Runnable runnable = task.getInnerRunnable();
         if(runnable instanceof TaskBatch) {
             @SuppressWarnings("unchecked")
-            Collection<I> items = ((TaskBatch<I>) runnable).getItems();
+            Collection<I> items = ((TaskBatch<I,?,?>) runnable).getItems();
             //TODO: is it more efficient with hazelcast to put this in a transaction?
             //      ie: will it batch these updates up somehow?
            for(I item : items) { 

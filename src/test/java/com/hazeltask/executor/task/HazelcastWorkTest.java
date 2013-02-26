@@ -1,4 +1,4 @@
-package com.succinctllc.hazelcast.work;
+package com.hazeltask.executor.task;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -8,13 +8,12 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.hazeltask.executor.task.HazeltaskTask;
-import com.hazeltask.executor.task.TaskId;
 
 public class HazelcastWorkTest {
     @Test
     public void testRunnable() {
         final AtomicInteger value = new AtomicInteger(0);
-        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Runnable(){
+        HazeltaskTask work = new HazeltaskTask("test", "test", "group", new Runnable(){
             public void run() {
                 value.set(1);
             }
@@ -25,7 +24,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallable() {
-        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask("test", "test", "group", new Callable<Integer>(){
             public Integer call() throws Exception {
                 return 1;
             }
@@ -40,7 +39,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallableError() {
-        HazeltaskTask work = new HazeltaskTask("test", new TaskId("test"), new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask("test", "test", "group", new Callable<Integer>(){
             public Integer call() throws Exception {
                 throw new RuntimeException("Hello");
             }

@@ -23,7 +23,7 @@ public class BatchingContextTest {
     @Test
     public void testBasic() {
         DistributedExecutorService svc = mock(DistributedExecutorService.class);
-        BundlerConfig<FooItem> cfg = mock(BundlerConfig.class);
+        BundlerConfig<FooItem, String, String, String> cfg = mock(BundlerConfig.class);
         
         when(cfg.getBundler()).thenReturn(new BatchFactory());
         when(cfg.getBatchKeyAdapter()).thenReturn(new DefaultBatchKeyAdapter<FooItem>());
@@ -43,21 +43,24 @@ public class BatchingContextTest {
     }
     
     
-    public static class BatchFactory implements IBatchFactory<FooItem> {
-        public TaskBatch<FooItem> createBatch(String group, Collection<FooItem> items) {
+    public static class BatchFactory implements IBatchFactory<FooItem, String, String> {
+        @Override
+        public TaskBatch<FooItem, String, String> createBatch(String group,  Collection<FooItem> items) {
             return new TaskBatchImpl(UUID.randomUUID().toString(), group, items);
         }    
     }
     
-    public static class TaskBatchImpl extends AbstractTaskBatch<FooItem> {
+    public static class TaskBatchImpl extends AbstractTaskBatch<FooItem, String, String> {
+
         public TaskBatchImpl(String id, String group, Collection<FooItem> items) {
             super(id, group, items);
         }
 
         @Override
         public void run(List<FooItem> items) {
+            // TODO Auto-generated method stub
             
-        }   
+        }
     }
     
     public static class ItemsMatches extends BaseMatcher<Runnable> {

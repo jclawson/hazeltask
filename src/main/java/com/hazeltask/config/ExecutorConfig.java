@@ -2,6 +2,7 @@ package com.hazeltask.config;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import java.io.Serializable;
 import java.util.Map.Entry;
 import java.util.concurrent.ThreadFactory;
 
@@ -14,7 +15,7 @@ import com.hazeltask.executor.task.DefaultTaskIdAdapter;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
-public class ExecutorConfig {
+public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable> {
     protected boolean          acknowlegeTaskSubmission = false;
     protected boolean          disableWorkers           = false;
     protected int              threadCount              = 4;
@@ -24,34 +25,34 @@ public class ExecutorConfig {
     private ListRouterFactory<Member>  memberRouterFactory      = RoundRobinRouter.newFactory();
     private boolean            enableFutureTracking     = true;
     private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
-    private ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
+    private ListRouterFactory<Entry<GROUP, ITrackedQueue<?>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
     private ThreadFactory threadFactory = null;
     
     // TODO: support autoStartDelay
     // protected long autoStartDelay = 0;
     // TODO: Allow developers to provide all the threads we need
 
-    public ExecutorConfig withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
+    public ExecutorConfig<ID, GROUP> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
         this.acknowlegeTaskSubmission = acknowlegeTaskSubmission;
         return this;
     }
 
-    public ExecutorConfig acknowlegeTaskSubmission() {
+    public ExecutorConfig<ID, GROUP> acknowlegeTaskSubmission() {
         this.acknowlegeTaskSubmission = true;
         return this;
     }
 
-    public ExecutorConfig withDisableWorkers(boolean disableWorkers) {
+    public ExecutorConfig<ID, GROUP> withDisableWorkers(boolean disableWorkers) {
         this.disableWorkers = disableWorkers;
         return this;
     }
 
-    public ExecutorConfig disableWorkers() {
+    public ExecutorConfig<ID, GROUP> disableWorkers() {
         this.disableWorkers = true;
         return this;
     }
     
-    public ExecutorConfig disableFutureSupport() {
+    public ExecutorConfig<ID, GROUP> disableFutureSupport() {
         this.enableFutureTracking = false;
         return this;
     }
@@ -60,18 +61,17 @@ public class ExecutorConfig {
         return this.enableFutureTracking;
     }
 
-    public ExecutorConfig withThreadCount(int threadCount) {
+    public ExecutorConfig<ID, GROUP> withThreadCount(int threadCount) {
         this.threadCount = threadCount;
         return this;
     }
 
-    @SuppressWarnings("rawtypes")
-    public ExecutorConfig withTaskIdAdapter(TaskIdAdapter taskIdAdapter) {
+    public ExecutorConfig<ID, GROUP> withTaskIdAdapter(TaskIdAdapter<?,ID,GROUP> taskIdAdapter) {
         this.taskIdAdapter = taskIdAdapter;
         return this;
     }
     
-    public ExecutorConfig withMemberRouterFactory(ListRouterFactory<Member> factory) {
+    public ExecutorConfig<ID, GROUP> withMemberRouterFactory(ListRouterFactory<Member> factory) {
         this.memberRouterFactory = factory;
         return this;
     }
@@ -88,7 +88,7 @@ public class ExecutorConfig {
      * @param autoStart
      * @return
      */
-    public ExecutorConfig withAutoStart(boolean autoStart) {
+    public ExecutorConfig<ID, GROUP> withAutoStart(boolean autoStart) {
         this.autoStart = autoStart;
         return this;
     }
@@ -96,7 +96,7 @@ public class ExecutorConfig {
     /**
      * @see withAutoStart
      */
-    public ExecutorConfig disableAutoStart() {
+    public ExecutorConfig<ID, GROUP> disableAutoStart() {
         this.autoStart = false;
         return this;
     }
@@ -122,7 +122,7 @@ public class ExecutorConfig {
         return autoStart;
     }
     
-    public ExecutorConfig withRebalanceTaskPeriod(long rebalanceTaskPeriod) {
+    public ExecutorConfig<ID, GROUP> withRebalanceTaskPeriod(long rebalanceTaskPeriod) {
         this.rebalanceTaskPeriod = rebalanceTaskPeriod;
         return this;
     }
@@ -131,16 +131,17 @@ public class ExecutorConfig {
         return this.rebalanceTaskPeriod;
     }
     
-    public <E extends Groupable> ExecutorConfig withTaskRouterFactory(ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> router) {
+    public ExecutorConfig<ID, GROUP> withTaskRouterFactory(ListRouterFactory<Entry<GROUP, ITrackedQueue<?>>> router) {
         this.taskRouterFactory = router;
         return this;
     }
     
-    public ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask>>> getTaskRouterFactory() {
-        return this.taskRouterFactory;
+    @SuppressWarnings("unchecked")
+    public ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>> getTaskRouterFactory() {
+        return (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) this.taskIdAdapter;
     }
     
-    public ExecutorConfig withThreadFactory(ThreadFactory threadFactory) {
+    public ExecutorConfig<ID, GROUP> withThreadFactory(ThreadFactory threadFactory) {
         this.threadFactory = threadFactory;
         return this;
     }
