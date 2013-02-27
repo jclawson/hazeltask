@@ -3,8 +3,8 @@
   <groupId>com.hazeltask</groupId>
   <artifactId>hazeltask-core</artifactId>
   <version>0.9.3-SNAPSHOT</version>
-  <name>Hazelcast Work</name>
-  <description>Hazelcast Work</description>
+  <name>Hazeltask</name>
+  <description>Hazeltask - an advanced Hazelcast based work distribution library</description>
   
   <properties>
 		<maven.compiler.source>1.6</maven.compiler.source>
@@ -29,7 +29,7 @@
 
     <issueManagement>
         <system>github</system>
-        <url>https://github.com/jclawson/hazelcast-work/issues</url>
+        <url>https://github.com/jclawson/hazeltask/issues</url>
     </issueManagement>
 
     <distributionManagement>
