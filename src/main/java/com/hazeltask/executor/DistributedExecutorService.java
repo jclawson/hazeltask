@@ -1,5 +1,6 @@
 package com.hazeltask.executor;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -298,7 +299,7 @@ public class DistributedExecutorService implements ExecutorService, ServiceListe
             this.localExecutorService.addListener(listener);
     }
     
-    public LocalTaskExecutorService getLocalTaskExecutorService() {
+    public <ID extends Serializable, GROUP extends Serializable> LocalTaskExecutorService<ID,GROUP> getLocalTaskExecutorService() {
         return this.localExecutorService;
     }
 

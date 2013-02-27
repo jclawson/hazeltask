@@ -22,9 +22,9 @@ import com.yammer.metrics.core.TimerContext;
  *
  * @param <T>
  */
-public class DeferredBatchTimerTask<T> extends BackoffTask {
-    private final TaskBatchingService deferredTaskBundler;
-    private final BundlerConfig<T,?,?,?> batchConfig;
+public class DeferredBatchTimerTask<T, GROUP extends Serializable> extends BackoffTask {
+    private final TaskBatchingService<T, ?, ?, GROUP> deferredTaskBundler;
+    private final BundlerConfig<T,?,?,GROUP> batchConfig;
     
     private final Map<Serializable, Long> lastFlushedTimes = new HashMap<Serializable, Long>();
     //private final MetricNamer metricNamer;
@@ -32,7 +32,7 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
     private final Timer bundlerTimer;
     private final Histogram batchSizeHistogram;
     
-    public DeferredBatchTimerTask(BundlerConfig<T,?,?,?> batchingConfig, TaskBatchingService<T,?,?> deferredTaskBundler, BatchMetrics metrics) {
+    public DeferredBatchTimerTask(BundlerConfig<T,?,?,GROUP> batchingConfig, TaskBatchingService<T, ?, ?, GROUP> deferredTaskBundler, BatchMetrics metrics) {
         this.deferredTaskBundler = deferredTaskBundler;
         this.batchConfig = batchingConfig;
         this.bundlerTimer = metrics.getBatchBundleTimer().getMetric();   
@@ -65,11 +65,11 @@ public class DeferredBatchTimerTask<T> extends BackoffTask {
         	tCtx = bundlerTimer.time();
     	
         try {
-	    	Map<Serializable, Integer> sizes = deferredTaskBundler.getNonZeroLocalGroupSizes();
+	    	Map<GROUP, Integer> sizes = deferredTaskBundler.getNonZeroLocalGroupSizes();
 	        int flushSize = batchConfig.getFlushSize();
-	        for(Entry<Serializable, Integer> entry : sizes.entrySet()) {
+	        for(Entry<GROUP, Integer> entry : sizes.entrySet()) {
 	            if(entry.getValue() >= flushSize) {
-	                Serializable group = entry.getKey();
+	                GROUP group = entry.getKey();
 	                lastFlushedTimes.put(group, System.currentTimeMillis());
 	                int numFlushed = deferredTaskBundler.flush(group);
 	                batchSizeHistogram.update(numFlushed);

@@ -5,24 +5,24 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public interface IBatchClusterService<I> {
+public interface IBatchClusterService<I, ITEM_ID extends Serializable, GROUP extends Serializable> {
     /**
      * 
      * @return true if the item was not already present
      */
-    public boolean addToPreventDuplicateSet(Serializable itemId);
+    public boolean addToPreventDuplicateSet(ITEM_ID itemId);
     
     /**
      * 
      * @return true if the item is present
      */
-    public boolean isInPreventDuplicateSet(Serializable itemId);
+    public boolean isInPreventDuplicateSet(ITEM_ID itemId);
     
     /**
      * 
      * @return true if the item was removed
      */
-    public boolean removePreventDuplicateItem(Serializable itemId);
+    public boolean removePreventDuplicateItem(ITEM_ID itemId);
     
     /**
      * buffers this item in a multimap.  drain(group) will remove items
@@ -35,7 +35,7 @@ public interface IBatchClusterService<I> {
      * Gets all the non-zero sizes of all the groups in the batch service
      * @return
      */
-    public Map<Serializable, Integer> getNonZeroLocalGroupSizes();
+    public Map<GROUP, Integer> getNonZeroLocalGroupSizes();
     
     /**
      * Get items in group
@@ -43,7 +43,7 @@ public interface IBatchClusterService<I> {
      * @param group
      * @return
      */
-    public List<I> getItems(Serializable group);
+    public List<I> getItems(GROUP group);
     
     /**
      * Remove the given items from the given group
@@ -52,5 +52,5 @@ public interface IBatchClusterService<I> {
      * @param items
      * @return number of items actually removed
      */
-    public int removeItems(Serializable group, Collection<I> items);
+    public int removeItems(GROUP group, Collection<I> items);
 }

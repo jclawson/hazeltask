@@ -17,7 +17,7 @@ public class GetOldestTimestampOp extends AbstractClusterOp<Long> {
     }
     
     public Long call() throws Exception {
-        LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<?,?> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getOldestTaskCreatedTime();
         return Long.MAX_VALUE;

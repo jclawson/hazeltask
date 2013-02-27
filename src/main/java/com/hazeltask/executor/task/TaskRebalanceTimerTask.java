@@ -35,7 +35,7 @@ public class TaskRebalanceTimerTask extends BackoffTask {
     private static ILogger LOGGER = Logger.getLogger(TaskRebalanceTimerTask.class.getName());
     private final Member localMember;
     private final IExecutorTopologyService executorTopologyService;
-    private final LocalTaskExecutorService localSvc;
+    private final LocalTaskExecutorService<?,?> localSvc;
     
     private Histogram histogram;
     private Timer redistributionTimer;

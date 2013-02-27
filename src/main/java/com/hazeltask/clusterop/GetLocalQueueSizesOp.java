@@ -22,7 +22,7 @@ public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
     }
 
     public Long call() throws Exception {
-        LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<?,?> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getQueueSize();
         return 0L;

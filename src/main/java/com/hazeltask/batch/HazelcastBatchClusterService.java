@@ -13,23 +13,23 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.hazelcast.MultiMapProxy;
 
 //TODO: add better generics...
-public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> {
+public class HazelcastBatchClusterService<I, ITEM_ID extends Serializable, GROUP extends Serializable> implements IBatchClusterService<I,ITEM_ID,GROUP> {
 
-    private final MultiMapProxy<Serializable, I> multimap;
+    private final MultiMapProxy<GROUP, I> multimap;
     private final String topologyName;
-    private final BatchKeyAdapter<I,?,?,?,?> keyer;
+    private final BatchKeyAdapter<I,?,ITEM_ID,?,GROUP> keyer;
     
     public HazelcastBatchClusterService(HazeltaskConfig htConfig) {
         this.topologyName = htConfig.getTopologyName();
-        BundlerConfig<I,?,?,?> config = htConfig.getBundlerConfig();
+        BundlerConfig<I,ITEM_ID,?,GROUP> config = htConfig.getBundlerConfig();
         this.keyer = config.getBatchKeyAdapter();
         
         if(config.isLocalBuffering()) {
-            multimap = MultiMapProxy.localMultiMap(HashMultimap.<Serializable, I>create());
+            multimap = MultiMapProxy.localMultiMap(HashMultimap.<GROUP, I>create());
         } else {
             multimap = MultiMapProxy.clusteredMultiMap(
                         htConfig.getHazelcast()
-                            .<Serializable, I>getMultiMap(name("batch-items"))
+                            .<GROUP, I>getMultiMap(name("batch-items"))
                     );
         }
         
@@ -43,10 +43,10 @@ public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> 
         return multimap.put(keyer.getItemGroup(item), item);
     }
     
-  public Map<Serializable, Integer> getNonZeroLocalGroupSizes() {
-      Set<Serializable> localKeys = multimap.localKeySet();   
-      Map<Serializable, Integer> result =  new HashMap<Serializable, Integer>(localKeys.size());
-      for(Serializable key : localKeys) {
+  public Map<GROUP, Integer> getNonZeroLocalGroupSizes() {
+      Set<GROUP> localKeys = multimap.localKeySet();   
+      Map<GROUP, Integer> result =  new HashMap<GROUP, Integer>(localKeys.size());
+      for(GROUP key : localKeys) {
           int size = multimap.get(key).size();
           if(size > 0)
               result.put(key, size);
@@ -54,12 +54,12 @@ public class HazelcastBatchClusterService<I> implements IBatchClusterService<I> 
       return result;
 }
     
-    public List<I> getItems(Serializable group) {
+    public List<I> getItems(GROUP group) {
         return multimap.getAsList(group);
     }
 
     @SuppressWarnings("unchecked")
-    public int removeItems(Serializable group, Collection<I> items) {
+    public int removeItems(GROUP group, Collection<I> items) {
         return multimap.removeAll(group, (Collection<Object>) items);
     }
 

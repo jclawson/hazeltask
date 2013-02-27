@@ -76,7 +76,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	private Timer taskSubmittedTimer;
 	private Timer taskExecutedTimer;
 	
-	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig executorConfig, IExecutorTopologyService executorTopologyService) {
+	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig<ID,G> executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
 		this.maxThreads = executorConfig.getThreadCount();
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();

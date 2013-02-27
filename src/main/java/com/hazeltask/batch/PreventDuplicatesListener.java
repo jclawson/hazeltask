@@ -1,5 +1,6 @@
 package com.hazeltask.batch;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.hazeltask.executor.ExecutorListener;
@@ -7,11 +8,11 @@ import com.hazeltask.executor.task.HazeltaskTask;
 
 @Deprecated
 //do not use this .... its slow and shouldn't be needed
-public class PreventDuplicatesListener<I> implements BatchExecutorListener<I>, ExecutorListener {
-    private final IBatchClusterService<I> svc;
-    private final BatchKeyAdapter<I,?,?,?,?> batchKeyAdapter;
+public class PreventDuplicatesListener<I,ITEM_ID extends Serializable> implements BatchExecutorListener<I>, ExecutorListener {
+    private final IBatchClusterService<I,ITEM_ID,?> svc;
+    private final BatchKeyAdapter<I,?,ITEM_ID,?,?> batchKeyAdapter;
     
-    public PreventDuplicatesListener(IBatchClusterService<I> topologyService, BatchKeyAdapter<I,?,?,?,?> batchKeyAdapter ) {
+    public PreventDuplicatesListener(IBatchClusterService<I,ITEM_ID,?> topologyService, BatchKeyAdapter<I,?,ITEM_ID,?,?> batchKeyAdapter ) {
         this.svc = topologyService;
         this.batchKeyAdapter = batchKeyAdapter;
     }

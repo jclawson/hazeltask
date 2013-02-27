@@ -17,13 +17,13 @@ import com.hazeltask.executor.DistributedExecutorService;
 
 
 //TODO: add better generics...
-public class TaskBatchingService<I, ID extends Serializable, GROUP extends Serializable> implements ServiceListenable<TaskBatchingService<I,ID,GROUP>> {
+public class TaskBatchingService<I, ITEM_ID extends Serializable, ID extends Serializable, GROUP extends Serializable> implements ServiceListenable<TaskBatchingService<I,ITEM_ID, ID,GROUP>> {
     
-    private final BundlerConfig<I,ID,?,GROUP> batchingConfig;
+    private final BundlerConfig<I,ITEM_ID, ID,GROUP> batchingConfig;
     private final DistributedExecutorService svc;
     private final HazeltaskTopology topology;
-    private final IBatchClusterService<I> batchClusterService;
-    private CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ID, GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>>>();
+    private final IBatchClusterService<I,ITEM_ID,GROUP> batchClusterService;
+    private CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ITEM_ID, ID, GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<TaskBatchingService<I,ITEM_ID, ID,GROUP>>>();
     private final CopyOnWriteArrayList<BatchExecutorListener<I>> batchListeners = new CopyOnWriteArrayList<BatchExecutorListener<I>>();
     private final ILogger LOGGER;
     
@@ -36,7 +36,7 @@ public class TaskBatchingService<I, ID extends Serializable, GROUP extends Seria
         LOGGER = topology.getLoggingService().getLogger(TaskBatchingService.class.getName());
     }
 
-    public BundlerConfig<I,?,?,?> getBatchingExecutorServiceConfig() {
+    public BundlerConfig<I,ITEM_ID, ID,GROUP> getBatchingExecutorServiceConfig() {
         return this.batchingConfig;
     }
     
@@ -67,17 +67,17 @@ public class TaskBatchingService<I, ID extends Serializable, GROUP extends Seria
         return svc;
     }
     
-    public void addServiceListener(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener) {
+    public void addServiceListener(HazeltaskServiceListener<TaskBatchingService<I,ITEM_ID,ID,GROUP>> listener) {
         this.listeners.add(listener);
     }
     
     public void startup() {
-        for(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener : listeners)
+        for(HazeltaskServiceListener<TaskBatchingService<I,ITEM_ID, ID,GROUP>> listener : listeners)
             listener.onBeginStart(this);
         
         svc.startup();
         
-        for(HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>> listener : listeners)
+        for(HazeltaskServiceListener<TaskBatchingService<I,ITEM_ID,ID,GROUP>> listener : listeners)
             listener.onEndStart(this);
     }
     
@@ -125,7 +125,7 @@ public class TaskBatchingService<I, ID extends Serializable, GROUP extends Seria
       return items.size();
     }
     
-    public Map<Serializable, Integer> getNonZeroLocalGroupSizes() {
+    public Map<GROUP, Integer> getNonZeroLocalGroupSizes() {
         return batchClusterService.getNonZeroLocalGroupSizes();
     }
 }

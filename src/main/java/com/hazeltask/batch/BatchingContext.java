@@ -16,6 +16,7 @@ public class BatchingContext<I> {
     private final BundlerConfig<I, ?, ?, ?> batchingConfig;
     private final DistributedExecutorService svc;
 
+    @SuppressWarnings("unchecked")
     protected BatchingContext(DistributedExecutorService svc, BundlerConfig<I,?, ?, ?> batchingConfig) {
         this.batchingConfig = batchingConfig;
         

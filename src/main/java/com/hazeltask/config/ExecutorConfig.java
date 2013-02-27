@@ -7,7 +7,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ThreadFactory;
 
 import com.hazelcast.core.Member;
-import com.hazeltask.core.concurrent.collections.grouped.Groupable;
+import com.hazeltask.config.helpers.AbstractTaskRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
 import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
@@ -25,7 +25,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     private ListRouterFactory<Member>  memberRouterFactory      = RoundRobinRouter.newFactory();
     private boolean            enableFutureTracking     = true;
     private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
-    private ListRouterFactory<Entry<GROUP, ITrackedQueue<?>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
+    private ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
     private ThreadFactory threadFactory = null;
     
     // TODO: support autoStartDelay
@@ -131,14 +131,13 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         return this.rebalanceTaskPeriod;
     }
     
-    public ExecutorConfig<ID, GROUP> withTaskRouterFactory(ListRouterFactory<Entry<GROUP, ITrackedQueue<?>>> router) {
-        this.taskRouterFactory = router;
+    public ExecutorConfig<ID, GROUP> withTaskRouterFactory(AbstractTaskRouterFactory<ID, GROUP> router) {
+        this.taskRouterFactory = (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) router;
         return this;
     }
     
-    @SuppressWarnings("unchecked")
     public ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>> getTaskRouterFactory() {
-        return (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) this.taskIdAdapter;
+        return (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) this.taskRouterFactory;
     }
     
     public ExecutorConfig<ID, GROUP> withThreadFactory(ThreadFactory threadFactory) {

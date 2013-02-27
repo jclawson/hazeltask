@@ -13,7 +13,7 @@ public class HazeltaskConfig {
     private String topologyName         = Hazeltask.DEFAULT_TOPOLOGY;
 //    private MetricNamer metricNamer     = new ScopeFirstMetricNamer();
 //    private MetricsRegistry   metricsRegistry;
-    private ExecutorConfig executorConfig = new ExecutorConfig();
+    private ExecutorConfig<?,?> executorConfig = new ExecutorConfig<Serializable,Serializable>();
     private MetricsConfig metricsConfig = new MetricsConfig();
     private BundlerConfig<?,?,?,?> bundlerConfig;
     private ThreadFactory threadFactory;
@@ -23,7 +23,7 @@ public class HazeltaskConfig {
         return this;
     }
     
-    public HazeltaskConfig withExecutorConfig(ExecutorConfig executorConfig) {
+    public HazeltaskConfig withExecutorConfig(ExecutorConfig<?,?> executorConfig) {
         this.executorConfig = executorConfig;
         return this;
     }
@@ -38,7 +38,7 @@ public class HazeltaskConfig {
         return this;
     }
     
-    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> HazeltaskConfig withBundlerConfig(BundlerConfig<I, ID, ITEM_ID, GROUP> bundlerConfig) {
+    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> HazeltaskConfig withBundlerConfig(BundlerConfig<I, ITEM_ID, ID, GROUP> bundlerConfig) {
         this.bundlerConfig = bundlerConfig;
         return this;
     }
@@ -73,13 +73,13 @@ public class HazeltaskConfig {
         return topologyName;
     }
     
-    public ExecutorConfig getExecutorConfig() {
+    public ExecutorConfig<?,?> getExecutorConfig() {
         return this.executorConfig;
     }
     
     @SuppressWarnings("unchecked")
-    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> BundlerConfig<I, ID, ITEM_ID, GROUP> getBundlerConfig() {
-        return (BundlerConfig<I, ID, ITEM_ID, GROUP>) this.bundlerConfig;
+    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> BundlerConfig<I, ITEM_ID,ID, GROUP> getBundlerConfig() {
+        return (BundlerConfig<I, ITEM_ID, ID, GROUP>) this.bundlerConfig;
     }
     
     public HazeltaskConfig withThreadFactory(ThreadFactory threadFactory) {

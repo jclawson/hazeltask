@@ -48,6 +48,7 @@ public final class Hazeltask {
         if(instances.putIfAbsent(topology.getName(), instance) != null) {
             throw new IllegalStateException("An instance for the topology "+topology+" already exists!");
         }
+        instance.start();
         return instance;
     }
 

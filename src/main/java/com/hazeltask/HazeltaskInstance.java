@@ -24,10 +24,16 @@ import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
 public class HazeltaskInstance {
     private final DistributedExecutorService       executor;
-    private final TaskBatchingService<?,?,?>           taskBatchService;
+    private final TaskBatchingService<?,Serializable,?,?>           taskBatchService;
     private final HazeltaskTopology                topology;
     private final HazeltaskConfig hazeltaskConfig;
     private final UUID hazeltaskInstanceId = UUID.randomUUID();
+    private final ExecutorConfig executorConfig;
+    private final BundlerConfig bundlerConfig;
+    
+    private final ITopologyService topologyService;
+    private final IExecutorTopologyService executorTopologyService;
+    private final LocalTaskExecutorService localExeutorService;
     
     /**
      * FIXME: fix  executorConfig.isDisableWorkers()
@@ -38,8 +44,10 @@ public class HazeltaskInstance {
         
         Validator.validate(hazeltaskConfig);
         
-        ExecutorConfig executorConfig = hazeltaskConfig.getExecutorConfig();
-        BundlerConfig<I,ID,?,GROUP> bundlerConfig = hazeltaskConfig.getBundlerConfig();
+        executorConfig = hazeltaskConfig.getExecutorConfig();
+        
+        //BundlerConfig<I,?,ID,GROUP> 
+        bundlerConfig = hazeltaskConfig.getBundlerConfig();
         
         if(bundlerConfig != null) {
             //if are not using the bundler, then we want to make sure we are not tracking futures
@@ -47,19 +55,21 @@ public class HazeltaskInstance {
             executorConfig.withTaskIdAdapter(bundlerConfig.getBatchKeyAdapter());
         }
         
-        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
-        ITopologyService topologyService = new HazeltaskTopologyService(hazeltaskConfig);
-        IBatchClusterService<I> batchClusterService = null;
+
+        topologyService = new HazeltaskTopologyService(hazeltaskConfig);
+        IBatchClusterService<I,?,GROUP> batchClusterService = null;
         if(bundlerConfig != null) {
-            batchClusterService = new HazelcastBatchClusterService<I>(hazeltaskConfig);
+            batchClusterService = new HazelcastBatchClusterService<I,Serializable,GROUP>(hazeltaskConfig);
         }
         
         this.topology = new HazeltaskTopology(hazeltaskConfig, topologyService, batchClusterService);
-        IExecutorTopologyService executorTopologyService = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
+        executorTopologyService = new HazelcastExecutorTopologyService(hazeltaskConfig, topology);
         
-        LocalTaskExecutorService localExeutorService = null;
+        
         if(!executorConfig.isDisableWorkers())
             localExeutorService = new LocalTaskExecutorService(topology, executorConfig, executorTopologyService);
+        else
+            localExeutorService = null;
         
         DistributedFutureTracker futureTracker = null;
         
@@ -71,24 +81,25 @@ public class HazeltaskInstance {
         
         executor = new DistributedExecutorService(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService);
         
-        setupDistributedExecutor(topology, hazeltaskTimer, executor, topologyService, executorTopologyService, localExeutorService);
-        
         if(bundlerConfig != null) {
-            taskBatchService = new TaskBatchingService<I,ID,GROUP>(hazeltaskConfig, executor, topology);
-            setupBatching(hazeltaskTimer, taskBatchService, topology.getBatchMetrics());
-            
-//            if(bundlerConfig.isPreventDuplicates()) {
-//                throw new RuntimeException("Not supporting preventDuplicates this right now because it causes a lot of contention");
-//              PreventDuplicatesListener<I> listener = new PreventDuplicatesListener<I>(batchClusterService, batchingConfig.getBatchKeyAdapter());
-//              eSvc.addListener(listener);
-//              svc.addListener(listener);
-//            }
+            taskBatchService = new TaskBatchingService<I,Serializable,ID,GROUP>(hazeltaskConfig, executor, topology);
+//          if(bundlerConfig.isPreventDuplicates()) {
+//          throw new RuntimeException("Not supporting preventDuplicates this right now because it causes a lot of contention");
+//        PreventDuplicatesListener<I> listener = new PreventDuplicatesListener<I>(batchClusterService, batchingConfig.getBatchKeyAdapter());
+//        eSvc.addListener(listener);
+//        svc.addListener(listener);
         } else {
             taskBatchService = null;
         }
+    }
+    
+    protected void start() {
+        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
+        setupDistributedExecutor(topology, hazeltaskTimer, executor, topologyService, executorTopologyService, localExeutorService);
         
-        
-        
+        if(bundlerConfig != null) {
+            setupBatching(hazeltaskTimer, taskBatchService, topology.getBatchMetrics());
+        }
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
@@ -122,6 +133,10 @@ public class HazeltaskInstance {
             rebalanceTask = null;
         final IsMemberReadyTimerTask getReadyMembersTask = new IsMemberReadyTimerTask(topologySvc, topology);
         
+        //execute the getReadyMembers task immediately
+        hazeltaskTimer.schedule(getReadyMembersTask, 20000, 20000);
+        getReadyMembersTask.execute();
+   
         hazeltaskConfig.getHazelcast().getCluster().addMembershipListener(getReadyMembersTask);
         
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
@@ -130,7 +145,6 @@ public class HazeltaskInstance {
                 hazeltaskTimer.schedule(bundleTask, 1000, 30000, 2);
                 if(rebalanceTask != null)
                     hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getRebalanceTaskPeriod());
-                hazeltaskTimer.schedule(getReadyMembersTask, 500, 20000);
                 
                 if(!svc.getExecutorConfig().isDisableWorkers())
                    topology.iAmReady();
@@ -148,17 +162,17 @@ public class HazeltaskInstance {
         });
     }
     
-    private <I,ID extends Serializable,GROUP extends Serializable> void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I,ID,GROUP> svc, BatchMetrics metrics) {
+    private <I,ID extends Serializable,GROUP extends Serializable> void setupBatching(final BackoffTimer hazeltaskTimer, TaskBatchingService<I,Serializable,ID,GROUP> svc, BatchMetrics metrics) {
         @SuppressWarnings("unchecked")
-        final DeferredBatchTimerTask<I> bundleTask = new DeferredBatchTimerTask<I>((BundlerConfig<I,ID,?,GROUP>)hazeltaskConfig.getBundlerConfig(), svc, metrics);
-        svc.addServiceListener(new HazeltaskServiceListener<TaskBatchingService<I,ID,GROUP>>(){
+        final DeferredBatchTimerTask<I,GROUP> bundleTask = new DeferredBatchTimerTask<I,GROUP>((BundlerConfig<I,?,ID,GROUP>)hazeltaskConfig.getBundlerConfig(), svc, metrics);
+        svc.addServiceListener(new HazeltaskServiceListener<TaskBatchingService<I,Serializable, ID,GROUP>>(){
             @Override
-            public void onEndStart(TaskBatchingService<I,ID,GROUP> svc) {
+            public void onEndStart(TaskBatchingService<I,Serializable,ID,GROUP> svc) {
                 hazeltaskTimer.schedule(bundleTask, 200, 20000, 2);
             }
 
             @Override
-            public void onBeginShutdown(TaskBatchingService<I,ID,GROUP> svc) {
+            public void onBeginShutdown(TaskBatchingService<I,Serializable,ID,GROUP> svc) {
                 hazeltaskTimer.unschedule(bundleTask);
             }      
         });
@@ -169,8 +183,8 @@ public class HazeltaskInstance {
     }
 
     @SuppressWarnings("unchecked")
-    public <I,ID extends Serializable,GROUP extends Serializable>  TaskBatchingService<I,ID,GROUP> getTaskBatchService() {
-        return (TaskBatchingService<I,ID,GROUP>) taskBatchService;
+    public <I,ID extends Serializable,GROUP extends Serializable>  TaskBatchingService<I,Serializable,ID,GROUP> getTaskBatchService() {
+        return (TaskBatchingService<I,Serializable,ID,GROUP>) taskBatchService;
     }
 
     public HazeltaskTopology getTopology() {

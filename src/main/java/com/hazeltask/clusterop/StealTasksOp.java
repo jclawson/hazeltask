@@ -3,6 +3,7 @@ package com.hazeltask.clusterop;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
@@ -13,7 +14,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public class StealTasksOp extends AbstractClusterOp<Collection<HazeltaskTask>> {
+public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<ID,GROUP>>> {
     private static final long serialVersionUID = 1L;
     
     private long numberOfTasks;
@@ -26,9 +27,9 @@ public class StealTasksOp extends AbstractClusterOp<Collection<HazeltaskTask>> {
         this.numberOfTasks = numberOfTasks;
     }
 
-    public Collection<HazeltaskTask> call() throws Exception {
-        LocalTaskExecutorService localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
-        
+    @Override
+    public Collection<HazeltaskTask<ID,GROUP>> call() throws Exception {
+        LocalTaskExecutorService<ID,GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         return localSvc.stealTasks(numberOfTasks);
     }
 
