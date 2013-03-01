@@ -139,12 +139,12 @@ public class HazeltaskInstance {
    
         hazeltaskConfig.getHazelcast().getCluster().addMembershipListener(getReadyMembersTask);
         
-        svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService>(){
+        svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService<?,?>>(){
             @Override
             public void onEndStart(DistributedExecutorService svc) {
                 hazeltaskTimer.schedule(bundleTask, 1000, 30000, 2);
                 if(rebalanceTask != null)
-                    hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getRebalanceTaskPeriod());
+                    hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getLoadBalancingConfig().getRebalanceTaskPeriod());
                 
                 if(!svc.getExecutorConfig().isDisableWorkers())
                    topology.iAmReady();

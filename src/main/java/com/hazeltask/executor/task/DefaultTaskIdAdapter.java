@@ -16,4 +16,10 @@ public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, String, Strin
     public String getTaskGroup(Object task) {
         return "$$DefaultGroup$$";
     }
+
+    @Override
+    public boolean supports(Object task) {
+        //we support all objects!
+        return true;
+    }
 }

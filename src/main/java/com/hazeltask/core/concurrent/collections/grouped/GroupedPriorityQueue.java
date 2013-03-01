@@ -36,6 +36,10 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlocking
  * Multiple threads are allowed to read if using poll() or peek().  If using poll(timeout)
  * or take(), it will block writers and wait until the queue is non-empty.
  * 
+ * FIXME: make the groups collection a ConcurrentSkipListSet so we can do fancier routing
+ *        we will need to make the groups a different type of object though that is comparable
+ *        and sorted based on priority or something
+ * 
  * @author jclawson
  *
  * @param <E>

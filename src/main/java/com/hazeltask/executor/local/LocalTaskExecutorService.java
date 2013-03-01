@@ -67,7 +67,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	private final HazeltaskTopology topology;
 	private QueueExecutor<ID,G> localExecutorPool;
 	private GroupedPriorityQueue<HazeltaskTask<ID, G>, G> taskQueue;
-	private final Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
+	private final Collection<ExecutorListener<ID,G>> listeners = new LinkedList<ExecutorListener<ID,G>>();
 	private final IExecutorTopologyService executorTopologyService;
 	
 	private final int maxThreads;
@@ -76,7 +76,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	private Timer taskSubmittedTimer;
 	private Timer taskExecutedTimer;
 	
-	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig<ID,G> executorConfig, IExecutorTopologyService executorTopologyService) {
+	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig<ID, G> executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
 		this.maxThreads = executorConfig.getThreadCount();
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
@@ -84,7 +84,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 		
 		ThreadFactory factory = executorConfig.getThreadFactory();
 		//List<Entry<String, ITrackedQueue<E>>>
-		ListRouterFactory<Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>>> router = executorConfig.getTaskRouterFactory();
+		ListRouterFactory<Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>>> router = executorConfig.getLoadBalancingConfig().getTaskRouterFactory();
 		
 		taskQueue = new GroupedPriorityQueue<HazeltaskTask<ID, G>,G>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask<ID, G>,G>(router),
                 new TimeCreatedAdapter<HazeltaskTask<ID, G>>(){
@@ -103,10 +103,10 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 		}
 		
 		localExecutorPool = new QueueExecutor<ID,G>(taskQueue, maxThreads, factory, taskExecutedTimer);
-		localExecutorPool.addListener(new DelegatingExecutorListener(listeners));
+		localExecutorPool.addListener(new DelegatingExecutorListener<ID,G>(listeners));
 		
 		if(executorConfig.isFutureSupportEnabled())
-		    addListener(new ResponseExecutorListener(executorTopologyService, topology.getLoggingService()));
+		    addListener(new ResponseExecutorListener<ID,G>(executorTopologyService, topology.getLoggingService()));
 		
 		addListener(new TaskCompletionExecutorListener());
 		
@@ -130,19 +130,19 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
      * This is not thread safe
      * @param listener
      */
-    public void addListener(ExecutorListener listener) {
+    public void addListener(ExecutorListener<ID,G> listener) {
         listeners.add(listener);
     }
     
-    private class TaskCompletionExecutorListener implements ExecutorListener {
-        public void afterExecute(HazeltaskTask runnable, Throwable exception) {
-            HazeltaskTask task = (HazeltaskTask)runnable;
+    private class TaskCompletionExecutorListener implements ExecutorListener<ID,G> {
+        public void afterExecute(HazeltaskTask<ID,G> runnable, Throwable exception) {
+            HazeltaskTask<ID,G> task = (HazeltaskTask<ID,G>)runnable;
             //TODO: add task exceptions handling / retry logic
             //for now, just remove the work because its completed
             executorTopologyService.removePendingTask(task);
         }
 
-        public boolean beforeExecute(HazeltaskTask runnable) {return true;}
+        public boolean beforeExecute(HazeltaskTask<ID,G> runnable) {return true;}
     }
 	
 	/**
@@ -156,7 +156,8 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	    
 	    //there is a tiny race condition here... but we just want to make our best attempt
 	    for(Runnable r : localExecutorPool.getTasksInProgress()) {
-	        long timeCreated = ((HazeltaskTask)r).getTimeCreated();
+	        @SuppressWarnings("unchecked")
+            long timeCreated = ((HazeltaskTask<ID,G>)r).getTimeCreated();
 	        if(timeCreated < oldest) {
 	            oldest = timeCreated;
 	        }
@@ -182,7 +183,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 		return result;
 	}
 	
-	public boolean execute(HazeltaskTask command) {
+	public boolean execute(HazeltaskTask<ID,G> command) {
 		if(localExecutorPool.isShutdown()) {
 		    LOGGER.log(Level.WARNING, "Cannot enqueue the task "+command+".  The executor threads are shutdown.");
 		    return false;
@@ -236,7 +237,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	}
 	
 	//TODO: time how long it takes to shutdown
-	public List<HazeltaskTask> shutdownNow() {
+	public List<HazeltaskTask<ID,G>> shutdownNow() {
 	    return localExecutorPool.shutdownNow();
 	}
 

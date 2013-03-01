@@ -9,7 +9,7 @@ import java.util.Collections;
 import com.hazeltask.clusterop.AbstractClusterOp;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask>> {
+public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>> {
     private static final long serialVersionUID = 1L;
 
     private boolean isShutdownNow;
@@ -23,7 +23,7 @@ public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask>> {
         this.isShutdownNow = isShutdownNow;
     }
 
-    public Collection<HazeltaskTask> call() throws Exception {
+    public Collection<HazeltaskTask<?,?>> call() throws Exception {
         try {
             if(isShutdownNow)
                 return this.getDistributedExecutorService().doShutdownNow();

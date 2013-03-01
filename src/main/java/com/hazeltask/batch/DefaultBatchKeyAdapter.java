@@ -28,4 +28,9 @@ public class DefaultBatchKeyAdapter<I> extends BatchKeyAdapter<I, TaskBatch<I, S
         return task.getGroup();
     }
 
+    @Override
+    public boolean supports(Object task) {
+        return true;
+    }
+
 }

@@ -1,36 +1,30 @@
 package com.hazeltask.config;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-
 import java.io.Serializable;
-import java.util.Map.Entry;
 import java.util.concurrent.ThreadFactory;
 
-import com.hazelcast.core.Member;
-import com.hazeltask.config.helpers.AbstractTaskRouterFactory;
-import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
-import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
-import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
-import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
 public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable> {
     protected boolean          acknowlegeTaskSubmission = false;
     protected boolean          disableWorkers           = false;
     protected int              threadCount              = 4;
-    @SuppressWarnings("rawtypes")
-    protected TaskIdAdapter    taskIdAdapter            = new DefaultTaskIdAdapter();
+
+    protected TaskIdAdapter<?, ID, GROUP>    taskIdAdapter = (TaskIdAdapter<?, ID, GROUP>) new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
-    private ListRouterFactory<Member>  memberRouterFactory      = RoundRobinRouter.newFactory();
     private boolean            enableFutureTracking     = true;
-    private long               rebalanceTaskPeriod      = MINUTES.toMillis(2);
-    private ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>  taskRouterFactory        = RoundRobinRouter.newFactory();
+    
     private ThreadFactory threadFactory = null;
     
-    // TODO: support autoStartDelay
-    // protected long autoStartDelay = 0;
-    // TODO: Allow developers to provide all the threads we need
+    private ExecutorLoadBalancingConfig<ID,GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<ID, GROUP>();
+    
+    /**
+     * Please use the ExecutorConfigs factory
+     */
+    public ExecutorConfig() {
+        
+    }
 
     public ExecutorConfig<ID, GROUP> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
         this.acknowlegeTaskSubmission = acknowlegeTaskSubmission;
@@ -56,7 +50,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         this.enableFutureTracking = false;
         return this;
     }
-    
+
     public boolean isFutureSupportEnabled() {
         return this.enableFutureTracking;
     }
@@ -69,15 +63,6 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     public ExecutorConfig<ID, GROUP> withTaskIdAdapter(TaskIdAdapter<?,ID,GROUP> taskIdAdapter) {
         this.taskIdAdapter = taskIdAdapter;
         return this;
-    }
-    
-    public ExecutorConfig<ID, GROUP> withMemberRouterFactory(ListRouterFactory<Member> factory) {
-        this.memberRouterFactory = factory;
-        return this;
-    }
-    
-    public ListRouterFactory<Member> getMemberRouterFactory() {
-        return this.memberRouterFactory;
     }
 
     /**
@@ -100,7 +85,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         this.autoStart = false;
         return this;
     }
-
+ 
     public boolean isAcknowlegeTaskSubmission() {
         return acknowlegeTaskSubmission;
     }
@@ -108,44 +93,34 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     public boolean isDisableWorkers() {
         return disableWorkers;
     }
-
+   
     public int getThreadCount() {
         return threadCount;
     }
-
-    @SuppressWarnings("rawtypes")
-    public TaskIdAdapter getTaskIdAdapter() {
+  
+    public TaskIdAdapter<?, ID, GROUP> getTaskIdAdapter() {
         return taskIdAdapter;
     }
-
+ 
     public boolean isAutoStart() {
         return autoStart;
-    }
-    
-    public ExecutorConfig<ID, GROUP> withRebalanceTaskPeriod(long rebalanceTaskPeriod) {
-        this.rebalanceTaskPeriod = rebalanceTaskPeriod;
-        return this;
-    }
-    
-    public long getRebalanceTaskPeriod() {
-        return this.rebalanceTaskPeriod;
-    }
-    
-    public ExecutorConfig<ID, GROUP> withTaskRouterFactory(AbstractTaskRouterFactory<ID, GROUP> router) {
-        this.taskRouterFactory = (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) router;
-        return this;
-    }
-    
-    public ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>> getTaskRouterFactory() {
-        return (ListRouterFactory<Entry<GROUP, ITrackedQueue<HazeltaskTask<ID,GROUP>>>>) this.taskRouterFactory;
     }
     
     public ExecutorConfig<ID, GROUP> withThreadFactory(ThreadFactory threadFactory) {
         this.threadFactory = threadFactory;
         return this;
     }
-    
+     
     public ThreadFactory getThreadFactory() {
         return this.threadFactory;
+    }
+    
+    public ExecutorConfig<ID,GROUP> withLoadBalancingConfig(ExecutorLoadBalancingConfig<ID,GROUP> config) {
+        this.executorLoadBalancingConfig = config;
+        return this;
+    }
+    
+    public ExecutorLoadBalancingConfig<ID,GROUP> getLoadBalancingConfig() {
+        return this.executorLoadBalancingConfig;
     }
 }

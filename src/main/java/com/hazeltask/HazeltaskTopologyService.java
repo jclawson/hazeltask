@@ -69,13 +69,13 @@ private String topologyName;
         );
     }
     
-    public List<HazeltaskTask> shutdownNow() {
-        Collection<MemberResponse<Collection<HazeltaskTask>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
+    public List<HazeltaskTask<?,?>> shutdownNow() {
+        Collection<MemberResponse<Collection<HazeltaskTask<?,?>>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
             hazelcast.getCluster().getMembers(), 
             new ShutdownTask(topologyName, true)
         );
-        List<HazeltaskTask> tasks = new ArrayList<HazeltaskTask>();
-        for(MemberResponse<Collection<HazeltaskTask>> response : responses) {
+        List<HazeltaskTask<?,?>> tasks = new ArrayList<HazeltaskTask<?,?>>();
+        for(MemberResponse<Collection<HazeltaskTask<?,?>>> response : responses) {
             tasks.addAll(response.getValue());
         }
         return tasks;

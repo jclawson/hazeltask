@@ -1,5 +1,6 @@
 package com.hazeltask.executor;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -7,18 +8,19 @@ import com.hazeltask.executor.task.HazeltaskTask;
 
 
 
-public class DelegatingExecutorListener implements ExecutorListener {
-    public Collection<ExecutorListener> listeners; 
-    public DelegatingExecutorListener(Collection<ExecutorListener> listeners) {
+public class DelegatingExecutorListener<ID extends Serializable,G extends Serializable> implements ExecutorListener<ID,G> {
+    public Collection<ExecutorListener<ID,G>> listeners; 
+    public DelegatingExecutorListener(Collection<ExecutorListener<ID,G>> listeners) {
         this.listeners = listeners;
     }
     
-    public DelegatingExecutorListener(ExecutorListener delegate) {
-        this.listeners = Arrays.asList(delegate);
+    @SuppressWarnings("unchecked")
+    public DelegatingExecutorListener(ExecutorListener<ID,G> delegate) {
+        this.listeners = (Collection<ExecutorListener<ID,G>>) Arrays.asList(delegate);
     }
     
-    public void afterExecute(HazeltaskTask runnable, Throwable exception) {
-        for(ExecutorListener listener : listeners) {
+    public void afterExecute(HazeltaskTask<ID,G> runnable, Throwable exception) {
+        for(ExecutorListener<ID,G> listener : listeners) {
             try {
                 listener.afterExecute(runnable, exception);
             } catch(Throwable e) {
@@ -28,9 +30,9 @@ public class DelegatingExecutorListener implements ExecutorListener {
         }
     }
 
-    public boolean beforeExecute(HazeltaskTask runnable) {
+    public boolean beforeExecute(HazeltaskTask<ID,G> runnable) {
         boolean allow = true;
-        for(ExecutorListener listener : listeners) {
+        for(ExecutorListener<ID,G> listener : listeners) {
             try {
                 allow = listener.beforeExecute(runnable) && allow;
             } catch(Throwable e) {

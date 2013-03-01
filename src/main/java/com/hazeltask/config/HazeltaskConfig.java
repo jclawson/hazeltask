@@ -13,7 +13,7 @@ public class HazeltaskConfig {
     private String topologyName         = Hazeltask.DEFAULT_TOPOLOGY;
 //    private MetricNamer metricNamer     = new ScopeFirstMetricNamer();
 //    private MetricsRegistry   metricsRegistry;
-    private ExecutorConfig<?,?> executorConfig = new ExecutorConfig<Serializable,Serializable>();
+    private ExecutorConfig< ?,?> executorConfig = new ExecutorConfig<Serializable,Serializable>();
     private MetricsConfig metricsConfig = new MetricsConfig();
     private BundlerConfig<?,?,?,?> bundlerConfig;
     private ThreadFactory threadFactory;

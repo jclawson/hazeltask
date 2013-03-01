@@ -17,5 +17,5 @@ public interface ITopologyService {
     public Set<Member> getReadyMembers();
     public long pingMember(Member member);
     public void shutdown();
-    public List<HazeltaskTask> shutdownNow();
+    public List<HazeltaskTask<?,?>> shutdownNow();
 }

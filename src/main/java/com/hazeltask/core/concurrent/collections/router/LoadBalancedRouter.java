@@ -5,11 +5,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import com.google.common.collect.Lists;
+
 /**
- * TODO: make this more efficient... its not good enough that we find the heaviest weight...
- * We need to find the heaviest weight that has messages in the list... ie that we don't wish to skip
+ * This router can starve out other groups.  If there are always high priority items, it will
+ * never execute low priority items
  * 
- * Perhaps the fetchList callback needs to filter out groups that have no items beforehand
+ * TODO: I feel like the immutable state of the queue groups is making routing
+ *       inefficient
  * 
  * @author jclawson
  *
@@ -40,7 +43,16 @@ public class LoadBalancedRouter<T> implements ListRouter<T> {
 	
 	private List<T> getList(){
         try {
-            return (list == null) ? fetchList.call() : list;
+            List<T> myList = Lists.newLinkedList();
+            
+            //filter out non-routable routes.  This sucks that we have to do this
+            for(T route : (list == null) ? fetchList.call() : list) {
+                if(condition.isRoutable(route)) {
+                    myList.add(route);
+                }
+            }
+            
+            return myList;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

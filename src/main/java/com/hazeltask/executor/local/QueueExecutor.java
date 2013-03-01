@@ -24,7 +24,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
     private final BlockingQueue<HazeltaskTask<ID,G>> queue;
     private final ThreadFactory threadFactory;
     private volatile int coreThreads;
-    private Collection<ExecutorListener> listeners = new LinkedList<ExecutorListener>();
+    private Collection<ExecutorListener<ID,G>> listeners = new LinkedList<ExecutorListener<ID,G>>();
     private Timer taskExecutedTimer;
     
     /**
@@ -65,7 +65,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
      * This is not thread safe
      * @param listener
      */
-    public void addListener(ExecutorListener listener) {
+    public void addListener(ExecutorListener<ID,G> listener) {
         listeners.add(listener);
     }
     
@@ -132,7 +132,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
     }
     
     //TODO: make this better like ThreadPoolExecutor
-    public List<HazeltaskTask> shutdownNow() {
+    public List<HazeltaskTask<ID,G>> shutdownNow() {
         /*
          * shutdownNow differs from shutdown only in that
          * 1. runState is set to STOP,
@@ -168,10 +168,10 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
                 throw se;
             }
 
-            List<HazeltaskTask> tasks = drainQueue();
+            List<HazeltaskTask<ID,G>> tasks = drainQueue();
             //jclawson - added this to make sure we grap possibly incomplete tasks
             for (Worker w : workers) {
-                HazeltaskTask task = w.getCurrentTask();
+                HazeltaskTask<ID,G> task = w.getCurrentTask();
                 if(task != null)
                     tasks.add(w.getCurrentTask());
             }
@@ -187,8 +187,8 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
      * Drains the task queue into a new list. Used by shutdownNow.
      * Call only while holding main lock.
      */
-    private List<HazeltaskTask> drainQueue() {
-        List<HazeltaskTask> taskList = new ArrayList<HazeltaskTask>();
+    private List<HazeltaskTask<ID,G>> drainQueue() {
+        List<HazeltaskTask<ID,G>> taskList = new ArrayList<HazeltaskTask<ID,G>>();
         queue.drainTo(taskList);
         /*
          * If the queue is a DelayQueue or any other kind of queue
@@ -201,7 +201,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
             Iterator<HazeltaskTask<ID,G>> it = queue.iterator();
             try {
                 if (it.hasNext()) {
-                    HazeltaskTask r = it.next();
+                    HazeltaskTask<ID,G> r = it.next();
                     if (queue.remove(r))
                         taskList.add(r);
                 }
@@ -266,16 +266,16 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
         return runState != RUNNING;
     }
     
-    private HazeltaskTask getTask() {
+    private HazeltaskTask<ID,G> getTask() {
         return queue.poll();
     }
     
-    private HazeltaskTask waitForTask() throws InterruptedException {
+    private HazeltaskTask<ID,G> waitForTask() throws InterruptedException {
         return queue.take();
     }
     
-    protected void beforeExecute(Thread t, HazeltaskTask r) {
-        for(ExecutorListener listener : listeners) {
+    protected void beforeExecute(Thread t, HazeltaskTask<ID,G> r) {
+        for(ExecutorListener<ID,G> listener : listeners) {
             try {
                 listener.beforeExecute(r);
             } catch(Throwable e) {
@@ -283,8 +283,8 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
             }
         }
     }
-    protected void afterExecute(HazeltaskTask r, Throwable t) {
-        for(ExecutorListener listener : listeners) {
+    protected void afterExecute(HazeltaskTask<ID,G> r, Throwable t) {
+        for(ExecutorListener<ID,G> listener : listeners) {
             try {
                 listener.afterExecute(r, t);
             } catch(Throwable e) {
@@ -336,7 +336,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
             }
         }
         
-        private void runTask(HazeltaskTask task) {
+        private void runTask(HazeltaskTask<ID,G> task) {
             
             TimerContext tCtx = null;
         	if(taskExecutedTimer != null) {
@@ -382,7 +382,7 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
             long exponent = 2;
             final int maxInterval = 1500;   //1.5 seconds
             while(!isShutdown()) {
-                HazeltaskTask r = null;
+                HazeltaskTask<ID,G> r = null;
                 //if we have reached the last interval then lets just 
                 //block and wait for a task
                 if(interval >= maxInterval) {

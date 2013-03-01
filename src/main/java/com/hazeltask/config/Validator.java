@@ -32,5 +32,9 @@ public class Validator {
         if(executorConfig.getThreadFactory() == null) {
             executorConfig.withThreadFactory(new DefaultThreadFactory("Hazeltask", config.getTopologyName()+"-worker"));
         }
+        
+        if(executorConfig.getLoadBalancingConfig().getTaskRouterFactory() == null) {
+            throw new IllegalArgumentException("Please specify a task router factory for the ExecutorConfig");
+        }
     }
 }
