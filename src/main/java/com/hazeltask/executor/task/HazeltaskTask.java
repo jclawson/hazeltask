@@ -117,8 +117,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
 
     @Override
     public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-        // TODO Auto-generated method stub
-        
+        this.hazelcastInstance = hazelcastInstance;
     }
 	
 }

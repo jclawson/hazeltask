@@ -3,11 +3,13 @@ package com.hazeltask.executor.task;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.mockito.Mockito.mock;
 import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.executor.task.HazeltaskTask;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceAware;
 
 public class HazelcastWorkTest {
     @Test
@@ -48,5 +50,35 @@ public class HazelcastWorkTest {
         work.run();        
         Assert.assertNotNull(work.getException());        
         Assert.assertEquals("Hello", work.getException().getMessage());
+    }
+    
+    @Test
+    public void testHazelcastAware() {
+        HazelcastInstance myInstance = mock(HazelcastInstance.class);
+        HCAwareTask task = new HCAwareTask();
+        
+        HazeltaskTask work = new HazeltaskTask("test", "test", "group", task);
+        work.setHazelcastInstance(myInstance);
+        work.run();
+        Assert.assertNull(work.getException()); 
+        Assert.assertEquals(myInstance, task.myInstance);
+    }
+    
+    private static class HCAwareTask implements Callable<Integer>, HazelcastInstanceAware {
+
+        HazelcastInstance myInstance;
+        
+        @Override
+        public Integer call() throws Exception {
+            if(myInstance == null)
+                throw new RuntimeException("hc instance wasn't set");
+            return 1;
+        }
+
+        @Override
+        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
+            this.myInstance = hazelcastInstance;
+        }
+        
     }
 }
