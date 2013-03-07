@@ -3,6 +3,9 @@ package com.hazeltask.executor.task;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceAware;
+
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
  * in the distributed map.
@@ -11,7 +14,7 @@ import java.util.concurrent.Callable;
  *
  */
 public class HazeltaskTask<ID extends Serializable, G extends Serializable> 
-    implements Runnable, Task<ID,G> {
+    implements Runnable, Task<ID,G>, HazelcastInstanceAware {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable runTask;
@@ -22,6 +25,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
 	private G group;
 	private String topology;
 	private int submissionCount;
+	private HazelcastInstance hazelcastInstance;
 	
 	private volatile transient Object result;
     private volatile transient Exception e;
@@ -83,8 +87,14 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     public void run() {
         try {
             if(callTask != null) {
-    		    this.result = callTask.call();
+    		    if(callTask instanceof HazelcastInstanceAware) {
+    		        ((HazelcastInstanceAware) callTask).setHazelcastInstance(hazelcastInstance);
+    		    }
+                this.result = callTask.call();
     		} else {
+    		    if(runTask instanceof HazelcastInstanceAware) {
+                    ((HazelcastInstanceAware) runTask).setHazelcastInstance(hazelcastInstance);
+                }
     		    runTask.run();
     		}
         } catch (Exception t) {
@@ -103,6 +113,12 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     @Override
     public ID getId() {
         return id;
+    }
+
+    @Override
+    public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
+        // TODO Auto-generated method stub
+        
     }
 	
 }

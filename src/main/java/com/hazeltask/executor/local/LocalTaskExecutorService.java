@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.google.common.base.Function;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
@@ -193,7 +194,8 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 		if(taskSubmittedTimer != null)
 			tCtx = taskSubmittedTimer.time();
 		try {
-			return taskQueue.add(command);
+			command.setHazelcastInstance(topology.getHazeltaskConfig().getHazelcast());
+		    return taskQueue.add(command);
 		} finally {
 			if(tCtx != null)
 				tCtx.stop();
