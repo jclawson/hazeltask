@@ -53,9 +53,21 @@ public class HazelcastWorkTest {
     }
     
     @Test
-    public void testHazelcastAware() {
+    public void testHazelcastAwareCallable() {
         HazelcastInstance myInstance = mock(HazelcastInstance.class);
         HCAwareTask task = new HCAwareTask();
+        
+        HazeltaskTask work = new HazeltaskTask("test", "test", "group", task);
+        work.setHazelcastInstance(myInstance);
+        work.run();
+        Assert.assertNull(work.getException()); 
+        Assert.assertEquals(myInstance, task.myInstance);
+    }
+    
+    @Test
+    public void testHazelcastAwareRunnable() {
+        HazelcastInstance myInstance = mock(HazelcastInstance.class);
+        HCAwareTask2 task = new HCAwareTask2();
         
         HazeltaskTask work = new HazeltaskTask("test", "test", "group", task);
         work.setHazelcastInstance(myInstance);
@@ -73,6 +85,23 @@ public class HazelcastWorkTest {
             if(myInstance == null)
                 throw new RuntimeException("hc instance wasn't set");
             return 1;
+        }
+
+        @Override
+        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
+            this.myInstance = hazelcastInstance;
+        }
+        
+    }
+    
+    private static class HCAwareTask2 implements Runnable, HazelcastInstanceAware {
+
+        HazelcastInstance myInstance;
+        
+        @Override
+        public void run() {
+            if(myInstance == null)
+                throw new RuntimeException("hc instance wasn't set");
         }
 
         @Override
