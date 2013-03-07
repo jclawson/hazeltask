@@ -3,6 +3,7 @@ package com.hazeltask.executor;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 
@@ -45,6 +46,12 @@ public interface IExecutorTopologyService {
      * @return
      */
     public Collection<MemberResponse<Long>> getLocalQueueSizes();
+    
+    /**
+     * Get the local queue sizes for each group on each member
+     * @return
+     */
+    public Collection<MemberResponse<Map<Serializable, Integer>>> getLocalGroupSizes();
     
     /**
      * Get the local partition's size of the pending work map

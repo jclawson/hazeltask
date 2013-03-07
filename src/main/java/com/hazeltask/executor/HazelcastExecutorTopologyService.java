@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +27,7 @@ import com.hazelcast.core.MessageListener;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
+import com.hazeltask.clusterop.GetLocalGroupQueueSizesOp;
 import com.hazeltask.clusterop.GetLocalQueueSizesOp;
 import com.hazeltask.clusterop.GetOldestTimestampOp;
 import com.hazeltask.clusterop.StealTasksOp;
@@ -178,6 +180,17 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
                 communicationExecutorService, 
                 topology.getReadyMembers(),
                 new GetLocalQueueSizesOp(topology.getName())
+        );
+    }
+    
+
+
+    @Override
+    public Collection<MemberResponse<Map<Serializable, Integer>>> getLocalGroupSizes() {
+        return MemberTasks.executeOptimistic(
+                communicationExecutorService, 
+                topology.getReadyMembers(),
+                new GetLocalGroupQueueSizesOp(topology.getName())
         );
     }
 
