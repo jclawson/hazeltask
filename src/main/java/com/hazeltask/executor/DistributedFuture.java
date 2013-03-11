@@ -2,19 +2,34 @@ package com.hazeltask.executor;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
-public class DistributedFuture<V> implements Future<V> {
+import com.google.common.util.concurrent.ExecutionList;
+import com.google.common.util.concurrent.ListenableFuture;
+
+/**
+ * This future implements the ListenableFuture interface from Google Guava
+ * 
+ * @see https://code.google.com/p/guava-libraries/wiki/ListenableFutureExplained
+ * @author jclawson
+ *
+ * @param <V>
+ */
+public class DistributedFuture<V> implements Future<V>, ListenableFuture<V> {
     private final Sync sync = new Sync();
+    private final ExecutionList executionList = new ExecutionList();
     
     public DistributedFuture() {
         
     }
 
-    protected void done() { }
+    protected void done() { 
+        executionList.execute();
+    }
     
     public boolean cancel(boolean mayInterruptIfRunning) {
         throw new RuntimeException("Not Implemented yet");
@@ -171,6 +186,11 @@ public class DistributedFuture<V> implements Future<V> {
             done();
             return true;
         }
+    }
+
+    @Override
+    public void addListener(Runnable listener, Executor executor) {
+        executionList.add(listener, executor);
     }
     
 }
