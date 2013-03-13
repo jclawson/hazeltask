@@ -178,7 +178,7 @@ public class HazeltaskInstance {
         });
     }
 
-    public ExecutorService getExecutorService() {
+    public DistributedExecutorService<?,?> getExecutorService() {
         return executor;
     }
 
