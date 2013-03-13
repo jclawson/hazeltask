@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.hazeltask</groupId>
 	<artifactId>hazeltask-core</artifactId>
-	<version>0.9.4-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 	<name>Hazeltask</name>
 	<description>Hazeltask - an advanced Hazelcast based work distribution library</description>
 
@@ -45,19 +45,40 @@
 			<url>http://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
 		</repository>
 	</distributionManagement>
+	
+	<repositories>
+	    <repository>
+	        <id>sonatype-nexus-public</id>
+	        <name>SonaType public snapshots and releases repository</name>
+	        <url>https://oss.sonatype.org/content/groups/public</url>
+	        <releases> 
+	            <enabled>true</enabled>
+	        </releases> 
+	        <snapshots>
+	            <enabled>true</enabled>
+	        </snapshots>
+	    </repository>
+	</repositories>
 
 
 	<dependencies>
 		<dependency>
 			<groupId>com.hazelcast</groupId>
 			<artifactId>hazelcast</artifactId>
-			<version>2.2</version>
+			<version>2.5</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>12.0</version>
+			<version>14.0</version>
+		</dependency>
+
+		<dependency>
+		    <groupId>com.carrotsearch</groupId>
+		    <artifactId>junit-benchmarks</artifactId>
+		    <version>0.4.0</version>
+		    <scope>test</scope>
 		</dependency>
 
 		<dependency>

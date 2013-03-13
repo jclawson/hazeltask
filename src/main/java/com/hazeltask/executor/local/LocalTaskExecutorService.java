@@ -4,25 +4,20 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.google.common.base.Function;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
-import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
-import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
-import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
+import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLockFree;
+import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
-import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
 import com.hazeltask.core.metrics.MetricNamer;
 import com.hazeltask.executor.DelegatingExecutorListener;
 import com.hazeltask.executor.ExecutorListener;
@@ -67,7 +62,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
     
 	private final HazeltaskTopology topology;
 	private QueueExecutor<ID,G> localExecutorPool;
-	private GroupedPriorityQueue<HazeltaskTask<ID, G>, G> taskQueue;
+	private GroupedPriorityQueueLocking<HazeltaskTask<ID, G>, G> taskQueue;
 	private final Collection<ExecutorListener<ID,G>> listeners = new LinkedList<ExecutorListener<ID,G>>();
 	private final IExecutorTopologyService executorTopologyService;
 	
@@ -84,15 +79,8 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 		this.executorTopologyService = executorTopologyService;
 		
 		ThreadFactory factory = executorConfig.getThreadFactory();
-		//List<Entry<String, ITrackedQueue<E>>>
-		ListRouterFactory<Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>>> router = executorConfig.getLoadBalancingConfig().getTaskRouterFactory();
 		
-		taskQueue = new GroupedPriorityQueue<HazeltaskTask<ID, G>,G>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask<ID, G>,G>(router),
-                new TimeCreatedAdapter<HazeltaskTask<ID, G>>(){
-            public long getTimeCreated(HazeltaskTask<ID, G> item) {
-                return item.getTimeCreated();
-            }
-        });
+		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<ID, G>, G>(executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
 		
 		if(topology.getHazeltaskConfig().getMetricsRegistry() != null) {
 			//TODO: move metrics to ExecutorMetrics class
@@ -147,13 +135,21 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
     }
 	
 	/**
-	 * There is a race condition scenario here.  We want to get the best result possible as this value
+	 * We want to get the best result possible as this value 
 	 * is used to determine what work needs to be recovered.
 	 * 
 	 * @return
 	 */
 	public Long getOldestTaskCreatedTime(){
 	    long oldest = Long.MAX_VALUE;
+	    
+	    /*
+	     * I am asking this question first, because if I ask it after I could
+	     * miss the oldest time if the oldest is polled and worked on
+	     */
+	    Long oldestQueueTime = this.taskQueue.getOldestQueueTime();
+	    if(oldestQueueTime != null)
+	        oldest = oldestQueueTime;
 	    
 	    //there is a tiny race condition here... but we just want to make our best attempt
 	    for(Runnable r : localExecutorPool.getTasksInProgress()) {
@@ -164,11 +160,6 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	        }
 	    }
 	    
-	    Long oldestQueueTime = this.taskQueue.getOldestQueueTime();
-	    
-	    if(oldestQueueTime != null && oldestQueueTime < oldest)
-	        oldest = oldestQueueTime;
-	    
 	    return oldest;
 	}
 	
@@ -177,11 +168,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	}
 	
 	public Map<G, Integer> getGroupSizes() {
-		Map<G, Integer> result = new HashMap<G, Integer>();
-		for(Entry<G, ITrackedQueue<HazeltaskTask<ID,G>>> group : this.taskQueue.getGroups()) {
-			result.put(group.getKey(), group.getValue().size());
-		}
-		return result;
+	    return this.taskQueue.getGroupSizes();
 	}
 	
 	public boolean execute(HazeltaskTask<ID,G> command) {
@@ -206,7 +193,8 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	    if(!this.localExecutorPool.isShutdown()) {
     	    long totalSize = taskQueue.size();
     	    ArrayList<HazeltaskTask<ID,G>> result = new ArrayList<HazeltaskTask<ID,G>>((int)numberOfTasks);
-    	    for(ITrackedQueue<HazeltaskTask<ID,G>> q : this.taskQueue.getQueuesByGroup().values()) {
+    	    for(G group : this.taskQueue.getGroups()) {
+    	        ITrackedQueue<HazeltaskTask<ID,G>> q = this.taskQueue.getQueueByGroup(group);
     	        int qSize = q.size();
     	        if(qSize == 0) continue;
     	        

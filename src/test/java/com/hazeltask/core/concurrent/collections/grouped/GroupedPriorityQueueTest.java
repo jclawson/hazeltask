@@ -1,32 +1,19 @@
 package com.hazeltask.core.concurrent.collections.grouped;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.Callable;
+
+import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter.GroupRouterAdapter;
-import com.hazeltask.core.concurrent.collections.router.ListRouter;
-import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
-import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
-import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
-import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
+import com.hazeltask.core.concurrent.collections.grouped.prioritizer.RoundRobinGroupPrioritizer;
 
 import data.MyGroupableItem;
 
 public class GroupedPriorityQueueTest {
-    @Test
-    public void performanceTest() {
-        GroupRouterAdapter<MyGroupableItem,Long> adapter = new GroupRouterAdapter<MyGroupableItem,Long>(new MyListRouterFactory());        
-        GroupedPriorityQueue<MyGroupableItem,Long> queue = new GroupedPriorityQueue<MyGroupableItem,Long>(adapter, new TimeCreatedAdapter<MyGroupableItem>(){
-            public long getTimeCreated(MyGroupableItem item) {
-                return 0;
-            }
-        });
-        adapter.setPartitionedQueueue(queue);
+   // @Test
+    public void performanceTest() {       
+        GroupedPriorityQueueLockFree<MyGroupableItem,Long> queue = new GroupedPriorityQueueLockFree<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
         
         long start,stop;
         
@@ -56,17 +43,37 @@ public class GroupedPriorityQueueTest {
         
     }
     
-    
-    
-    static class MyListRouterFactory implements ListRouterFactory<Entry<Long, ITrackedQueue<MyGroupableItem>>> {
-
-        public ListRouter<Entry<Long, ITrackedQueue<MyGroupableItem>>> createRouter(List<Entry<Long, ITrackedQueue<MyGroupableItem>>> list) {
-           return new RoundRobinRouter<Map.Entry<Long,ITrackedQueue<MyGroupableItem>>>(list);
-        }
-
-        public ListRouter<Entry<Long, ITrackedQueue<MyGroupableItem>>> createRouter(Callable<List<Entry<Long, ITrackedQueue<MyGroupableItem>>>> list) {
-            return new RoundRobinRouter<Map.Entry<Long,ITrackedQueue<MyGroupableItem>>>(list);
+    @Test
+    public void emptyGroupHandling() {
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        //add 2 items to 10 groups
+        for(long i=0; i<4; i++) {
+            MyGroupableItem item = new MyGroupableItem(i);
+           // System.out.println(i);
+            queue.offer(item);
         }
         
+        Assert.assertEquals(0L, (long)queue.poll().getGroup());
+        Assert.assertEquals(1L, (long)queue.poll().getGroup());
+        Assert.assertEquals(2L, (long)queue.poll().getGroup());
+        
+        //groups 0, 1, and 2 are empty
+        
+        queue.offer(new MyGroupableItem(0));
+        queue.offer(new MyGroupableItem(1));
+        queue.offer(new MyGroupableItem(2));
+        
+        //all groups present
+        
+        Assert.assertEquals(3L, (long)queue.poll().getGroup());
+        
+        //group 3 is empty
+        
+        Assert.assertEquals(0L, (long)queue.poll().getGroup());
+        Assert.assertEquals(1L, (long)queue.poll().getGroup());
+        Assert.assertEquals(2L, (long)queue.poll().getGroup());
+        
+        //all groups empty
+        Assert.assertEquals(0, queue.size());
     }
 }

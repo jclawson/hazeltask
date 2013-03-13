@@ -24,7 +24,7 @@ public class BackoffTimer {
     private TimerRunnable timerRunnable;
     private final ThreadFactory threadFactory;
     private Thread workerThread;
-    private boolean isShutdown = false;
+    private volatile boolean isShutdown = false;
     
     public BackoffTimer(String name) {
         this(name, null);
@@ -36,12 +36,12 @@ public class BackoffTimer {
     }
     
     private void start() {
-    	if(timerRunnable == null || !timerRunnable.newTasksMayBeScheduled) {
+        if(isShutdown) {
+            throw new IllegalStateException("BackoffTimer has been shutdown");
+        }
+        
+        if(timerRunnable == null || !timerRunnable.newTasksMayBeScheduled) {
 	    	synchronized (queue) {
-	    		if(isShutdown) {
-	        		throw new IllegalStateException("BackoffTimer has been shutdown");
-	        	}
-	    		
 	        	if(timerRunnable == null || !timerRunnable.newTasksMayBeScheduled) {
 	            	timerRunnable = new TimerRunnable();
 	            	if(threadFactory != null) {        		
@@ -64,6 +64,9 @@ public class BackoffTimer {
 	    	synchronized (queue) {
 	            if(timerRunnable != null) {
 	            	isShutdown = true;
+	            	while(!queue.isEmpty()) {
+	            	    unschedule(queue.poll().task);
+	            	}
 	            	queue.clear();
 		            workerThread.interrupt();
 		            timerRunnable = null;
@@ -217,14 +220,6 @@ public class BackoffTimer {
 				return false;
 			return true;
 		}
-
-		        
-       
-        
-		
-        
-        
-        
     }
     
     class TimerRunnable implements Runnable {
@@ -233,7 +228,6 @@ public class BackoffTimer {
     	
     	//only access this variable in the queue monitor
     	private boolean newTasksMayBeScheduled = true;
-    	
                
         /**
          * This loop will end if the queue is empty or the thread is interrupted

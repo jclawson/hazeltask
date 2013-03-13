@@ -13,8 +13,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazeltask.clusterop.IsMemberReadyOp;
 import com.hazeltask.clusterop.NoOp;
+import com.hazeltask.clusterop.ShutdownOp;
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.executor.ShutdownTask;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
@@ -65,18 +65,23 @@ private String topologyName;
     public void shutdown() {
         MemberTasks.executeOptimistic(communicationExecutorService, 
                                       hazelcast.getCluster().getMembers(), 
-                                      new ShutdownTask(topologyName, false)
+                                      new ShutdownOp(topologyName, false)
         );
     }
     
     public List<HazeltaskTask<?,?>> shutdownNow() {
         Collection<MemberResponse<Collection<HazeltaskTask<?,?>>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
             hazelcast.getCluster().getMembers(), 
-            new ShutdownTask(topologyName, true)
+            new ShutdownOp(topologyName, true)
         );
         List<HazeltaskTask<?,?>> tasks = new ArrayList<HazeltaskTask<?,?>>();
         for(MemberResponse<Collection<HazeltaskTask<?,?>>> response : responses) {
-            tasks.addAll(response.getValue());
+            Collection<HazeltaskTask<?,?>> responseValue = response.getValue();
+            if(responseValue == null) {
+                //TODO: log this
+            } else {
+                tasks.addAll(responseValue);
+            }
         }
         return tasks;
     }

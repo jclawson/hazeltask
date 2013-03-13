@@ -5,6 +5,7 @@ import java.util.concurrent.Callable;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
+import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
@@ -14,7 +15,7 @@ import com.hazelcast.core.HazelcastInstanceAware;
  *
  */
 public class HazeltaskTask<ID extends Serializable, G extends Serializable> 
-    implements Runnable, Task<ID,G>, HazelcastInstanceAware {
+    implements Runnable, Task<ID,G>, HazelcastInstanceAware, TrackCreated {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable runTask;

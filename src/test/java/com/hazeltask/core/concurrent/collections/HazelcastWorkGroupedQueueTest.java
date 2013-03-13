@@ -2,35 +2,23 @@ package com.hazeltask.core.concurrent.collections;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.util.Map.Entry;
-
 import junit.framework.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueue;
-import com.hazeltask.core.concurrent.collections.grouped.GroupedQueueRouter;
-import com.hazeltask.core.concurrent.collections.router.ListRouterFactory;
-import com.hazeltask.core.concurrent.collections.router.RoundRobinRouter;
-import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
-import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue.TimeCreatedAdapter;
+import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
+import com.hazeltask.core.concurrent.collections.grouped.prioritizer.RoundRobinGroupPrioritizer;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class HazelcastWorkGroupedQueueTest {
     
-    private GroupedPriorityQueue<HazeltaskTask<String,String>, String> taskQueue;
+    private GroupedPriorityQueueLocking<HazeltaskTask<String,String>, String> taskQueue;
     
+    @SuppressWarnings("unchecked")
     @Before
     public void setupData() {
-        ListRouterFactory<Entry<String, ITrackedQueue<HazeltaskTask<String,String>>>> routerFactory = RoundRobinRouter.newFactory();
-        taskQueue = new GroupedPriorityQueue<HazeltaskTask<String,String>, String>(new GroupedQueueRouter.GroupRouterAdapter<HazeltaskTask<String,String>, String>(routerFactory),
-                new TimeCreatedAdapter<HazeltaskTask<String,String>>(){
-            public long getTimeCreated(HazeltaskTask<String,String> item) {
-                return item.getTimeCreated();
-            }            
-        });
+        taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<String,String>, String>(new RoundRobinGroupPrioritizer<String>());
         
         HazeltaskTask<String,String> work1 = mock(HazeltaskTask.class);
         HazeltaskTask<String,String> work2 = mock(HazeltaskTask.class);

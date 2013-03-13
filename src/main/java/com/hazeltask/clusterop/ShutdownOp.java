@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.clusterop;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -6,19 +6,18 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
-import com.hazeltask.clusterop.AbstractClusterOp;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>> {
+public class ShutdownOp extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>> {
     private static final long serialVersionUID = 1L;
 
     private boolean isShutdownNow;
     
-    protected ShutdownTask(){
+    protected ShutdownOp(){
         this(null, false);
     }
     
-    public ShutdownTask(String topology, boolean isShutdownNow) {
+    public ShutdownOp(String topology, boolean isShutdownNow) {
         super(topology);
         this.isShutdownNow = isShutdownNow;
     }
@@ -26,9 +25,9 @@ public class ShutdownTask extends AbstractClusterOp<Collection<HazeltaskTask<?,?
     public Collection<HazeltaskTask<?,?>> call() throws Exception {
         try {
             if(isShutdownNow)
-                return this.getDistributedExecutorService().doShutdownNow();
+                return this.getDistributedExecutorService().shutdownNow();
             else
-                this.getDistributedExecutorService().doShutdown();
+                this.getDistributedExecutorService().shutdown();
         } catch(IllegalStateException e) {}
         
         return Collections.emptyList();

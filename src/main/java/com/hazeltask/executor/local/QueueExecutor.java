@@ -19,7 +19,16 @@ import com.hazeltask.executor.task.HazeltaskTask;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
-
+/**
+ * The reason I use this instead of a ThreadPoolExecutor is because I needed to have the
+ * method getTasksInProgress because getting their timeCreated is very important to figuring
+ * out which tasks have been lost due to a member shutdown
+ * 
+ * @author jclawson
+ *
+ * @param <ID>
+ * @param <G>
+ */
 public class QueueExecutor<ID extends Serializable, G extends Serializable> {
     private final BlockingQueue<HazeltaskTask<ID,G>> queue;
     private final ThreadFactory threadFactory;
@@ -368,36 +377,19 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
             }
         }
         
-        /**
-         * This method will poll the queue for tasks.  If it finds nothing in the queue
-         * it will poll and wait increasing the waiting time a little each time up to a
-         * maximum.  If this max is reached, it will then block and wait on something to
-         * be added to the queue.  This should lead to better performance in high usage
-         * scenarious but also not consume CPU when the queue is mostly empty... 
-         * a hybrid approach
-         */
         public void run() {
-            final long minInterval = 1;     //1 millisecond
-            long interval = minInterval;
-            long exponent = 2;
-            final int maxInterval = 1500;   //1.5 seconds
             while(!isShutdown()) {
                 HazeltaskTask<ID,G> r = null;
                 //if we have reached the last interval then lets just 
                 //block and wait for a task
-                if(interval >= maxInterval) {
                     try {
                         r = waitForTask();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         return;
                     }
-                } else {
-                    r = getTask();
-                }
                 if(r != null) {
                     runTask(r);
-                    interval = minInterval;
                 } else { //there was no work in the taskQueue so lets wait a little
                     mainLock.lock();
                     try {
@@ -405,13 +397,6 @@ public class QueueExecutor<ID extends Serializable, G extends Serializable> {
                         completedTaskCount += completedTasks;
                     } finally {
                         mainLock.unlock();
-                    }
-                    try {
-                        Thread.sleep(interval);
-                        interval = Math.min(maxInterval, interval * exponent);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
                     }
                 }
                 

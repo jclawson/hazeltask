@@ -33,8 +33,8 @@ public class Validator {
             executorConfig.withThreadFactory(new DefaultThreadFactory("Hazeltask", config.getTopologyName()+"-worker"));
         }
         
-        if(executorConfig.getLoadBalancingConfig().getTaskRouterFactory() == null) {
-            throw new IllegalArgumentException("Please specify a task router factory for the ExecutorConfig");
+        if(executorConfig.getLoadBalancingConfig().getGroupPrioritizer() == null) {
+            throw new IllegalArgumentException("Please specify a group prioritizer for the ExecutorConfig LoadBalancingConfig");
         }
     }
 }

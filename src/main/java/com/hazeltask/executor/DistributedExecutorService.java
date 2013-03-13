@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazeltask.HazeltaskServiceListener;
@@ -93,22 +94,12 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         }
     }
     
-    
-
     public void shutdown() {
-        topology.getTopologyService().shutdown();
-    }
-
-    public List<Runnable> shutdownNow() {
-        return new ArrayList<Runnable>(topology.getTopologyService().shutdownNow());
-    }
-    
-    protected void doShutdown() {
         doShutdownNow(false);
     }
     
-    protected List<HazeltaskTask<ID,GROUP>> doShutdownNow() {
-        return doShutdownNow(true);
+    public List<Runnable> shutdownNow() {
+        return new ArrayList<Runnable>(doShutdownNow(true));
     }
     
     protected List<HazeltaskTask<ID,GROUP>> doShutdownNow(boolean shutdownNow) {
@@ -145,7 +136,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         throw new RuntimeException("Not Implemented Yet");
     }
 
-    public <T> Future<T> submit(Callable<T> task) {
+    public <T> ListenableFuture<T> submit(Callable<T> task) {
         TimerContext ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)
@@ -211,7 +202,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         }   
     }
 
-    public Future<?> submit(Runnable task) {
+    public ListenableFuture<?> submit(Runnable task) {
         TimerContext ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)

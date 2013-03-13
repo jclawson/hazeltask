@@ -5,42 +5,31 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 
 
-public class TrackedPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> implements ITrackedQueue<E> {
+public class TrackedPriorityBlockingQueue<E extends TrackCreated> extends PriorityBlockingQueue<E> implements ITrackedQueue<E> {
     private static final long serialVersionUID = 1L;
-    private final TimeCreatedAdapter<E> timeAdapter;
     private volatile Long lastAddedTime = null;
     private volatile Long lastRemovedTime = null;
     
     //TODO: make this size configurable to prevent a lot of resizes
     private static final int DEFAULT_INITIAL_SIZE = 100;
     
-    public static interface TimeCreatedAdapter<E> {
-        public long getTimeCreated(E item);
-    }
-    
-    private static class TimeCreatedComparator<E> implements Comparator<E> {
-        private final TimeCreatedAdapter<E> timeAdapter;
-        
-        public TimeCreatedComparator(TimeCreatedAdapter<E> timeAdapter) {
-            this.timeAdapter = timeAdapter;
-        }
+    private static class TimeCreatedComparator<E extends TrackCreated> implements Comparator<E> {
         
         public int compare(E o1, E o2) {
-            Long t1 = timeAdapter.getTimeCreated(o1);
-            Long t2 = timeAdapter.getTimeCreated(o2);
+            Long t1 = o1.getTimeCreated();
+            Long t2 = o2.getTimeCreated();
             return t1.compareTo(t2);
         }
     }
     
-    public TrackedPriorityBlockingQueue(TimeCreatedAdapter<E> timeAdapter) {        
-        super(DEFAULT_INITIAL_SIZE, new TimeCreatedComparator<E>(timeAdapter));
-        this.timeAdapter = timeAdapter;
+    public TrackedPriorityBlockingQueue() {        
+        super(DEFAULT_INITIAL_SIZE, new TimeCreatedComparator<E>());
     }
     
     public Long getOldestItemTime() {
         E elem = this.peek();
         if(elem != null)
-            return timeAdapter.getTimeCreated(elem);
+            return elem.getTimeCreated();
         else
             return null;
     }
