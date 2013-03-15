@@ -183,7 +183,7 @@ public class HazeltaskInstance {
     }
 
     @SuppressWarnings("unchecked")
-    public <I,ID extends Serializable,GROUP extends Serializable>  TaskBatchingService<I,Serializable,ID,GROUP> getTaskBatchService() {
+    public <I,ID extends Serializable,GROUP extends Serializable>  TaskBatchingService<I,?,ID,GROUP> getTaskBatchService() {
         return (TaskBatchingService<I,Serializable,ID,GROUP>) taskBatchService;
     }
 

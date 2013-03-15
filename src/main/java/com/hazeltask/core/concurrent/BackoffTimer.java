@@ -46,6 +46,7 @@ public class BackoffTimer {
 	            	timerRunnable = new TimerRunnable();
 	            	if(threadFactory != null) {        		
 	            		workerThread = threadFactory.newThread(timerRunnable);
+	            		workerThread.start();
 	            	} else {        	
 	    	        	//threadFactory.newThread(r)
 	    	        	//timerThread = new TimerThread(queue);
