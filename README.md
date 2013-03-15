@@ -1,10 +1,17 @@
 Hazeltask
 ==============
-An advanced task distribution system based on Hazelcast with a familiar ExecutorService API
+An advanced task distribution system based on Hazelcast with a familiar ExecutorService API.
 
 Current Status
 ==============
-Almost to 1.0!  This 0.9 release is functional, just a few TODO's left!
+Almost to 1.0!  1.0.0-SNAPSHOT is released to the sonatype OSS repository!  When the following TODO's are finished we will release 1.0.
+
+TODO's
+==============
+- Add JavaDocs to configuration objects
+- Clean up TaskBatching API
+- Rename some internal classes for consistency
+- Document sample code
 
 Features
 ==============
@@ -12,12 +19,12 @@ This project encompasses an advanced distributed work library for Hazelcast.
 It is modeled after the ExecutorService API but adds a lot of missing features 
 the built in Hazelcast executor service doesn't provide such as:
 - Failover capabilities when nodes go down.  No lost work!
-- Work distribution loadbalancing with customizable routers (RoundRobin implementation provided)
+- Work distribution loadbalancing with customizable prioritizers (RoundRobin, Enum, and Fair provided)
 - Local Partitioned queues for customizable task execution selection
 - No more MemberLeftExceptions when waiting on Futures!  Work will be redistributed to another member and executed returning the result to your Future
+- Google Guava ListenableFuture support
 - Distribution of work done via push as work is added
-- No cluster locking.  Little contention on cluster wide resources.
-- Configurable to favor speed or redundancy
+- No cluster locking.  Little contention on cluster wide resources
 - Work Bundling capabilities!  Sometimes its more efficient to combine several tasks into a single task.  This is now possible with the DistributedWorkBundler.
 
 Example Use Case:
