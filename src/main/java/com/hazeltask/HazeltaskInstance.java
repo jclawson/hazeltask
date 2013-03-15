@@ -142,7 +142,7 @@ public class HazeltaskInstance {
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService<?,?>>(){
             @Override
             public void onEndStart(DistributedExecutorService svc) {
-                hazeltaskTimer.schedule(bundleTask, 1000, 30000, 2);
+                hazeltaskTimer.schedule(bundleTask, 1000, svc.getExecutorConfig().getRecoveryProcessPollInterval(), 2);
                 if(rebalanceTask != null)
                     hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getLoadBalancingConfig().getRebalanceTaskPeriod());
                 

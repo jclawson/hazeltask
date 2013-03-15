@@ -15,6 +15,8 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     protected boolean          autoStart                = true;
     private boolean            enableFutureTracking     = true;
     
+    private long               recoveryProcessPollInterval = 30000;
+    
     private ThreadFactory threadFactory = null;
     
     private ExecutorLoadBalancingConfig<ID,GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<ID, GROUP>();
@@ -63,6 +65,15 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     public ExecutorConfig<ID, GROUP> withTaskIdAdapter(TaskIdAdapter<?,ID,GROUP> taskIdAdapter) {
         this.taskIdAdapter = taskIdAdapter;
         return this;
+    }
+    
+    public ExecutorConfig<ID, GROUP> withRecoveryProcessPollInterval(long intervalMillis) {
+        this.recoveryProcessPollInterval = intervalMillis;
+        return this;
+    }
+    
+    public long getRecoveryProcessPollInterval() {
+        return this.recoveryProcessPollInterval;
     }
 
     /**
