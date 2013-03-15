@@ -26,7 +26,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
 	private G group;
 	private String topology;
 	private int submissionCount;
-	private HazelcastInstance hazelcastInstance;
+	private transient HazelcastInstance hazelcastInstance;
 	
 	private volatile transient Object result;
     private volatile transient Exception e;
