@@ -4,8 +4,10 @@ import java.io.Serializable;
 import java.util.UUID;
 
 import com.hazeltask.config.ExecutorConfig;
+import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.executor.task.DefaultGroupableTaskIdAdapter;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
+import com.hazeltask.executor.task.TaskIdAdapter;
 
 /**
  * This class contains a lot of default configurations for easy and quick setup for
@@ -31,8 +33,8 @@ public class ExecutorConfigs {
      * 
      * @return
      */
-    public static ExecutorConfig<String,String> basic() {
-        return new ExecutorConfig<String,String>()
+    public static ExecutorConfig<UUID,Integer> basic() {
+        return new ExecutorConfig<UUID,Integer>()
                     .withTaskIdAdapter(new DefaultTaskIdAdapter());
     }
     
@@ -46,6 +48,6 @@ public class ExecutorConfigs {
      */
     public static <GROUP extends Serializable> ExecutorConfig<UUID, GROUP> basicGroupable() {
         return new ExecutorConfig<UUID,GROUP>()
-                    .withTaskIdAdapter(new DefaultGroupableTaskIdAdapter<GROUP>());
+                    .withTaskIdAdapter((TaskIdAdapter<Groupable<GROUP>, UUID, GROUP>) new DefaultGroupableTaskIdAdapter<GROUP>());
     }
 }

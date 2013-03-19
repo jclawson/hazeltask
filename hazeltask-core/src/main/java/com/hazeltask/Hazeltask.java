@@ -1,5 +1,7 @@
 package com.hazeltask;
 
+import java.io.Serializable;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -7,14 +9,15 @@ import com.hazeltask.config.HazeltaskConfig;
 
 public final class Hazeltask {
     public static final String DEFAULT_TOPOLOGY = "DefaultTopology";
-    public static ConcurrentMap<String, HazeltaskInstance> instances = new ConcurrentHashMap<String, HazeltaskInstance>();
+    public static ConcurrentMap<String, HazeltaskInstance<?,?>> instances = new ConcurrentHashMap<String, HazeltaskInstance<?,?>>();
 
     private Hazeltask() {
 
     }
 
-    public static HazeltaskInstance getHazeltaskInstanceByTopology(String topology) {
-        return instances.get(topology);
+    @SuppressWarnings("unchecked")
+    public static <ID extends Serializable, GROUP extends Serializable> HazeltaskInstance<ID,GROUP> getHazeltaskInstanceByTopology(String topology) {
+        return (HazeltaskInstance<ID,GROUP>) instances.get(topology);
     }
     
     /**
@@ -24,12 +27,12 @@ public final class Hazeltask {
      * @return
      */
     @Deprecated
-    public static HazeltaskInstance getDefaultInstance() {
-        HazeltaskConfig hazeltaskConfig = new HazeltaskConfig();
-        HazeltaskInstance instance = getHazeltaskInstanceByTopology(DEFAULT_TOPOLOGY);
+    public static HazeltaskInstance<UUID, Integer> getDefaultInstance() {
+        HazeltaskConfig<UUID, Integer> hazeltaskConfig = new HazeltaskConfig<UUID, Integer>();
+        HazeltaskInstance<UUID, Integer> instance = getHazeltaskInstanceByTopology(DEFAULT_TOPOLOGY);
         if(instance == null) {
             try {
-                return newHazeltaskInstance(hazeltaskConfig);
+                return (HazeltaskInstance<UUID, Integer>) newHazeltaskInstance(hazeltaskConfig);
             } catch (IllegalStateException e) {
                 instance = getHazeltaskInstanceByTopology(DEFAULT_TOPOLOGY);
             }
@@ -42,9 +45,9 @@ public final class Hazeltask {
         return instance;
     }
     
-    public static HazeltaskInstance newHazeltaskInstance(HazeltaskConfig hazeltaskConfig) {
-        HazeltaskInstance instance = new HazeltaskInstance(hazeltaskConfig);
-        HazeltaskTopology topology = instance.getTopology();
+    public static <ID extends Serializable, GROUP extends Serializable> HazeltaskInstance<ID,GROUP> newHazeltaskInstance(HazeltaskConfig<ID,GROUP> hazeltaskConfig) {
+        HazeltaskInstance<ID,GROUP> instance = new HazeltaskInstance<ID,GROUP>(hazeltaskConfig);
+        HazeltaskTopology<ID, GROUP> topology = instance.getTopology();
         if(instances.putIfAbsent(topology.getName(), instance) != null) {
             throw new IllegalStateException("An instance for the topology "+topology+" already exists!");
         }

@@ -52,8 +52,7 @@ public final class GroupMetadata<G> implements Comparable<GroupMetadata<G>> {
         if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
-        @SuppressWarnings("rawtypes")
-        GroupMetadata other = (GroupMetadata) obj;
+        GroupMetadata<?> other = (GroupMetadata<?>) obj;
         if (group == null) {
             if (other.group != null) return false;
         } else if (!group.equals(other.group)) return false;

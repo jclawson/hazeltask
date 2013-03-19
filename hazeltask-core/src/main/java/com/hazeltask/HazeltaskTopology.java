@@ -1,5 +1,6 @@
 package com.hazeltask;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.hazelcast.core.Member;
@@ -16,17 +17,17 @@ import com.hazeltask.executor.ExecutorMetrics;
  * 
  * @author jclawson
  */
-public class HazeltaskTopology {
-    private final HazeltaskConfig hazeltaskConfig;
+public class HazeltaskTopology<ID extends Serializable, GROUP extends Serializable> {
+    private final HazeltaskConfig<ID, GROUP> hazeltaskConfig;
     private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final ITopologyService topologyService;
+    private final ITopologyService<ID, GROUP> topologyService;
     
     private final LoggingService loggingService;
     private boolean iAmReady;
     
     private final ExecutorMetrics executorMetrics;
     
-    public HazeltaskTopology(HazeltaskConfig hazeltaskConfig, ITopologyService svc) {
+    public HazeltaskTopology(HazeltaskConfig<ID, GROUP> hazeltaskConfig, ITopologyService<ID, GROUP> svc) {
         this.hazeltaskConfig = hazeltaskConfig;
         this.readyMembers = new CopyOnWriteArrayListSet<Member>();
         this.topologyService = svc;
@@ -63,11 +64,11 @@ public class HazeltaskTopology {
         return this.hazeltaskConfig.getTopologyName();
     }
     
-    public ITopologyService getTopologyService() {
+    public ITopologyService<ID, GROUP> getTopologyService() {
         return this.topologyService;
     }
     
-    public HazeltaskConfig getHazeltaskConfig() {
+    public HazeltaskConfig<ID, GROUP> getHazeltaskConfig() {
         return this.hazeltaskConfig;
     }
 

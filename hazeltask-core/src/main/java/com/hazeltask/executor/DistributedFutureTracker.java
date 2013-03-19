@@ -55,20 +55,22 @@ import com.hazeltask.executor.task.TaskResponse.Status;
  * MessageListener<WorkResponse>
  *
  */
-public class DistributedFutureTracker implements MessageListener<TaskResponse> {
+public class DistributedFutureTracker<ID extends Serializable, GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable,ID>> {
     
-    private SetMultimap<Serializable, DistributedFuture<?>> futures = 
-            Multimaps.<Serializable, DistributedFuture<?>>synchronizedSetMultimap(
-                HashMultimap.<Serializable, DistributedFuture<?>>create()
+    private SetMultimap<Serializable, DistributedFuture<Serializable>> futures = 
+            Multimaps.<Serializable, DistributedFuture<Serializable>>synchronizedSetMultimap(
+                HashMultimap.<Serializable, DistributedFuture<Serializable>>create()
             );
     
     public DistributedFutureTracker() {
-
+        
     }
     
-    public <T> DistributedFuture<T> createFuture(HazeltaskTask<?,?> task) {
+    //It is required that T be Serializable
+    @SuppressWarnings("unchecked")
+    public <T> DistributedFuture<T> createFuture(HazeltaskTask<ID,GROUP> task) {
         DistributedFuture<T> future = new DistributedFuture<T>();
-        this.futures.put(task.getId(), future);
+        this.futures.put(task.getId(), (DistributedFuture<Serializable>) future);
         return future;
     }
     
@@ -76,17 +78,17 @@ public class DistributedFutureTracker implements MessageListener<TaskResponse> {
         return this.futures.removeAll(id).size() > 0;
     }
     
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-	public void onMessage(Message<TaskResponse> message) {
-        TaskResponse response = message.getMessageObject();
+    @Override
+	public void onMessage(Message<TaskResponse<Serializable,ID>> message) {
+        TaskResponse<Serializable,ID> response = message.getMessageObject();
         Serializable taskId = response.getTaskId();
-        Collection<DistributedFuture<?>> taskFutures = futures.removeAll(taskId);
+        Collection<DistributedFuture<Serializable>> taskFutures = futures.removeAll(taskId);
         if(taskFutures.size() > 0) {
-            for(DistributedFuture future : taskFutures) {
+            for(DistributedFuture<Serializable> future : taskFutures) {
                 if(response.getStatus() == Status.FAILURE) {
                     future.set(response.getError());
                 } else if(response.getStatus() == Status.SUCCESS) {
-                    future.set(response.getResponse());
+                    future.set((Serializable)response.getResponse());
                 } else if (response.getStatus() == Status.CANCELLED) {
                     future.setCancelled();
                 }

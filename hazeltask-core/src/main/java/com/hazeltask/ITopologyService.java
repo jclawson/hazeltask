@@ -1,5 +1,6 @@
 package com.hazeltask;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 
@@ -13,9 +14,9 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public interface ITopologyService {
+public interface ITopologyService<ID extends Serializable, GROUP extends Serializable> {
     public Set<Member> getReadyMembers();
     public long pingMember(Member member);
     public void shutdown();
-    public List<HazeltaskTask<?,?>> shutdownNow();
+    public List<HazeltaskTask<ID, GROUP>> shutdownNow();
 }

@@ -39,9 +39,9 @@ import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 
-public class HazelcastExecutorTopologyService implements IExecutorTopologyService {
+public class HazelcastExecutorTopologyService<ID extends Serializable, GROUP extends Serializable> implements IExecutorTopologyService<ID, GROUP> {
     //private final BloomFilter<CharSequence> bloomFilter;
-    private HazeltaskTopology topology;
+    private HazeltaskTopology<ID, GROUP> topology;
     private String topologyName;
     private final Member me;
     private ILogger LOGGER;
@@ -51,12 +51,12 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 
     private final ExecutorService taskDistributor;
     //private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final IMap<Serializable, HazeltaskTask>                            pendingTask;
+    private final IMap<Serializable, HazeltaskTask<ID, GROUP>>                            pendingTask;
     private final ILock rebalanceTasksLock;
-    private final ITopic<TaskResponse>      taskResponseTopic;
+    private final ITopic<TaskResponse<Serializable, ID>>      taskResponseTopic;
     private final HazelcastInstance hazelcast;
     
-    public HazelcastExecutorTopologyService(HazeltaskConfig hazeltaskConfig, HazeltaskTopology topology) {
+    public HazelcastExecutorTopologyService(HazeltaskConfig<ID, GROUP> hazeltaskConfig, HazeltaskTopology<ID, GROUP> topology) {
         topologyName = hazeltaskConfig.getTopologyName();
         this.topology = topology;
         hazelcast = hazeltaskConfig.getHazelcast();
@@ -100,9 +100,9 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
 //    }
 
     
-    public boolean sendTask(HazeltaskTask task, Member member, boolean waitForAck) throws TimeoutException {
+    public boolean sendTask(HazeltaskTask<ID, GROUP> task, Member member, boolean waitForAck) throws TimeoutException {
         @SuppressWarnings("unchecked")
-        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskOp(task, topologyName), member));
+        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskOp<ID, GROUP>(task, topologyName), member));
         if(waitForAck) {
             try {
                 return future.get(5, TimeUnit.SECONDS);
@@ -121,7 +121,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     /**
      * Add to the write ahead log (hazelcast IMap) that tracks all the outstanding tasks
      */
-    public boolean addPendingTask(HazeltaskTask task, boolean replaceIfExists) {
+    public boolean addPendingTask(HazeltaskTask<ID, GROUP> task, boolean replaceIfExists) {
         if(!replaceIfExists)
             return pendingTask.putIfAbsent(task.getId(), task) == null;
         
@@ -135,11 +135,11 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
      * @param task
      * @return
      */
-    public Future<HazeltaskTask> addPendingTaskAsync(HazeltaskTask task) {
+    public Future<HazeltaskTask<ID, GROUP>> addPendingTaskAsync(HazeltaskTask<ID, GROUP> task) {
         return pendingTask.putAsync(task.getId(), task);
     }
 
-    public boolean removePendingTask(HazeltaskTask task) {
+    public boolean removePendingTask(HazeltaskTask<ID, GROUP> task) {
         pendingTask.removeAsync(task.getId());
         return true;
     }
@@ -155,22 +155,22 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return false;
     }
 
-    public void broadcastTaskCompletion(Serializable taskId, Serializable response) {
-        TaskResponse message = new TaskResponse(me, taskId, response, TaskResponse.Status.SUCCESS);
+    public void broadcastTaskCompletion(ID taskId, Serializable response) {
+        TaskResponse<Serializable, ID> message = new TaskResponse<Serializable, ID>(me, taskId, response, TaskResponse.Status.SUCCESS);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskCancellation(Serializable taskId) {
-        TaskResponse message = new TaskResponse(me, taskId, null, TaskResponse.Status.CANCELLED);
+    public void broadcastTaskCancellation(ID taskId) {
+        TaskResponse<Serializable, ID> message = new TaskResponse<Serializable, ID>(me, taskId, null, TaskResponse.Status.CANCELLED);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskError(Serializable taskId, Throwable exception) {
-        TaskResponse message = new TaskResponse(me, taskId, exception);
+    public void broadcastTaskError(ID taskId, Throwable exception) {
+        TaskResponse<Serializable, ID> message = new TaskResponse<Serializable, ID>(me, taskId, exception);
         taskResponseTopic.publish(message);
     }
 
-    public Collection<HazeltaskTask> getLocalPendingTasks(String predicate) {
+    public Collection<HazeltaskTask<ID, GROUP>> getLocalPendingTasks(String predicate) {
         Set<Serializable> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
         return pendingTask.getAll(keys).values();
     }
@@ -179,22 +179,22 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return MemberTasks.executeOptimistic(
                 communicationExecutorService, 
                 topology.getReadyMembers(),
-                new GetLocalQueueSizesOp(topology.getName())
+                new GetLocalQueueSizesOp<ID, GROUP>(topology.getName())
         );
     }
     
 
 
     @Override
-    public Collection<MemberResponse<Map<Serializable, Integer>>> getLocalGroupSizes() {
+    public Collection<MemberResponse<Map<GROUP, Integer>>> getLocalGroupSizes() {
         return MemberTasks.executeOptimistic(
                 communicationExecutorService, 
                 topology.getReadyMembers(),
-                new GetLocalGroupQueueSizesOp(topology.getName())
+                new GetLocalGroupQueueSizesOp<ID, GROUP>(topology.getName())
         );
     }
 
-    public void addTaskResponseMessageHandler(MessageListener<TaskResponse> listener) {
+    public void addTaskResponseMessageHandler(MessageListener<TaskResponse<Serializable, ID>> listener) {
         taskResponseTopic.addMessageListener(listener);
     }
 
@@ -207,17 +207,17 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
     }
 
     @SuppressWarnings("unchecked")
-    public Collection<HazeltaskTask> stealTasks(List<MemberValuePair<Long>> numToTake) {
-        Collection<HazeltaskTask> result = new LinkedList<HazeltaskTask>();
-        Collection<Future<Collection<HazeltaskTask>>> futures = new ArrayList<Future<Collection<HazeltaskTask>>>(numToTake.size());
+    public Collection<HazeltaskTask<ID, GROUP>> stealTasks(List<MemberValuePair<Long>> numToTake) {
+        Collection<HazeltaskTask<ID, GROUP>> result = new LinkedList<HazeltaskTask<ID, GROUP>>();
+        Collection<Future<Collection<HazeltaskTask<ID, GROUP>>>> futures = new ArrayList<Future<Collection<HazeltaskTask<ID, GROUP>>>>(numToTake.size());
         for(MemberValuePair<Long> entry : numToTake) {
-            futures.add((Future<Collection<HazeltaskTask>>)
-                    communicationExecutorService.submit(MemberTasks.create(new StealTasksOp(topology.getName(), entry.getValue()), entry.getMember())));
+            futures.add((Future<Collection<HazeltaskTask<ID, GROUP>>>)
+                    communicationExecutorService.submit(MemberTasks.create(new StealTasksOp<Serializable, Serializable>(topology.getName(), entry.getValue()), entry.getMember())));
         }
         
-        for(Future<Collection<HazeltaskTask>> f : futures) {
+        for(Future<Collection<HazeltaskTask<ID, GROUP>>> f : futures) {
             try {
-                Collection<HazeltaskTask> task = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
+                Collection<HazeltaskTask<ID, GROUP>> task = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
                 result.addAll(task);
             } catch (InterruptedException e) {
                 //FIXME: log... we may have just dumped work into the ether.. it will have to be recovered
@@ -243,7 +243,7 @@ public class HazelcastExecutorTopologyService implements IExecutorTopologyServic
         return MemberTasks.executeOptimistic(
              communicationExecutorService, 
              topology.getReadyMembers(),
-             new GetOldestTimestampOp(topology.getName())
+             new GetOldestTimestampOp<ID, GROUP>(topology.getName())
         );
     }
 

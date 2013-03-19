@@ -6,15 +6,17 @@ import java.util.UUID;
 
 
 
-public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, String, String> {
+public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, UUID, Integer> {
+    private static int GROUP = Integer.MIN_VALUE;
+    
     @Override
-    public String getTaskId(Object task) {
-        return UUID.randomUUID().toString();
+    public UUID getTaskId(Object task) {
+        return UUID.randomUUID();
     }
 
     @Override
-    public String getTaskGroup(Object task) {
-        return "$$DefaultGroup$$";
+    public Integer getTaskGroup(Object task) {
+        return GROUP;
     }
 
     @Override

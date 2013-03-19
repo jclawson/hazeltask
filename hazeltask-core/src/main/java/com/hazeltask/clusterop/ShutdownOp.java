@@ -3,12 +3,13 @@ package com.hazeltask.clusterop;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ShutdownOp extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>> {
+public class ShutdownOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<ID, GROUP>>, ID, GROUP> {
     private static final long serialVersionUID = 1L;
 
     private boolean isShutdownNow;
@@ -25,11 +26,10 @@ public class ShutdownOp extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>
     /**
      * I promise that this is always a collection of HazeltaskTasks
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public Collection<HazeltaskTask<?,?>> call() throws Exception {
+    public Collection<HazeltaskTask<ID, GROUP>> call() throws Exception {
         try {
             if(isShutdownNow)
-                return (Collection<HazeltaskTask<?,?>>) (Collection) this.getDistributedExecutorService().shutdownNow();
+                return this.getDistributedExecutorService().shutdownNowWithHazeltask();
             else
                 this.getDistributedExecutorService().shutdown();
         } catch(IllegalStateException e) {}

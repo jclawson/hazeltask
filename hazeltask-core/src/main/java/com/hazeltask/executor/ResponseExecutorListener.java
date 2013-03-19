@@ -9,10 +9,10 @@ import com.hazeltask.executor.task.HazeltaskTask;
 
 public class ResponseExecutorListener<ID extends Serializable, G extends Serializable> implements ExecutorListener<ID,G> {
     
-    private IExecutorTopologyService service;
+    private IExecutorTopologyService<ID, G> service;
     private ILogger LOGGER;
     
-    public ResponseExecutorListener(IExecutorTopologyService service, LoggingService loggingService) {
+    public ResponseExecutorListener(IExecutorTopologyService<ID, G> service, LoggingService loggingService) {
         this.service = service;
         LOGGER = loggingService.getLogger(ResponseExecutorListener.class.getName());
     }

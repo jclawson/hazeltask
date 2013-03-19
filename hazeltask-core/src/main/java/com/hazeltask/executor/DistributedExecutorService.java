@@ -36,16 +36,16 @@ import com.yammer.metrics.core.TimerContext;
 public class DistributedExecutorService<ID extends Serializable, GROUP extends Serializable> implements ExecutorService, ServiceListenable<DistributedExecutorService<ID, GROUP>> {
 
     private ExecutorConfig<ID, GROUP> executorConfig;
-    private final HazeltaskTopology        topology;
+    private final HazeltaskTopology<ID, GROUP>        topology;
     private final ListRouter<Member>       memberRouter;
     
     private final LocalTaskExecutorService<ID, GROUP> localExecutorService;
     
     private final TaskIdAdapter<? super Object, ID,GROUP>            taskIdAdapter;
-    private final DistributedFutureTracker futureTracker;
+    private final DistributedFutureTracker<ID, GROUP> futureTracker;
     private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>>>();
     private final ILogger LOGGER;
-    private final IExecutorTopologyService  executorTopologyService;
+    private final IExecutorTopologyService<ID, GROUP>  executorTopologyService;
     
     private com.yammer.metrics.core.Timer taskAddedTimer;
     private Meter tasksRejected;
@@ -53,11 +53,11 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10;
     
-    @SuppressWarnings("unchecked")
-    public DistributedExecutorService(HazeltaskTopology         hcTopology, 
-                                      IExecutorTopologyService  executorTopologyService, 
+    
+    public DistributedExecutorService(HazeltaskTopology<ID, GROUP>         hcTopology, 
+                                      IExecutorTopologyService<ID, GROUP>  executorTopologyService, 
                                       ExecutorConfig<ID, GROUP>            executorConfig, 
-                                      DistributedFutureTracker  futureTracker, 
+                                      DistributedFutureTracker<ID, GROUP>  futureTracker, 
                                       LocalTaskExecutorService<ID, GROUP> localExecutorService) {
         this.topology = hcTopology;
         this.executorConfig = executorConfig;
@@ -69,7 +69,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
             }
         });
         
-        taskIdAdapter = (TaskIdAdapter<? super Object, ID, GROUP>) executorConfig.getTaskIdAdapter();
+        taskIdAdapter = executorConfig.getTaskIdAdapter();
         
         this.futureTracker = futureTracker;
         
@@ -100,6 +100,10 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
     
     public List<Runnable> shutdownNow() {
         return new ArrayList<Runnable>(doShutdownNow(true));
+    }
+    
+    public List<HazeltaskTask<ID,GROUP>> shutdownNowWithHazeltask() {
+        return doShutdownNow(true);
     }
     
     protected List<HazeltaskTask<ID,GROUP>> doShutdownNow(boolean shutdownNow) {

@@ -13,7 +13,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public class SubmitTaskOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Boolean> {
+public class SubmitTaskOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Boolean, ID, GROUP> {
     private static final long serialVersionUID = 1L;
     private HazeltaskTask<ID,GROUP> task;
     

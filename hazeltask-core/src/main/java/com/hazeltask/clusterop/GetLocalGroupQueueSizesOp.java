@@ -14,7 +14,7 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
  * @author jclawson
  *
  */
-public class GetLocalGroupQueueSizesOp extends AbstractClusterOp<Map<Serializable, Integer>> {
+public class GetLocalGroupQueueSizesOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Map<GROUP, Integer>, ID, GROUP> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor
@@ -24,8 +24,8 @@ public class GetLocalGroupQueueSizesOp extends AbstractClusterOp<Map<Serializabl
         super(topology);
     }
 
-    public Map<Serializable, Integer> call() throws Exception {
-        LocalTaskExecutorService<?,Serializable> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+    public Map<GROUP, Integer> call() throws Exception {
+        LocalTaskExecutorService<ID,GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getGroupSizes();
         return Collections.emptyMap();

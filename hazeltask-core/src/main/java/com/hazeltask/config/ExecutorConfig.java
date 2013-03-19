@@ -112,8 +112,9 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         return corePoolSize;
     }
   
-    public TaskIdAdapter<?, ID, GROUP> getTaskIdAdapter() {
-        return taskIdAdapter;
+    @SuppressWarnings("unchecked")
+    public TaskIdAdapter<? super Object, ID, GROUP> getTaskIdAdapter() {
+        return (TaskIdAdapter<? super Object, ID, GROUP>) taskIdAdapter;
     }
  
     public boolean isAutoStart() {

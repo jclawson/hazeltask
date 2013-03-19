@@ -45,7 +45,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
-	private final HazeltaskTopology topology;
+	private final HazeltaskTopology<ID, G> topology;
 	private HazeltaskThreadPoolExecutor localExecutorPool;
 	private GroupedPriorityQueueLocking<HazeltaskTask<ID, G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
@@ -54,7 +54,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	private Timer taskSubmittedTimer;
 	private Timer taskExecutedTimer;
 	
-	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig<ID, G> executorConfig, IExecutorTopologyService executorTopologyService) {
+    public LocalTaskExecutorService(HazeltaskTopology<ID, G> topology, ExecutorConfig<ID, G> executorConfig, IExecutorTopologyService<ID, G> executorTopologyService) {
 		this.topology = topology;
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
 		
@@ -71,14 +71,15 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 			metrics.newGauge(createName("queue-size"), new CollectionSizeGauge(taskQueue));
 		}
 		
-		//localExecutorPool = new QueueExecutor<ID,G>(taskQueue, maxThreads, factory, taskExecutedTimer);
-		//localExecutorPool.addListener(new DelegatingExecutorListener<ID,G>(listeners));
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+        BlockingQueue<Runnable> blockingQueue = (BlockingQueue<Runnable>) (BlockingQueue) taskQueue;
+		
 		localExecutorPool = new HazeltaskThreadPoolExecutor(
 		        executorConfig.getThreadCount(), 
 		        executorConfig.getMaxThreadPoolSize(), 
 		        executorConfig.getMaxThreadKeepAlive(), 
 		        TimeUnit.MILLISECONDS, 
-		        (BlockingQueue<Runnable>) (BlockingQueue) taskQueue, 
+		        blockingQueue, 
 		        factory, 
 		        new AbortPolicy());
 		
@@ -138,9 +139,9 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
     }
     
     private static class TaskCompletionExecutorListener<ID extends Serializable, G extends Serializable> implements ExecutorListener<ID,G> {
-        private final IExecutorTopologyService executorTopologyService;
+        private final IExecutorTopologyService<ID, G> executorTopologyService;
         
-        public TaskCompletionExecutorListener(IExecutorTopologyService executorTopologyService) {
+        public TaskCompletionExecutorListener(IExecutorTopologyService<ID, G> executorTopologyService) {
             this.executorTopologyService = executorTopologyService;
         }
         
@@ -244,7 +245,8 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	}
 	
 	//TODO: time how long it takes to shutdown
-	@SuppressWarnings("unchecked")
+	//SuppressWarnings I really want to return HazeltaskTasks instead of Runnable
+	@SuppressWarnings({ "unchecked", "rawtypes" })
     public List<HazeltaskTask<ID,G>> shutdownNow() {
 	    return (List<HazeltaskTask<ID,G>>) (List) localExecutorPool.shutdownNow();
 	}

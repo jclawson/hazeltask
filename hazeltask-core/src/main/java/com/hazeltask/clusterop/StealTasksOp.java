@@ -14,7 +14,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<ID,GROUP>>> {
+public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<ID,GROUP>>, ID, GROUP> {
     private static final long serialVersionUID = 1L;
     
     private long numberOfTasks;

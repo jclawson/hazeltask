@@ -1,5 +1,6 @@
 package com.hazeltask;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
@@ -16,11 +17,11 @@ import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
  * @author Jason Clawson
  *
  */
-public class IsMemberReadyTimerTask extends BackoffTask implements MembershipListener {
-	private final ITopologyService topologyService;
-	private final HazeltaskTopology topology;
+public class IsMemberReadyTimerTask<ID extends Serializable, GROUP extends Serializable> extends BackoffTask implements MembershipListener {
+	private final ITopologyService<ID, GROUP> topologyService;
+	private final HazeltaskTopology<ID, GROUP> topology;
 	
-	public IsMemberReadyTimerTask(ITopologyService topologyService, HazeltaskTopology topology) {
+	public IsMemberReadyTimerTask(ITopologyService<ID, GROUP> topologyService, HazeltaskTopology<ID, GROUP> topology) {
 		this.topologyService = topologyService;
 		this.topology = topology;
 	}

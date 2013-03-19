@@ -3,13 +3,14 @@ package com.hazeltask.clusterop;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * This cluster operation helps members determine the other members that are ready
  * to receive tasks
  * @author jclawson
  */
-public class IsMemberReadyOp extends AbstractClusterOp<Boolean> {
+public class IsMemberReadyOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Boolean, ID, GROUP> {
     private static final long serialVersionUID = 2L;
 
     //hazelcast dataserializable requires a default constructor

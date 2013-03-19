@@ -3,10 +3,11 @@ package com.hazeltask.clusterop;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
-public class GetOldestTimestampOp extends AbstractClusterOp<Long> {
+public class GetOldestTimestampOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Long, ID, GROUP> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor

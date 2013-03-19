@@ -3,6 +3,7 @@ package com.hazeltask.clusterop;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
@@ -11,7 +12,7 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
  * @author jclawson
  *
  */
-public class GetLocalQueueSizesOp extends AbstractClusterOp<Long> {
+public class GetLocalQueueSizesOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Long, ID, GROUP> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor
