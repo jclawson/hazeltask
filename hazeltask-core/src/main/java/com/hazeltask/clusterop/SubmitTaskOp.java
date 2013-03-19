@@ -26,7 +26,7 @@ public class SubmitTaskOp<ID extends Serializable, GROUP extends Serializable> e
     }
     
     public Boolean call() throws Exception {
-        LocalTaskExecutorService<ID,GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<ID,GROUP> localSvc = getLocalTaskExecutorService();
         
         localSvc.execute(task);
         //TODO: should this ever return false?

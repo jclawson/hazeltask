@@ -22,10 +22,14 @@ public class ShutdownOp extends AbstractClusterOp<Collection<HazeltaskTask<?,?>>
         this.isShutdownNow = isShutdownNow;
     }
 
+    /**
+     * I promise that this is always a collection of HazeltaskTasks
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public Collection<HazeltaskTask<?,?>> call() throws Exception {
         try {
             if(isShutdownNow)
-                return this.getDistributedExecutorService().shutdownNow();
+                return (Collection<HazeltaskTask<?,?>>) (Collection) this.getDistributedExecutorService().shutdownNow();
             else
                 this.getDistributedExecutorService().shutdown();
         } catch(IllegalStateException e) {}

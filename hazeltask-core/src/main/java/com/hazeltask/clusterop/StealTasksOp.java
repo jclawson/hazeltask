@@ -29,7 +29,7 @@ public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> e
 
     @Override
     public Collection<HazeltaskTask<ID,GROUP>> call() throws Exception {
-        LocalTaskExecutorService<ID,GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<ID,GROUP> localSvc = getLocalTaskExecutorService();
         return localSvc.stealTasks(numberOfTasks);
     }
 

@@ -25,7 +25,6 @@ public class GetLocalGroupQueueSizesOp extends AbstractClusterOp<Map<Serializabl
     }
 
     public Map<Serializable, Integer> call() throws Exception {
-        @SuppressWarnings("unchecked")
         LocalTaskExecutorService<?,Serializable> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getGroupSizes();
