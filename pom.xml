@@ -63,7 +63,7 @@
 
     <modules>
         <module>hazeltask</module>
-        <module>hazeltask-batch</module>
+        
     </modules>
 
     <dependencyManagement>
