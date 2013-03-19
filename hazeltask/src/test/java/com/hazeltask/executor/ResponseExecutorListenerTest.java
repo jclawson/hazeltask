@@ -32,13 +32,6 @@ public class ResponseExecutorListenerTest {
     }
     
     @Test
-    public void testBeforeExec() {        
-        HazeltaskTask<String,String> work = new HazeltaskTask<String,String>("default", workId, "group-1", new SuccessCallable());
-        work.run();
-        Assert.assertTrue(listener.beforeExecute(work));
-    }
-    
-    @Test
     public void testSuccessfulExecution() {        
         HazeltaskTask<String,String> work = new HazeltaskTask<String,String>("default", workId, "group-1", new SuccessCallable());
         work.run();

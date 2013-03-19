@@ -35,6 +35,9 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
 	private volatile transient Object result;
     private volatile transient Exception e;
 	
+    //required for DataSerializable
+    protected HazeltaskTask(){}
+    
 	public HazeltaskTask(String topology, ID id, G group, Runnable task){
 		this.runTask = task;
 		this.id = id;

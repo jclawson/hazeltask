@@ -56,8 +56,6 @@ import com.hazeltask.executor.task.TaskResponse.Status;
  *
  */
 public class DistributedFutureTracker implements MessageListener<TaskResponse> {
-    //private DistributedExecutorService service;
-    //private final ITopologyService topologyService;
     
     private SetMultimap<Serializable, DistributedFuture<?>> futures = 
             Multimaps.<Serializable, DistributedFuture<?>>synchronizedSetMultimap(
@@ -66,16 +64,9 @@ public class DistributedFutureTracker implements MessageListener<TaskResponse> {
     
     public DistributedFutureTracker() {
 
-//TODO: bind this to the topic outside of this class in the builder
-//        ITopic<WorkResponse> topic = this.service.getTopology().getWorkResponseTopic();
-//        topic.addMessageListener(this);
     }
     
-//    public void add(String id, DistributedFuture<?> future) {
-//        this.futures.put(id, future);
-//    }
-    
-    public <T> DistributedFuture<T> createFuture(HazeltaskTask task) {
+    public <T> DistributedFuture<T> createFuture(HazeltaskTask<?,?> task) {
         DistributedFuture<T> future = new DistributedFuture<T>();
         this.futures.put(task.getId(), future);
         return future;

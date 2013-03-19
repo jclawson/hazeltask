@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.local;
 
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
@@ -6,16 +6,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class DelegatingExecutorListenerTest {
+public class HazeltaskThreadPoolExecutorTest {
     
-    private DelegatingExecutorListener listener;
+    private HazeltaskThreadPoolExecutor listener;
     private ExecutorListener listener1;
     private ExecutorListener listener2;
     private HazeltaskTask<String,String> task;
@@ -25,26 +29,18 @@ public class DelegatingExecutorListenerTest {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
         task = new HazeltaskTask<String,String>("test", "1","1", (Runnable) null);
-        listener = new DelegatingExecutorListener(Arrays.asList(listener1, listener2));
+        listener = new HazeltaskThreadPoolExecutor(1,1,1,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),Executors.defaultThreadFactory(),new AbortPolicy());
+        
+        listener.addListener(listener1);
+        listener.addListener(listener2);
     }
     
     @Test
     public void testBeforeExecute() {
-        when(listener1.beforeExecute(task)).thenReturn(true);
-        when(listener2.beforeExecute(task)).thenReturn(true);
+        //when(listener1.beforeExecute(task)).thenReturn(true);
+        //when(listener2.beforeExecute(task)).thenReturn(true);
         
-        listener.beforeExecute(task);
-        
-        verify(listener1).beforeExecute(eq(task));
-        verify(listener2).beforeExecute(eq(task));
-    }
-    
-    @Test
-    public void testBeforeExecute2() {
-        when(listener1.beforeExecute(task)).thenReturn(false);
-        when(listener2.beforeExecute(task)).thenReturn(true);
-        
-        listener.beforeExecute(task);
+        listener.beforeExecute(null, task);
         
         verify(listener1).beforeExecute(eq(task));
         verify(listener2).beforeExecute(eq(task));

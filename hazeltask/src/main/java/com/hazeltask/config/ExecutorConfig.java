@@ -9,8 +9,11 @@ import com.hazeltask.executor.task.TaskIdAdapter;
 public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable> {
     protected boolean          acknowlegeTaskSubmission = false;
     protected boolean          disableWorkers           = false;
-    protected int              threadCount              = 4;
+    protected int              corePoolSize              = 4;
+    protected int              maxPoolSize              = 4;
+    protected long             maxThreadKeepAlive      = 60000;
 
+    @SuppressWarnings("unchecked")
     protected TaskIdAdapter<?, ID, GROUP>    taskIdAdapter = (TaskIdAdapter<?, ID, GROUP>) new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
     private boolean            enableFutureTracking     = true;
@@ -58,7 +61,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     }
 
     public ExecutorConfig<ID, GROUP> withThreadCount(int threadCount) {
-        this.threadCount = threadCount;
+        this.corePoolSize = threadCount;
         return this;
     }
 
@@ -106,7 +109,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     }
    
     public int getThreadCount() {
-        return threadCount;
+        return corePoolSize;
     }
   
     public TaskIdAdapter<?, ID, GROUP> getTaskIdAdapter() {
@@ -124,6 +127,14 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
      
     public ThreadFactory getThreadFactory() {
         return this.threadFactory;
+    }
+    
+    public int getMaxThreadPoolSize() {
+        return this.maxPoolSize;
+    }
+    
+    public long getMaxThreadKeepAlive() {
+        return maxThreadKeepAlive;
     }
     
     public ExecutorConfig<ID,GROUP> withLoadBalancingConfig(ExecutorLoadBalancingConfig<ID,GROUP> config) {

@@ -62,7 +62,7 @@
     </repositories>
 
     <modules>
-        <module>hazeltask</module>
+        <module>hazeltask-core</module>
         
     </modules>
 

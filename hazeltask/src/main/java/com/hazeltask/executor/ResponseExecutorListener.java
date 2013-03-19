@@ -45,5 +45,5 @@ public class ResponseExecutorListener<ID extends Serializable, G extends Seriali
         
     }
 
-    public boolean beforeExecute(HazeltaskTask<ID,G> runnable) {return true;}
+    public void beforeExecute(HazeltaskTask<ID,G> runnable) {}
 }

@@ -4,10 +4,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -15,11 +17,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
-import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLockFree;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.metrics.MetricNamer;
-import com.hazeltask.executor.DelegatingExecutorListener;
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.ResponseExecutorListener;
@@ -35,25 +35,10 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author Jason Clawson
  *
- * TODO: allow the specification of a regex for group name
- *       this regex will parse out interesting parameters 
- *       that we can query against to get queues... for example:
- *       
- *       groups:
- *         customer-123:com.example.Foo
- *         customer-123:com.example.Bar
- *         customer-456:com.example.Foo
- *       
- *       regex: customer-(\d+):(.*) -- customerId, className
- *       
- *       Then we can query like... getQueues("customerId", 123) : returns #1 and #2
- *       or 
- *       getQueues("className", "com.example.Foo") returns #1 and #3
- *       
- *       It might be nice to be able to use the hazelcast index class
- *       
- *       This will allow us to, for example, count the total items in a customer's queues
- *       or total up all queues of a certain priority number
+ * TODO: allow querying of queues by some group property.  For example you might have
+ * HIGH, MED, LOW priority queues for each customer.  You may want to get all of a customer's
+ * queues based on customerId (which is part of group along with priority).  It would be cool
+ * if we could index this.  Otherwise we will need to evaluate a predicate against all groups.
  *
  */
 public class LocalTaskExecutorService<ID extends Serializable, G extends Serializable> {
@@ -61,12 +46,9 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
 	private final HazeltaskTopology topology;
-	private QueueExecutor<ID,G> localExecutorPool;
+	private HazeltaskThreadPoolExecutor localExecutorPool;
 	private GroupedPriorityQueueLocking<HazeltaskTask<ID, G>, G> taskQueue;
-	private final Collection<ExecutorListener<ID,G>> listeners = new LinkedList<ExecutorListener<ID,G>>();
-	private final IExecutorTopologyService executorTopologyService;
-	
-	private final int maxThreads;
+	private final TasksInProgressTracker tasksInProgressTracker;
 	
 	private MetricNamer metricNamer;
 	private Timer taskSubmittedTimer;
@@ -74,9 +56,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	
 	public LocalTaskExecutorService(HazeltaskTopology topology, ExecutorConfig<ID, G> executorConfig, IExecutorTopologyService executorTopologyService) {
 		this.topology = topology;
-		this.maxThreads = executorConfig.getThreadCount();
 		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
-		this.executorTopologyService = executorTopologyService;
 		
 		ThreadFactory factory = executorConfig.getThreadFactory();
 		
@@ -91,14 +71,24 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 			metrics.newGauge(createName("queue-size"), new CollectionSizeGauge(taskQueue));
 		}
 		
-		localExecutorPool = new QueueExecutor<ID,G>(taskQueue, maxThreads, factory, taskExecutedTimer);
-		localExecutorPool.addListener(new DelegatingExecutorListener<ID,G>(listeners));
+		//localExecutorPool = new QueueExecutor<ID,G>(taskQueue, maxThreads, factory, taskExecutedTimer);
+		//localExecutorPool.addListener(new DelegatingExecutorListener<ID,G>(listeners));
+		localExecutorPool = new HazeltaskThreadPoolExecutor(
+		        executorConfig.getThreadCount(), 
+		        executorConfig.getMaxThreadPoolSize(), 
+		        executorConfig.getMaxThreadKeepAlive(), 
+		        TimeUnit.MILLISECONDS, 
+		        (BlockingQueue<Runnable>) (BlockingQueue) taskQueue, 
+		        factory, 
+		        new AbortPolicy());
 		
 		if(executorConfig.isFutureSupportEnabled())
-		    addListener(new ResponseExecutorListener<ID,G>(executorTopologyService, topology.getLoggingService()));
+		    localExecutorPool.addListener(new ResponseExecutorListener<ID,G>(executorTopologyService, topology.getLoggingService()));
 		
-		addListener(new TaskCompletionExecutorListener());
+		localExecutorPool.addListener(new TaskCompletionExecutorListener<ID,G>(executorTopologyService));
 		
+		tasksInProgressTracker = new TasksInProgressTracker();
+		localExecutorPool.addListener(tasksInProgressTracker);
 	}
 	
 	private MetricName createName(String name) {
@@ -111,7 +101,6 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	}
 
 	public synchronized void startup(){
-		 localExecutorPool.startup();
 		 LOGGER.log(Level.FINE, "LocalTaskExecutorService started for "+topology.getName());
 	}
 	
@@ -120,10 +109,41 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
      * @param listener
      */
     public void addListener(ExecutorListener<ID,G> listener) {
-        listeners.add(listener);
+        localExecutorPool.addListener(listener);
     }
     
-    private class TaskCompletionExecutorListener implements ExecutorListener<ID,G> {
+    private class TasksInProgressTracker implements ExecutorListener<ID,G> {
+        private final Map<ID, HazeltaskTask<ID, G>> tasksInProgress = new ConcurrentHashMap<ID, HazeltaskTask<ID, G>>();
+
+        @Override
+        public void beforeExecute(HazeltaskTask<ID, G> runnable) {
+            tasksInProgress.put(runnable.getId(), runnable);
+        }
+
+        @Override
+        public void afterExecute(HazeltaskTask<ID, G> runnable, Throwable exception) {
+            tasksInProgress.remove(runnable.getId());
+        }
+        
+        public long getOldestTime() {
+            long oldestTime = Long.MAX_VALUE;
+            for(HazeltaskTask<ID, G> task : tasksInProgress.values()) {
+                if(task.getTimeCreated() < oldestTime) {
+                    oldestTime = task.getTimeCreated();
+                }
+            }
+            return oldestTime;
+        }
+        
+    }
+    
+    private static class TaskCompletionExecutorListener<ID extends Serializable, G extends Serializable> implements ExecutorListener<ID,G> {
+        private final IExecutorTopologyService executorTopologyService;
+        
+        public TaskCompletionExecutorListener(IExecutorTopologyService executorTopologyService) {
+            this.executorTopologyService = executorTopologyService;
+        }
+        
         public void afterExecute(HazeltaskTask<ID,G> runnable, Throwable exception) {
             HazeltaskTask<ID,G> task = (HazeltaskTask<ID,G>)runnable;
             //TODO: add task exceptions handling / retry logic
@@ -131,7 +151,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
             executorTopologyService.removePendingTask(task);
         }
 
-        public boolean beforeExecute(HazeltaskTask<ID,G> runnable) {return true;}
+        public void beforeExecute(HazeltaskTask<ID,G> runnable) {}
     }
 	
 	/**
@@ -152,13 +172,10 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	        oldest = oldestQueueTime;
 	    
 	    //there is a tiny race condition here... but we just want to make our best attempt
-	    for(Runnable r : localExecutorPool.getTasksInProgress()) {
-	        @SuppressWarnings("unchecked")
-            long timeCreated = ((HazeltaskTask<ID,G>)r).getTimeCreated();
-	        if(timeCreated < oldest) {
-	            oldest = timeCreated;
-	        }
-	    }
+	    long inProgressOldestTime = tasksInProgressTracker.getOldestTime();
+	    
+	    if(inProgressOldestTime < oldest)
+	        oldest = inProgressOldestTime;
 	    
 	    return oldest;
 	}
@@ -171,10 +188,10 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	    return this.taskQueue.getGroupSizes();
 	}
 	
-	public boolean execute(HazeltaskTask<ID,G> command) {
+	public void execute(HazeltaskTask<ID,G> command) {
 		if(localExecutorPool.isShutdown()) {
 		    LOGGER.log(Level.WARNING, "Cannot enqueue the task "+command+".  The executor threads are shutdown.");
-		    return false;
+		    return;
 		}
 	    
 	    TimerContext tCtx = null;
@@ -182,7 +199,7 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 			tCtx = taskSubmittedTimer.time();
 		try {
 			command.setHazelcastInstance(topology.getHazeltaskConfig().getHazelcast());
-		    return taskQueue.add(command);
+			localExecutorPool.execute(command);
 		} finally {
 			if(tCtx != null)
 				tCtx.stop();
@@ -227,17 +244,13 @@ public class LocalTaskExecutorService<ID extends Serializable, G extends Seriali
 	}
 	
 	//TODO: time how long it takes to shutdown
-	public List<HazeltaskTask<ID,G>> shutdownNow() {
-	    return localExecutorPool.shutdownNow();
+	@SuppressWarnings("unchecked")
+    public List<HazeltaskTask<ID,G>> shutdownNow() {
+	    return (List<HazeltaskTask<ID,G>>) (List) localExecutorPool.shutdownNow();
 	}
 
 	public boolean isShutdown() {
 		return localExecutorPool.isShutdown();
 	}
-
-//	//FIXME: fix this
-//	public boolean isTerminated() {
-//		return localExecutorPool.isShutdown();
-//	}
 
 }
