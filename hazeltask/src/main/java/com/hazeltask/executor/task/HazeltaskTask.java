@@ -1,10 +1,14 @@
 package com.hazeltask.executor.task;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
+import com.hazelcast.nio.SerializationHelper;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
 
 /**
@@ -119,6 +123,30 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     @Override
     public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
         this.hazelcastInstance = hazelcastInstance;
+    }
+    
+    @Override
+    public void writeData(DataOutput out) throws IOException {
+        SerializationHelper.writeObject(out, id);
+        SerializationHelper.writeObject(out, group);
+        SerializationHelper.writeObject(out, runTask);
+        SerializationHelper.writeObject(out, callTask);
+        out.writeLong(createdAtMillis);
+        out.writeUTF(topology);
+        out.writeInt(submissionCount);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void readData(DataInput in) throws IOException {
+        id = (ID) SerializationHelper.readObject(in);
+        group = (G) SerializationHelper.readObject(in);
+        runTask = (Runnable) SerializationHelper.readObject(in);
+        callTask = (Callable<?>) SerializationHelper.readObject(in);
+        
+        createdAtMillis = in.readLong();
+        topology = in.readUTF();
+        submissionCount = in.readInt();
     }
 	
 }
