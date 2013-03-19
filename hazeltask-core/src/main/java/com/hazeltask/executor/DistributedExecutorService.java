@@ -193,7 +193,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
                                  task);
     }
 
-    public <T> Future<T> submit(Runnable task, T result) {
+    public <T> ListenableFuture<T> submit(Runnable task, T result) {
         TimerContext ctx = taskAddedTimer.time();
         try {
             throw new RuntimeException("Not Implemented Yet");
