@@ -8,7 +8,6 @@ public class Validator {
     @SuppressWarnings("deprecation")
     public static void validate(HazeltaskConfig config) {
         ExecutorConfig<?,?> executorConfig = config.getExecutorConfig();
-        BundlerConfig<?, ?, ?, ?> bundlerConfig = config.getBundlerConfig();
         MetricsConfig metricsConfig = config.getMetricsConfig();
         
         if(config.getHazelcast() == null) {
@@ -17,12 +16,6 @@ public class Validator {
         
         if(metricsConfig.getMetricsRegistry() == null) {
             metricsConfig.withMetricsRegistry(Metrics.defaultRegistry());
-        }
-        
-        if(bundlerConfig != null) {
-            if(bundlerConfig.getBatchKeyAdapter().isConsistent() && bundlerConfig.isPreventDuplicates()) {
-                throw new IllegalStateException("BundlerConfig cannot have prevent duplicates and have an inconsistent BatchKeyAdapter");
-            }
         }
         
         if(config.getThreadFactory() == null) {

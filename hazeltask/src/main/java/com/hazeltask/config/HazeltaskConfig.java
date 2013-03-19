@@ -15,7 +15,6 @@ public class HazeltaskConfig {
 //    private MetricsRegistry   metricsRegistry;
     private ExecutorConfig< ?,?> executorConfig = new ExecutorConfig<Serializable,Serializable>();
     private MetricsConfig metricsConfig = new MetricsConfig();
-    private BundlerConfig<?,?,?,?> bundlerConfig;
     private ThreadFactory threadFactory;
     
     public HazeltaskConfig withTopologyName(String name) {
@@ -35,11 +34,6 @@ public class HazeltaskConfig {
     
     public HazeltaskConfig withMetricsConfig(MetricsConfig metricsConfig) {
         this.metricsConfig = metricsConfig;
-        return this;
-    }
-    
-    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> HazeltaskConfig withBundlerConfig(BundlerConfig<I, ITEM_ID, ID, GROUP> bundlerConfig) {
-        this.bundlerConfig = bundlerConfig;
         return this;
     }
     
@@ -75,11 +69,6 @@ public class HazeltaskConfig {
     
     public ExecutorConfig<?,?> getExecutorConfig() {
         return this.executorConfig;
-    }
-    
-    @SuppressWarnings("unchecked")
-    public <I, ID extends Serializable, ITEM_ID extends Serializable, GROUP extends Serializable> BundlerConfig<I, ITEM_ID,ID, GROUP> getBundlerConfig() {
-        return (BundlerConfig<I, ITEM_ID, ID, GROUP>) this.bundlerConfig;
     }
     
     public HazeltaskConfig withThreadFactory(ThreadFactory threadFactory) {
