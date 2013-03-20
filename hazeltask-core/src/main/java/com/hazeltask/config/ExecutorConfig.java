@@ -6,15 +6,15 @@ import java.util.concurrent.ThreadFactory;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
-public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable> {
+public class ExecutorConfig<GROUP extends Serializable> {
     protected boolean          acknowlegeTaskSubmission = false;
     protected boolean          disableWorkers           = false;
-    protected int              corePoolSize              = 4;
+    protected int              corePoolSize             = 4;
     protected int              maxPoolSize              = 4;
-    protected long             maxThreadKeepAlive      = 60000;
+    protected long             maxThreadKeepAlive       = 60000;
 
     @SuppressWarnings("unchecked")
-    protected TaskIdAdapter<?, ID, GROUP>    taskIdAdapter = (TaskIdAdapter<?, ID, GROUP>) new DefaultTaskIdAdapter();
+    protected TaskIdAdapter<?, GROUP>    taskIdAdapter = (TaskIdAdapter<?, GROUP>) new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
     private boolean            enableFutureTracking     = true;
     
@@ -22,7 +22,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     
     private ThreadFactory threadFactory = null;
     
-    private ExecutorLoadBalancingConfig<ID,GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<ID, GROUP>();
+    private ExecutorLoadBalancingConfig<GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<GROUP>();
     
     /**
      * Please use the ExecutorConfigs factory
@@ -31,27 +31,27 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         
     }
 
-    public ExecutorConfig<ID, GROUP> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
+    public ExecutorConfig<GROUP> withAcknowlegeTaskSubmission(boolean acknowlegeTaskSubmission) {
         this.acknowlegeTaskSubmission = acknowlegeTaskSubmission;
         return this;
     }
 
-    public ExecutorConfig<ID, GROUP> acknowlegeTaskSubmission() {
+    public ExecutorConfig<GROUP> acknowlegeTaskSubmission() {
         this.acknowlegeTaskSubmission = true;
         return this;
     }
 
-    public ExecutorConfig<ID, GROUP> withDisableWorkers(boolean disableWorkers) {
+    public ExecutorConfig<GROUP> withDisableWorkers(boolean disableWorkers) {
         this.disableWorkers = disableWorkers;
         return this;
     }
 
-    public ExecutorConfig<ID, GROUP> disableWorkers() {
+    public ExecutorConfig<GROUP> disableWorkers() {
         this.disableWorkers = true;
         return this;
     }
     
-    public ExecutorConfig<ID, GROUP> disableFutureSupport() {
+    public ExecutorConfig<GROUP> disableFutureSupport() {
         this.enableFutureTracking = false;
         return this;
     }
@@ -60,17 +60,17 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         return this.enableFutureTracking;
     }
 
-    public ExecutorConfig<ID, GROUP> withThreadCount(int threadCount) {
+    public ExecutorConfig<GROUP> withThreadCount(int threadCount) {
         this.corePoolSize = threadCount;
         return this;
     }
 
-    public ExecutorConfig<ID, GROUP> withTaskIdAdapter(TaskIdAdapter<?,ID,GROUP> taskIdAdapter) {
+    public ExecutorConfig<GROUP> withTaskIdAdapter(TaskIdAdapter<?,GROUP> taskIdAdapter) {
         this.taskIdAdapter = taskIdAdapter;
         return this;
     }
     
-    public ExecutorConfig<ID, GROUP> withRecoveryProcessPollInterval(long intervalMillis) {
+    public ExecutorConfig<GROUP> withRecoveryProcessPollInterval(long intervalMillis) {
         this.recoveryProcessPollInterval = intervalMillis;
         return this;
     }
@@ -87,7 +87,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
      * @param autoStart
      * @return
      */
-    public ExecutorConfig<ID, GROUP> withAutoStart(boolean autoStart) {
+    public ExecutorConfig<GROUP> withAutoStart(boolean autoStart) {
         this.autoStart = autoStart;
         return this;
     }
@@ -95,7 +95,7 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     /**
      * @see withAutoStart
      */
-    public ExecutorConfig<ID, GROUP> disableAutoStart() {
+    public ExecutorConfig<GROUP> disableAutoStart() {
         this.autoStart = false;
         return this;
     }
@@ -113,15 +113,15 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
     }
   
     @SuppressWarnings("unchecked")
-    public TaskIdAdapter<? super Object, ID, GROUP> getTaskIdAdapter() {
-        return (TaskIdAdapter<? super Object, ID, GROUP>) taskIdAdapter;
+    public TaskIdAdapter<? super Object, GROUP> getTaskIdAdapter() {
+        return (TaskIdAdapter<? super Object, GROUP>) taskIdAdapter;
     }
  
     public boolean isAutoStart() {
         return autoStart;
     }
     
-    public ExecutorConfig<ID, GROUP> withThreadFactory(ThreadFactory threadFactory) {
+    public ExecutorConfig<GROUP> withThreadFactory(ThreadFactory threadFactory) {
         this.threadFactory = threadFactory;
         return this;
     }
@@ -138,12 +138,12 @@ public class ExecutorConfig<ID extends Serializable, GROUP extends Serializable>
         return maxThreadKeepAlive;
     }
     
-    public ExecutorConfig<ID,GROUP> withLoadBalancingConfig(ExecutorLoadBalancingConfig<ID,GROUP> config) {
+    public ExecutorConfig<GROUP> withLoadBalancingConfig(ExecutorLoadBalancingConfig<GROUP> config) {
         this.executorLoadBalancingConfig = config;
         return this;
     }
     
-    public ExecutorLoadBalancingConfig<ID,GROUP> getLoadBalancingConfig() {
+    public ExecutorLoadBalancingConfig<GROUP> getLoadBalancingConfig() {
         return this.executorLoadBalancingConfig;
     }
 }

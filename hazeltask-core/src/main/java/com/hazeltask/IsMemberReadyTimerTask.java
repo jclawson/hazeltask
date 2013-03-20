@@ -17,11 +17,11 @@ import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
  * @author Jason Clawson
  *
  */
-public class IsMemberReadyTimerTask<ID extends Serializable, GROUP extends Serializable> extends BackoffTask implements MembershipListener {
-	private final ITopologyService<ID, GROUP> topologyService;
-	private final HazeltaskTopology<ID, GROUP> topology;
+public class IsMemberReadyTimerTask<GROUP extends Serializable> extends BackoffTask implements MembershipListener {
+	private final ITopologyService<GROUP> topologyService;
+	private final HazeltaskTopology<GROUP> topology;
 	
-	public IsMemberReadyTimerTask(ITopologyService<ID, GROUP> topologyService, HazeltaskTopology<ID, GROUP> topology) {
+	public IsMemberReadyTimerTask(ITopologyService<GROUP> topologyService, HazeltaskTopology<GROUP> topology) {
 		this.topologyService = topologyService;
 		this.topology = topology;
 	}

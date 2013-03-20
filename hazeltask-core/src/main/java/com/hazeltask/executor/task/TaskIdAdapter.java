@@ -1,11 +1,12 @@
 package com.hazeltask.executor.task;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 
 
 
-public interface TaskIdAdapter<T, ID extends Serializable, GROUP extends Serializable> {
+public interface TaskIdAdapter<T, GROUP extends Serializable> {
 	/**
 	 * The id returned does not need to be equal for 
 	 * successive calls, but it should never duplicate an id
@@ -14,7 +15,7 @@ public interface TaskIdAdapter<T, ID extends Serializable, GROUP extends Seriali
 	 * @param task
 	 * @return
 	 */
-    public ID getTaskId(T task);
+    public UUID getTaskId(T task);
     
     /**
      * The group does not need to be equal for successive calls with the same task

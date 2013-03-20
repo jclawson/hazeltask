@@ -37,7 +37,7 @@ public class ExecutorMetrics {
         this.metrics = metrics;
     }
     
-    public ExecutorMetrics(HazeltaskConfig<?,?> config) {
+    public ExecutorMetrics(HazeltaskConfig<?> config) {
         this(config.getTopologyName(), config.getMetricsRegistry(), config.getMetricNamer());        
         
         MetricName name = createMetricName(StaleTaskFlushTimerTask.class, "flush-timer");

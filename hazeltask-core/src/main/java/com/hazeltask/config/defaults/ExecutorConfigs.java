@@ -1,7 +1,6 @@
 package com.hazeltask.config.defaults;
 
 import java.io.Serializable;
-import java.util.UUID;
 
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
@@ -21,8 +20,8 @@ public class ExecutorConfigs {
      * You must specify your task id adapter so the system knows how to get those values given a task
      * @return
      */
-    public  static <ID extends Serializable, GROUP extends Serializable> ExecutorConfig<ID,GROUP> advanced() {
-        return new ExecutorConfig<ID,GROUP>()
+    public  static <GROUP extends Serializable> ExecutorConfig<GROUP> advanced() {
+        return new ExecutorConfig<GROUP>()
                     .withTaskIdAdapter(null);
     }
     
@@ -33,8 +32,8 @@ public class ExecutorConfigs {
      * 
      * @return
      */
-    public static ExecutorConfig<UUID,Integer> basic() {
-        return new ExecutorConfig<UUID,Integer>()
+    public static ExecutorConfig<Integer> basic() {
+        return new ExecutorConfig<Integer>()
                     .withTaskIdAdapter(new DefaultTaskIdAdapter());
     }
     
@@ -46,8 +45,8 @@ public class ExecutorConfigs {
      * 
      * @return
      */
-    public static <GROUP extends Serializable> ExecutorConfig<UUID, GROUP> basicGroupable() {
-        return new ExecutorConfig<UUID,GROUP>()
-                    .withTaskIdAdapter((TaskIdAdapter<Groupable<GROUP>, UUID, GROUP>) new DefaultGroupableTaskIdAdapter<GROUP>());
+    public static <GROUP extends Serializable> ExecutorConfig<GROUP> basicGroupable() {
+        return new ExecutorConfig<GROUP>()
+                    .withTaskIdAdapter((TaskIdAdapter<Groupable<GROUP>, GROUP>) new DefaultGroupableTaskIdAdapter<GROUP>());
     }
 }

@@ -17,17 +17,17 @@ import com.hazeltask.executor.ExecutorMetrics;
  * 
  * @author jclawson
  */
-public class HazeltaskTopology<ID extends Serializable, GROUP extends Serializable> {
-    private final HazeltaskConfig<ID, GROUP> hazeltaskConfig;
+public class HazeltaskTopology<GROUP extends Serializable> {
+    private final HazeltaskConfig<GROUP> hazeltaskConfig;
     private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final ITopologyService<ID, GROUP> topologyService;
+    private final ITopologyService<GROUP> topologyService;
     
     private final LoggingService loggingService;
     private boolean iAmReady;
     
     private final ExecutorMetrics executorMetrics;
     
-    public HazeltaskTopology(HazeltaskConfig<ID, GROUP> hazeltaskConfig, ITopologyService<ID, GROUP> svc) {
+    public HazeltaskTopology(HazeltaskConfig<GROUP> hazeltaskConfig, ITopologyService<GROUP> svc) {
         this.hazeltaskConfig = hazeltaskConfig;
         this.readyMembers = new CopyOnWriteArrayListSet<Member>();
         this.topologyService = svc;
@@ -64,11 +64,11 @@ public class HazeltaskTopology<ID extends Serializable, GROUP extends Serializab
         return this.hazeltaskConfig.getTopologyName();
     }
     
-    public ITopologyService<ID, GROUP> getTopologyService() {
+    public ITopologyService<GROUP> getTopologyService() {
         return this.topologyService;
     }
     
-    public HazeltaskConfig<ID, GROUP> getHazeltaskConfig() {
+    public HazeltaskConfig<GROUP> getHazeltaskConfig() {
         return this.hazeltaskConfig;
     }
 

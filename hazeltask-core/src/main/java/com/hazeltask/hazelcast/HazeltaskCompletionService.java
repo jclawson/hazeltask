@@ -12,7 +12,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.hazeltask.executor.DistributedExecutorService;
 public class HazeltaskCompletionService<V> implements CompletionService<V> {
-    private final DistributedExecutorService<?,?> executor;
+    private final DistributedExecutorService<?> executor;
     private final BlockingQueue<Future<V>> completionQueue;
 
     /**
@@ -23,7 +23,7 @@ public class HazeltaskCompletionService<V> implements CompletionService<V> {
      * @param executor the executor to use
      * @throws NullPointerException if executor is <tt>null</tt>
      */
-    public HazeltaskCompletionService(DistributedExecutorService<?,?> executor) {
+    public HazeltaskCompletionService(DistributedExecutorService<?> executor) {
         if (executor == null)
             throw new NullPointerException();
         this.executor = executor;

@@ -12,7 +12,7 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
  * @author jclawson
  *
  */
-public class GetLocalQueueSizesOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Long, ID, GROUP> {
+public class GetLocalQueueSizesOp<GROUP extends Serializable> extends AbstractClusterOp<Long, GROUP> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor
@@ -23,7 +23,7 @@ public class GetLocalQueueSizesOp<ID extends Serializable, GROUP extends Seriali
     }
 
     public Long call() throws Exception {
-        LocalTaskExecutorService<?,?> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getQueueSize();
         return 0L;

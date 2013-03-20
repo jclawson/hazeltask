@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
-public class GetOldestTimestampOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Long, ID, GROUP> {
+public class GetOldestTimestampOp<GROUP extends Serializable> extends AbstractClusterOp<Long, GROUP> {
     private static final long serialVersionUID = 1L;
 
     //hazelcast dataserializable requires a default constructor
@@ -18,7 +18,7 @@ public class GetOldestTimestampOp<ID extends Serializable, GROUP extends Seriali
     }
     
     public Long call() throws Exception {
-        LocalTaskExecutorService<?,?> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
+        LocalTaskExecutorService<GROUP> localSvc = getDistributedExecutorService().getLocalTaskExecutorService();
         if(localSvc != null)
             return localSvc.getOldestTaskCreatedTime();
         return Long.MAX_VALUE;

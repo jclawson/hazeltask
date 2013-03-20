@@ -4,6 +4,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 import com.hazelcast.core.HazelcastInstance;
@@ -18,15 +19,15 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
  * @author jclawson
  *
  */
-public class HazeltaskTask<ID extends Serializable, G extends Serializable> 
-    implements Runnable, Task<ID,G>, HazelcastInstanceAware, TrackCreated {
+public class HazeltaskTask< G extends Serializable> 
+    implements Runnable, Task<G>, HazelcastInstanceAware, TrackCreated {
 	private static final long serialVersionUID = 1L;
 	
 	private Runnable runTask;
 	private Callable<?> callTask;
 	
 	private long createdAtMillis;
-	private ID id;
+	private UUID id;
 	private G group;
 	private String topology;
 	private int submissionCount;
@@ -38,7 +39,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     //required for DataSerializable
     protected HazeltaskTask(){}
     
-	public HazeltaskTask(String topology, ID id, G group, Runnable task){
+	public HazeltaskTask(String topology, UUID id, G group, Runnable task){
 		this.runTask = task;
 		this.id = id;
 		this.group = group;
@@ -47,7 +48,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
 		this.submissionCount = 1;
 	}
 	
-	public HazeltaskTask(String topology, ID id, G group, Callable<?> task){
+	public HazeltaskTask(String topology, UUID id, G group, Callable<?> task){
         this.callTask = task;
         this.id = id;
         this.group = group;
@@ -119,7 +120,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     }
 
     @Override
-    public ID getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -142,7 +143,7 @@ public class HazeltaskTask<ID extends Serializable, G extends Serializable>
     @SuppressWarnings("unchecked")
     @Override
     public void readData(DataInput in) throws IOException {
-        id = (ID) SerializationHelper.readObject(in);
+        id = (UUID) SerializationHelper.readObject(in);
         group = (G) SerializationHelper.readObject(in);
         runTask = (Runnable) SerializationHelper.readObject(in);
         callTask = (Callable<?>) SerializationHelper.readObject(in);

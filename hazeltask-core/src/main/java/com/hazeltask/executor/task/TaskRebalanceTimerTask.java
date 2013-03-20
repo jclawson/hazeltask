@@ -32,11 +32,11 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author jclawson
  */
-public class TaskRebalanceTimerTask<ID extends Serializable, GROUP extends Serializable> extends BackoffTask {
+public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffTask {
     private static ILogger LOGGER = Logger.getLogger(TaskRebalanceTimerTask.class.getName());
     private final Member localMember;
-    private final IExecutorTopologyService<ID, GROUP> executorTopologyService;
-    private final LocalTaskExecutorService<ID,GROUP> localSvc;
+    private final IExecutorTopologyService<GROUP> executorTopologyService;
+    private final LocalTaskExecutorService<GROUP> localSvc;
     
     private Histogram histogram;
     private Timer redistributionTimer;
@@ -49,7 +49,7 @@ public class TaskRebalanceTimerTask<ID extends Serializable, GROUP extends Seria
 	
 	private final Lock LOCK;
 	
-	public TaskRebalanceTimerTask(HazeltaskTopology<ID, GROUP> topology, LocalTaskExecutorService<ID,GROUP> localSvc, IExecutorTopologyService<ID, GROUP> executorTopologyService) {
+	public TaskRebalanceTimerTask(HazeltaskTopology<GROUP> topology, LocalTaskExecutorService<GROUP> localSvc, IExecutorTopologyService<GROUP> executorTopologyService) {
 	    ExecutorMetrics metrics = topology.getExecutorMetrics();
 	    LOCK = executorTopologyService.getRebalanceTaskClusterLock();
 		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
@@ -149,10 +149,10 @@ public class TaskRebalanceTimerTask<ID extends Serializable, GROUP extends Seria
     	//make sure to bound the waiting of each call with something like 5 minutes or 10 minutes
     		
     		//TODO: replace this with a completion service so we can process results as we get them
-    		Collection<HazeltaskTask<ID,GROUP>> stolenTasks = executorTopologyService.stealTasks(numToTake);
+    		Collection<HazeltaskTask<GROUP>> stolenTasks = executorTopologyService.stealTasks(numToTake);
     		//add to local queue
     		int totalAdded = 0;
-    		for(HazeltaskTask<ID,GROUP> task : stolenTasks) {
+    		for(HazeltaskTask<GROUP> task : stolenTasks) {
     		    localSvc.execute(task); //TODO: what if it returns false?
     		    totalAdded++;
     		}

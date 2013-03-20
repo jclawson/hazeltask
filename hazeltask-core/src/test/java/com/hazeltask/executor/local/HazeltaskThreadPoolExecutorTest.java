@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -22,13 +23,13 @@ public class HazeltaskThreadPoolExecutorTest {
     private HazeltaskThreadPoolExecutor listener;
     private ExecutorListener listener1;
     private ExecutorListener listener2;
-    private HazeltaskTask<String,String> task;
+    private HazeltaskTask<String> task;
     
     @Before
     public void setup() {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
-        task = new HazeltaskTask<String,String>("test", "1","1", (Runnable) null);
+        task = new HazeltaskTask<String>("test", UUID.randomUUID(),"1", (Runnable) null);
         listener = new HazeltaskThreadPoolExecutor(1,1,1,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),Executors.defaultThreadFactory(),new AbortPolicy());
         
         listener.addListener(listener1);

@@ -13,17 +13,17 @@ import com.hazeltask.executor.task.HazeltaskTask;
 
 public class HazelcastWorkGroupedQueueTest {
     
-    private GroupedPriorityQueueLocking<HazeltaskTask<String,String>, String> taskQueue;
+    private GroupedPriorityQueueLocking<HazeltaskTask<String>, String> taskQueue;
     
     @SuppressWarnings("unchecked")
     @Before
     public void setupData() {
-        taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<String,String>, String>(new RoundRobinGroupPrioritizer<String>());
+        taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<String>, String>(new RoundRobinGroupPrioritizer<String>());
         
-        HazeltaskTask<String,String> work1 = mock(HazeltaskTask.class);
-        HazeltaskTask<String,String> work2 = mock(HazeltaskTask.class);
-        HazeltaskTask<String,String> work3 = mock(HazeltaskTask.class);
-        HazeltaskTask<String,String> work4 = mock(HazeltaskTask.class);
+        HazeltaskTask<String> work1 = mock(HazeltaskTask.class);
+        HazeltaskTask<String> work2 = mock(HazeltaskTask.class);
+        HazeltaskTask<String> work3 = mock(HazeltaskTask.class);
+        HazeltaskTask<String> work4 = mock(HazeltaskTask.class);
         
         when(work1.getGroup()).thenReturn("1");
         when(work2.getGroup()).thenReturn("1");

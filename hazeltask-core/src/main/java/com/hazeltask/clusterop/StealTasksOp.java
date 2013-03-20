@@ -14,7 +14,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<ID,GROUP>>, ID, GROUP> {
+public class StealTasksOp<GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<GROUP>>, GROUP> {
     private static final long serialVersionUID = 1L;
     
     private long numberOfTasks;
@@ -28,8 +28,8 @@ public class StealTasksOp<ID extends Serializable, GROUP extends Serializable> e
     }
 
     @Override
-    public Collection<HazeltaskTask<ID,GROUP>> call() throws Exception {
-        LocalTaskExecutorService<ID,GROUP> localSvc = getLocalTaskExecutorService();
+    public Collection<HazeltaskTask<GROUP>> call() throws Exception {
+        LocalTaskExecutorService<GROUP> localSvc = getLocalTaskExecutorService();
         return localSvc.stealTasks(numberOfTasks);
     }
 

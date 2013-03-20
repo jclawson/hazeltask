@@ -6,8 +6,8 @@ import com.yammer.metrics.Metrics;
 
 public class Validator { 
     @SuppressWarnings("deprecation")
-    public static void validate(HazeltaskConfig<?,?> config) {
-        ExecutorConfig<?,?> executorConfig = config.getExecutorConfig();
+    public static void validate(HazeltaskConfig<?> config) {
+        ExecutorConfig<?> executorConfig = config.getExecutorConfig();
         MetricsConfig metricsConfig = config.getMetricsConfig();
         
         if(config.getHazelcast() == null) {

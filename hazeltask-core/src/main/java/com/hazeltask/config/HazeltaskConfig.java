@@ -8,31 +8,31 @@ import com.hazeltask.Hazeltask;
 import com.hazeltask.core.metrics.MetricNamer;
 import com.yammer.metrics.core.MetricsRegistry;
 
-public class HazeltaskConfig<ID extends Serializable, GROUP extends Serializable> {
+public class HazeltaskConfig<GROUP extends Serializable> {
     private HazelcastInstance hazelcast = null; //we will pull the default hazelcast later
     private String topologyName         = Hazeltask.DEFAULT_TOPOLOGY;
 //    private MetricNamer metricNamer     = new ScopeFirstMetricNamer();
 //    private MetricsRegistry   metricsRegistry;
-    private ExecutorConfig<ID, GROUP> executorConfig = new ExecutorConfig<ID,GROUP>();
+    private ExecutorConfig<GROUP> executorConfig = new ExecutorConfig<GROUP>();
     private MetricsConfig metricsConfig = new MetricsConfig();
     private ThreadFactory threadFactory;
     
-    public HazeltaskConfig<ID, GROUP> withTopologyName(String name) {
+    public HazeltaskConfig<GROUP> withTopologyName(String name) {
         this.topologyName = name;
         return this;
     }
     
-    public HazeltaskConfig<ID, GROUP> withExecutorConfig(ExecutorConfig<ID, GROUP> executorConfig) {
+    public HazeltaskConfig<GROUP> withExecutorConfig(ExecutorConfig<GROUP> executorConfig) {
         this.executorConfig = executorConfig;
         return this;
     }
     
-    public HazeltaskConfig<ID, GROUP> withHazelcastInstance(HazelcastInstance hazelcast) {
+    public HazeltaskConfig<GROUP> withHazelcastInstance(HazelcastInstance hazelcast) {
         this.hazelcast = hazelcast;
         return this;
     }
     
-    public HazeltaskConfig<ID, GROUP> withMetricsConfig(MetricsConfig metricsConfig) {
+    public HazeltaskConfig<GROUP> withMetricsConfig(MetricsConfig metricsConfig) {
         this.metricsConfig = metricsConfig;
         return this;
     }
@@ -67,11 +67,11 @@ public class HazeltaskConfig<ID extends Serializable, GROUP extends Serializable
         return topologyName;
     }
     
-    public ExecutorConfig<ID, GROUP> getExecutorConfig() {
+    public ExecutorConfig<GROUP> getExecutorConfig() {
         return this.executorConfig;
     }
     
-    public HazeltaskConfig<ID, GROUP> withThreadFactory(ThreadFactory threadFactory) {
+    public HazeltaskConfig<GROUP> withThreadFactory(ThreadFactory threadFactory) {
         this.threadFactory = threadFactory;
         return this;
     }

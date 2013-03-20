@@ -10,7 +10,7 @@ import java.io.Serializable;
  * to receive tasks
  * @author jclawson
  */
-public class IsMemberReadyOp<ID extends Serializable, GROUP extends Serializable> extends AbstractClusterOp<Boolean, ID, GROUP> {
+public class IsMemberReadyOp<GROUP extends Serializable> extends AbstractClusterOp<Boolean, GROUP> {
     private static final long serialVersionUID = 2L;
 
     //hazelcast dataserializable requires a default constructor

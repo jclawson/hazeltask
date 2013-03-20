@@ -19,7 +19,7 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
  * @author jclawson
  * @param <T> return type
  */
-public abstract class AbstractClusterOp<T, ID extends Serializable, GROUP extends Serializable> implements Callable<T>, DataSerializable {
+public abstract class AbstractClusterOp<T, GROUP extends Serializable> implements Callable<T>, DataSerializable {
     private static final long serialVersionUID = 1L;
     private String topologyName;
     
@@ -36,25 +36,25 @@ public abstract class AbstractClusterOp<T, ID extends Serializable, GROUP extend
         writChildData(out);
     }
     
-    protected DistributedExecutorService<ID, GROUP> getDistributedExecutorService() {
-        HazeltaskInstance<ID, GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+    protected DistributedExecutorService<GROUP> getDistributedExecutorService() {
+        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
-            return (DistributedExecutorService<ID, GROUP>) ht.getExecutorService();
+            return (DistributedExecutorService<GROUP>) ht.getExecutorService();
         }
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
     
-    protected LocalTaskExecutorService<ID,GROUP> getLocalTaskExecutorService() {
-        HazeltaskInstance<ID, GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+    protected LocalTaskExecutorService<GROUP> getLocalTaskExecutorService() {
+        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
-            DistributedExecutorService<ID, GROUP> service = (DistributedExecutorService<ID, GROUP>) ht.getExecutorService();
+            DistributedExecutorService<GROUP> service = (DistributedExecutorService<GROUP>) ht.getExecutorService();
             return service.getLocalTaskExecutorService();
         }
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
     
-    protected HazeltaskTopology<ID, GROUP> getHazeltaskTopology() {
-        HazeltaskInstance<ID, GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+    protected HazeltaskTopology<GROUP> getHazeltaskTopology() {
+        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
         if(ht != null) {
             return ht.getTopology();
         }

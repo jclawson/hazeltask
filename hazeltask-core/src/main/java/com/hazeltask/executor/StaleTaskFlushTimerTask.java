@@ -14,11 +14,11 @@ import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
-public class StaleTaskFlushTimerTask<ID extends Serializable, GROUP extends Serializable> extends BackoffTask {
+public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends BackoffTask {
 	private static ILogger LOGGER = Logger.getLogger(StaleTaskFlushTimerTask.class.getName());
 	
-    private final DistributedExecutorService<ID, GROUP> svc;
-    private final IExecutorTopologyService<ID, GROUP> executorTopologyService;
+    private final DistributedExecutorService<GROUP> svc;
+    private final IExecutorTopologyService<GROUP> executorTopologyService;
 
     public static long EXPIRE_TIME_BUFFER = 5000L; //5 seconds
     public static long EMPTY_EXPIRE_TIME_BUFFER = 10000L; //10 seconds
@@ -26,7 +26,7 @@ public class StaleTaskFlushTimerTask<ID extends Serializable, GROUP extends Seri
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleTaskFlushTimerTask(HazeltaskTopology<ID, GROUP> topology, DistributedExecutorService<ID, GROUP> svc, IExecutorTopologyService<ID, GROUP> executorTopologyService) {
+    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorService<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService) {
         this.svc = svc;
         this.flushTimer = topology.getExecutorMetrics().getStaleTaskFlushTimer().getMetric();
         this.numFlushedHistogram = topology.getExecutorMetrics().getStaleFlushCountHistogram().getMetric();
@@ -73,14 +73,14 @@ public class StaleTaskFlushTimerTask<ID extends Serializable, GROUP extends Seri
 //	        Set<String> keys = (Set<String>) map.localKeySet(pred);
 //	        Collection<HazelcastWork> works = map.getAll(keys).values();
 	        
-	        Collection<HazeltaskTask<ID, GROUP>> works = executorTopologyService.getLocalPendingTasks(sql);
+	        Collection<HazeltaskTask<GROUP>> works = executorTopologyService.getLocalPendingTasks(sql);
 	        
 	        if(works.size() > 0) {
 	            flushed = true;
 	            LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
 	        }
 	        
-	        for(HazeltaskTask<ID, GROUP> work : works) {
+	        for(HazeltaskTask<GROUP> work : works) {
 	            svc.submitHazeltaskTask(work, true);
 	        }
 	        

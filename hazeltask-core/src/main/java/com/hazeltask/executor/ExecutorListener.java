@@ -5,7 +5,7 @@ import java.io.Serializable;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 
-public interface ExecutorListener<ID extends Serializable, G extends Serializable>{
-    public void beforeExecute(HazeltaskTask<ID,G> runnable);
-    public void afterExecute(HazeltaskTask<ID,G> runnable, Throwable exception);
+public interface ExecutorListener< G extends Serializable>{
+    public void beforeExecute(HazeltaskTask<G> runnable);
+    public void afterExecute(HazeltaskTask<G> runnable, Throwable exception);
 }

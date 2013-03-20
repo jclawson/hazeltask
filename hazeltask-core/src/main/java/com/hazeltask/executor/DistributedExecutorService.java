@@ -33,19 +33,19 @@ import com.yammer.metrics.core.TimerContext;
  * @author jclawson
  *
  */
-public class DistributedExecutorService<ID extends Serializable, GROUP extends Serializable> implements ExecutorService, ServiceListenable<DistributedExecutorService<ID, GROUP>> {
+public class DistributedExecutorService<GROUP extends Serializable> implements ExecutorService, ServiceListenable<DistributedExecutorService<GROUP>> {
 
-    private ExecutorConfig<ID, GROUP> executorConfig;
-    private final HazeltaskTopology<ID, GROUP>        topology;
+    private ExecutorConfig<GROUP> executorConfig;
+    private final HazeltaskTopology<GROUP>        topology;
     private final ListRouter<Member>       memberRouter;
     
-    private final LocalTaskExecutorService<ID, GROUP> localExecutorService;
+    private final LocalTaskExecutorService<GROUP> localExecutorService;
     
-    private final TaskIdAdapter<? super Object, ID,GROUP>            taskIdAdapter;
-    private final DistributedFutureTracker<ID, GROUP> futureTracker;
-    private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>>>();
+    private final TaskIdAdapter<? super Object, GROUP>            taskIdAdapter;
+    private final DistributedFutureTracker<GROUP> futureTracker;
+    private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>>();
     private final ILogger LOGGER;
-    private final IExecutorTopologyService<ID, GROUP>  executorTopologyService;
+    private final IExecutorTopologyService<GROUP>  executorTopologyService;
     
     private com.yammer.metrics.core.Timer taskAddedTimer;
     private Meter tasksRejected;
@@ -54,11 +54,11 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
     private final int MAX_SUBMIT_TRIES = 10;
     
     
-    public DistributedExecutorService(HazeltaskTopology<ID, GROUP>         hcTopology, 
-                                      IExecutorTopologyService<ID, GROUP>  executorTopologyService, 
-                                      ExecutorConfig<ID, GROUP>            executorConfig, 
-                                      DistributedFutureTracker<ID, GROUP>  futureTracker, 
-                                      LocalTaskExecutorService<ID, GROUP> localExecutorService) {
+    public DistributedExecutorService(HazeltaskTopology<GROUP>         hcTopology, 
+                                      IExecutorTopologyService<GROUP>  executorTopologyService, 
+                                      ExecutorConfig<GROUP>            executorConfig, 
+                                      DistributedFutureTracker<GROUP>  futureTracker, 
+                                      LocalTaskExecutorService<GROUP> localExecutorService) {
         this.topology = hcTopology;
         this.executorConfig = executorConfig;
         this.executorTopologyService = executorTopologyService;
@@ -81,7 +81,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         tasksRejected = hcTopology.getExecutorMetrics().getTaskRejectedMeter().getMetric();
     }
 
-    public ExecutorConfig<?, ?> getExecutorConfig() {
+    public ExecutorConfig<?> getExecutorConfig() {
         return this.executorConfig;
     }
 
@@ -102,24 +102,24 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         return new ArrayList<Runnable>(doShutdownNow(true));
     }
     
-    public List<HazeltaskTask<ID,GROUP>> shutdownNowWithHazeltask() {
+    public List<HazeltaskTask<GROUP>> shutdownNowWithHazeltask() {
         return doShutdownNow(true);
     }
     
-    protected List<HazeltaskTask<ID,GROUP>> doShutdownNow(boolean shutdownNow) {
-        for(HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>> listener : listeners)
+    protected List<HazeltaskTask<GROUP>> doShutdownNow(boolean shutdownNow) {
+        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
             listener.onBeginShutdown(this);
         
         //TODO: is everything shutdown?
-        List<HazeltaskTask<ID,GROUP>> tasks = null;
+        List<HazeltaskTask<GROUP>> tasks = null;
         if(!executorConfig.isDisableWorkers()) {
             if(shutdownNow)
-                tasks = ((LocalTaskExecutorService<ID,GROUP>)this.localExecutorService).shutdownNow();
+                tasks = ((LocalTaskExecutorService<GROUP>)this.localExecutorService).shutdownNow();
             else
                 this.localExecutorService.shutdown();
         }
         
-        for(HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>> listener : listeners)
+        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
             listener.onEndShutdown(this);
         
         return tasks;
@@ -146,7 +146,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
             
-            HazeltaskTask<ID, GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
+            HazeltaskTask<GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
             DistributedFuture<T> future = futureTracker.createFuture(taskWrapper);
             if(!submitHazeltaskTask(taskWrapper, false)) {
                 //remove future from tracker, error out future with duplicate exception
@@ -176,22 +176,22 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
     }
     
     @SuppressWarnings("unchecked")
-    private HazeltaskTask<ID, GROUP> createHazeltaskTaskWrapper(Runnable task){
+    private HazeltaskTask<GROUP> createHazeltaskTaskWrapper(Runnable task){
         if(task instanceof HazeltaskTask) {
-            ((HazeltaskTask<ID, GROUP>) task).updateCreatedTime();
-            return (HazeltaskTask<ID, GROUP>) task;
+            ((HazeltaskTask<GROUP>) task).updateCreatedTime();
+            return (HazeltaskTask<GROUP>) task;
         } else {
             validateTask(task);            
-            return new HazeltaskTask<ID, GROUP>(topology.getName(), 
+            return new HazeltaskTask<GROUP>(topology.getName(), 
                                      taskIdAdapter.getTaskId(task), 
                                      taskIdAdapter.getTaskGroup(task), 
                                      task);
         }
     }
     
-    private HazeltaskTask<ID, GROUP> createHazeltaskTaskWrapper(Callable<?> task) {
+    private HazeltaskTask<GROUP> createHazeltaskTaskWrapper(Callable<?> task) {
         validateTask(task); 
-        return new HazeltaskTask<ID, GROUP>(topology.getName(), 
+        return new HazeltaskTask<GROUP>(topology.getName(), 
                                  taskIdAdapter.getTaskId(task), 
                                  taskIdAdapter.getTaskGroup(task), 
                                  task);
@@ -212,7 +212,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
             
-            HazeltaskTask<ID, GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
+            HazeltaskTask<GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
             DistributedFuture<?> future = futureTracker.createFuture(taskWrapper);
             submitHazeltaskTask(taskWrapper, false);
             return future;
@@ -221,7 +221,7 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
         }
     }
     
-    protected boolean submitHazeltaskTask(HazeltaskTask<ID, GROUP> wrapper, boolean isResubmitting) {      
+    protected boolean submitHazeltaskTask(HazeltaskTask<GROUP> wrapper, boolean isResubmitting) {      
         
         //WorkId workKey = wrapper.getWorkId();
         boolean executeTask = true;
@@ -293,27 +293,27 @@ public class DistributedExecutorService<ID extends Serializable, GROUP extends S
     }
 
     public void startup() {
-        for(HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>> listener : listeners)
+        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
             listener.onBeginStart(this);
         
         if(!executorConfig.isDisableWorkers())
             localExecutorService.startup();
         
-        for(HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>> listener : listeners)
+        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
             listener.onEndStart(this);
     }
 
-    public void addServiceListener(HazeltaskServiceListener<DistributedExecutorService<ID, GROUP>> listener) {
+    public void addServiceListener(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener) {
         this.listeners.add(listener);
     }
     
-    public void addListener(ExecutorListener<ID,GROUP> listener) {
+    public void addListener(ExecutorListener<GROUP> listener) {
         if(!executorConfig.isDisableWorkers())
             this.localExecutorService.addListener(listener);
     }
     
-    public LocalTaskExecutorService<ID,GROUP> getLocalTaskExecutorService() {
-        return (LocalTaskExecutorService<ID,GROUP>) this.localExecutorService;
+    public LocalTaskExecutorService<GROUP> getLocalTaskExecutorService() {
+        return (LocalTaskExecutorService<GROUP>) this.localExecutorService;
     }
 
 }

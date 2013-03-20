@@ -14,9 +14,9 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * @author jclawson
  *
  */
-public interface ITopologyService<ID extends Serializable, GROUP extends Serializable> {
+public interface ITopologyService<GROUP extends Serializable> {
     public Set<Member> getReadyMembers();
     public long pingMember(Member member);
     public void shutdown();
-    public List<HazeltaskTask<ID, GROUP>> shutdownNow();
+    public List<HazeltaskTask<GROUP>> shutdownNow();
 }

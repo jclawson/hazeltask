@@ -7,19 +7,19 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
 import com.hazeltask.executor.task.HazeltaskTask;
 
-public class ResponseExecutorListener<ID extends Serializable, G extends Serializable> implements ExecutorListener<ID,G> {
+public class ResponseExecutorListener< G extends Serializable> implements ExecutorListener<G> {
     
-    private IExecutorTopologyService<ID, G> service;
+    private IExecutorTopologyService<G> service;
     private ILogger LOGGER;
     
-    public ResponseExecutorListener(IExecutorTopologyService<ID, G> service, LoggingService loggingService) {
+    public ResponseExecutorListener(IExecutorTopologyService<G> service, LoggingService loggingService) {
         this.service = service;
         LOGGER = loggingService.getLogger(ResponseExecutorListener.class.getName());
     }
     
-    public void afterExecute(HazeltaskTask<ID,G> runnable, Throwable exception) {
+    public void afterExecute(HazeltaskTask<G> runnable, Throwable exception) {
         //we finished this work... lets tell everyone about it!
-        HazeltaskTask<ID,G> task = (HazeltaskTask<ID,G>)runnable;
+        HazeltaskTask<G> task = (HazeltaskTask<G>)runnable;
         boolean success = exception == null && task.getException() == null;
         
         
@@ -45,5 +45,5 @@ public class ResponseExecutorListener<ID extends Serializable, G extends Seriali
         
     }
 
-    public void beforeExecute(HazeltaskTask<ID,G> runnable) {}
+    public void beforeExecute(HazeltaskTask<G> runnable) {}
 }

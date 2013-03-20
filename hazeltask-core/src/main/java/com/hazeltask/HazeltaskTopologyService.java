@@ -20,7 +20,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 
-public class HazeltaskTopologyService<ID extends Serializable, GROUP extends Serializable> implements ITopologyService<ID, GROUP> {
+public class HazeltaskTopologyService<GROUP extends Serializable> implements ITopologyService<GROUP> {
 private String topologyName;
     
     private final ExecutorService communicationExecutorService;
@@ -29,7 +29,7 @@ private String topologyName;
     //TOOD: pass in the communication service?
     //or make the svc accessible to the ExecutorTopologyService? so we don't have to manage
     //the name in 2 places
-    public HazeltaskTopologyService(HazeltaskConfig<ID, GROUP> hazeltaskConfig) {
+    public HazeltaskTopologyService(HazeltaskConfig<GROUP> hazeltaskConfig) {
         topologyName = hazeltaskConfig.getTopologyName();
         hazelcast = hazeltaskConfig.getHazelcast();
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
@@ -54,7 +54,7 @@ private String topologyName;
     public Set<Member> getReadyMembers() {
         Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
                 communicationExecutorService, hazelcast.getCluster().getMembers(),
-                new IsMemberReadyOp<ID, GROUP>(topologyName));
+                new IsMemberReadyOp<GROUP>(topologyName));
         Set<Member> result = new HashSet<Member>(responses.size());
         for(MemberResponse<Boolean> response : responses) {
             if(response.getValue())
@@ -66,18 +66,18 @@ private String topologyName;
     public void shutdown() {
         MemberTasks.executeOptimistic(communicationExecutorService, 
                                       hazelcast.getCluster().getMembers(), 
-                                      new ShutdownOp<ID, GROUP>(topologyName, false)
+                                      new ShutdownOp<GROUP>(topologyName, false)
         );
     }
     
-    public List<HazeltaskTask<ID, GROUP>> shutdownNow() {
-        Collection<MemberResponse<Collection<HazeltaskTask<ID, GROUP>>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
+    public List<HazeltaskTask<GROUP>> shutdownNow() {
+        Collection<MemberResponse<Collection<HazeltaskTask<GROUP>>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
             hazelcast.getCluster().getMembers(), 
-            new ShutdownOp<ID, GROUP>(topologyName, true)
+            new ShutdownOp<GROUP>(topologyName, true)
         );
-        List<HazeltaskTask<ID, GROUP>> tasks = new ArrayList<HazeltaskTask<ID, GROUP>>();
-        for(MemberResponse<Collection<HazeltaskTask<ID, GROUP>>> response : responses) {
-            Collection<HazeltaskTask<ID, GROUP>> responseValue = response.getValue();
+        List<HazeltaskTask<GROUP>> tasks = new ArrayList<HazeltaskTask<GROUP>>();
+        for(MemberResponse<Collection<HazeltaskTask<GROUP>>> response : responses) {
+            Collection<HazeltaskTask<GROUP>> responseValue = response.getValue();
             if(responseValue == null) {
                 //TODO: log this
             } else {

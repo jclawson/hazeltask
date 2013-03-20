@@ -55,7 +55,7 @@ import com.hazeltask.executor.task.TaskResponse.Status;
  * MessageListener<WorkResponse>
  *
  */
-public class DistributedFutureTracker<ID extends Serializable, GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable,ID>> {
+public class DistributedFutureTracker<GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable>> {
     
     private SetMultimap<Serializable, DistributedFuture<Serializable>> futures = 
             Multimaps.<Serializable, DistributedFuture<Serializable>>synchronizedSetMultimap(
@@ -68,7 +68,7 @@ public class DistributedFutureTracker<ID extends Serializable, GROUP extends Ser
     
     //It is required that T be Serializable
     @SuppressWarnings("unchecked")
-    public <T> DistributedFuture<T> createFuture(HazeltaskTask<ID,GROUP> task) {
+    public <T> DistributedFuture<T> createFuture(HazeltaskTask<GROUP> task) {
         DistributedFuture<T> future = new DistributedFuture<T>();
         this.futures.put(task.getId(), (DistributedFuture<Serializable>) future);
         return future;
@@ -79,8 +79,8 @@ public class DistributedFutureTracker<ID extends Serializable, GROUP extends Ser
     }
     
     @Override
-	public void onMessage(Message<TaskResponse<Serializable,ID>> message) {
-        TaskResponse<Serializable,ID> response = message.getMessageObject();
+	public void onMessage(Message<TaskResponse<Serializable>> message) {
+        TaskResponse<Serializable> response = message.getMessageObject();
         Serializable taskId = response.getTaskId();
         Collection<DistributedFuture<Serializable>> taskFutures = futures.removeAll(taskId);
         if(taskFutures.size() > 0) {

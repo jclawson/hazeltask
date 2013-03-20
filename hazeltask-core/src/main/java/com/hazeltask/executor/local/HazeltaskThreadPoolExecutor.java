@@ -17,7 +17,7 @@ import com.hazeltask.executor.task.HazeltaskTask;
 public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
     private static ILogger LOGGER = Logger.getLogger(HazeltaskThreadPoolExecutor.class.getName());
     
-    private final Collection<ExecutorListener<?,?>> listeners = new CopyOnWriteArrayList<ExecutorListener<?,?>>();
+    private final Collection<ExecutorListener<?>> listeners = new CopyOnWriteArrayList<ExecutorListener<?>>();
     
     public HazeltaskThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime,
             TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory,
@@ -25,14 +25,14 @@ public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
     }
     
-    public void addListener(ExecutorListener<?,?> listener) {
+    public void addListener(ExecutorListener<?> listener) {
         listeners.add(listener);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     protected void beforeExecute(Thread t, Runnable runnable) {
-        for(ExecutorListener<?,?> listener : listeners) {
+        for(ExecutorListener<?> listener : listeners) {
             try {
                 listener.beforeExecute((HazeltaskTask)runnable);
             } catch(Throwable e) {
@@ -45,7 +45,7 @@ public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     protected void afterExecute(Runnable runnable, Throwable exception) {
-        for(ExecutorListener<?,?> listener : listeners) {
+        for(ExecutorListener<?> listener : listeners) {
             try {
                 listener.afterExecute((HazeltaskTask)runnable, exception);
             } catch(Throwable e) {

@@ -1,13 +1,14 @@
 package com.hazeltask.executor.task;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 import com.hazelcast.core.Member;
 
-public class TaskResponse<R extends Serializable, ID extends Serializable> implements Serializable {
+public class TaskResponse<R extends Serializable> implements Serializable {
     private static final long serialVersionUID = 1L;
     private final Member from;
-    private final ID taskId;
+    private final UUID taskId;
     private final R response;
     private final Throwable error;
     private final Status status;
@@ -18,7 +19,7 @@ public class TaskResponse<R extends Serializable, ID extends Serializable> imple
         CANCELLED
     }
     
-    public TaskResponse(Member from, ID taskId, R response, Status status) {
+    public TaskResponse(Member from, UUID taskId, R response, Status status) {
         this.from = from;
         this.taskId = taskId;
         this.response = response;
@@ -26,7 +27,7 @@ public class TaskResponse<R extends Serializable, ID extends Serializable> imple
         this.status = status;
     }
     
-    public TaskResponse(Member from, ID taskId, Throwable error) {
+    public TaskResponse(Member from, UUID taskId, Throwable error) {
         this.from = from;
         this.taskId = taskId;        
         this.error = error;
@@ -38,7 +39,7 @@ public class TaskResponse<R extends Serializable, ID extends Serializable> imple
         return from;
     }
 
-    public ID getTaskId() {
+    public UUID getTaskId() {
         return taskId;
     }
 

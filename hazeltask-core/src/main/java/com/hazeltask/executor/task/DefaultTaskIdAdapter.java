@@ -6,7 +6,7 @@ import java.util.UUID;
 
 
 
-public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, UUID, Integer> {
+public class DefaultTaskIdAdapter implements TaskIdAdapter<Object, Integer> {
     private static int GROUP = Integer.MIN_VALUE;
     
     @Override

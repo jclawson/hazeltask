@@ -1,5 +1,6 @@
 package com.hazeltask.executor;
 
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -15,20 +16,20 @@ import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
 
 public class DistributedFutureTrackerTest {
-    private String workOneId;
-    private String workTwoId;
+    private UUID workOneId;
+    private UUID workTwoId;
     private DistributedFutureTracker tracker;
     
     @Before
     public void setupData() {
-        workOneId ="item-1";
-        workTwoId ="item-2";
+        workOneId = UUID.randomUUID();
+        workTwoId = UUID.randomUUID();
         tracker = new DistributedFutureTracker();
     }
     
     @Test
     public void testFutureTrackSuccess() throws InterruptedException, ExecutionException {
-        HazeltaskTask<String,String> work = new HazeltaskTask<String,String>("default", workOneId, "group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId, "group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
@@ -46,7 +47,7 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TestException.class)
     public void testFutureTrackException() throws Throwable {
-        HazeltaskTask<String,String> work = new HazeltaskTask<String,String>("default", workOneId,"group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId,"group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
@@ -67,7 +68,7 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TimeoutException.class)
     public void testFutureTrackGetTimeout() throws InterruptedException, ExecutionException, TimeoutException {
-        HazeltaskTask<String,String> work = new HazeltaskTask<String,String>("default", workOneId, "group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId, "group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);        
         Assert.assertEquals(future.get(10, TimeUnit.MILLISECONDS), "Yay!");
     }
