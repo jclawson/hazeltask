@@ -11,9 +11,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
-import com.hazeltask.executor.ExecutorMetrics;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 import com.yammer.metrics.core.Histogram;
@@ -49,10 +49,9 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
 	
 	private final Lock LOCK;
 	
-	public TaskRebalanceTimerTask(HazeltaskTopology<GROUP> topology, LocalTaskExecutorService<GROUP> localSvc, IExecutorTopologyService<GROUP> executorTopologyService) {
-	    ExecutorMetrics metrics = topology.getExecutorMetrics();
+	public TaskRebalanceTimerTask(HazeltaskTopology<GROUP> topology, LocalTaskExecutorService<GROUP> localSvc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
 	    LOCK = executorTopologyService.getRebalanceTaskClusterLock();
-		localMember = topology.getHazeltaskConfig().getHazelcast().getCluster().getLocalMember();
+		localMember = topology.getLocalMember();
 		this.executorTopologyService = executorTopologyService;
 		this.localSvc = localSvc;
 		

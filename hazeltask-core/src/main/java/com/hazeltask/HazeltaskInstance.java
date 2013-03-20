@@ -3,6 +3,7 @@ package com.hazeltask;
 import java.io.Serializable;
 import java.util.UUID;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.config.Validator;
@@ -13,6 +14,7 @@ import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.StaleTaskFlushTimerTask;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
 public class HazeltaskInstance<GROUP extends Serializable> {
@@ -25,6 +27,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     private final ITopologyService<GROUP> topologyService;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
     private final LocalTaskExecutorService<GROUP> localExeutorService;
+    private final ExecutorMetrics executorMetrics;
     
     /**
      * FIXME: fix  executorConfig.isDisableWorkers()
@@ -36,17 +39,17 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         Validator.validate(hazeltaskConfig);
         
         executorConfig = hazeltaskConfig.getExecutorConfig();
-        
-
+        HazelcastInstance hazelcast = hazeltaskConfig.getHazelcast();
+        final String topologyName = hazeltaskConfig.getTopologyName();
         topologyService = new HazeltaskTopologyService<GROUP>(hazeltaskConfig);
-
+        executorMetrics = new ExecutorMetrics(hazeltaskConfig);
         
-        this.topology = new HazeltaskTopology<GROUP>(hazeltaskConfig, topologyService);
+        this.topology = new HazeltaskTopology<GROUP>(topologyName, hazelcast.getCluster().getLocalMember());
         executorTopologyService = new HazelcastExecutorTopologyService<GROUP>(hazeltaskConfig, topology);
         
         
         if(!executorConfig.isDisableWorkers())
-            localExeutorService = new LocalTaskExecutorService<GROUP>(topology, executorConfig, executorTopologyService);
+            localExeutorService = new LocalTaskExecutorService<GROUP>(hazelcast, topology, executorConfig, executorTopologyService, executorMetrics);
         else
             localExeutorService = null;
         
@@ -54,17 +57,17 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         
 
         if(executorConfig.isFutureSupportEnabled()) {
-            futureTracker = new DistributedFutureTracker<GROUP>();
+            futureTracker = new DistributedFutureTracker<GROUP>(executorMetrics);
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
         }
         
-        executor = new DistributedExecutorService<GROUP>(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService);
+        executor = new DistributedExecutorService<GROUP>(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService, executorMetrics);
         
     }
     
     protected void start() {
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
-        setupDistributedExecutor(topology, hazeltaskTimer, executor, topologyService, executorTopologyService, localExeutorService);
+        setupDistributedExecutor(topology, hazeltaskTimer, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
@@ -85,11 +88,11 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         }
     }
     
-    private void setupDistributedExecutor(final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService) {
-        final StaleTaskFlushTimerTask<GROUP> bundleTask = new StaleTaskFlushTimerTask<GROUP>(topology, svc, executorTopologyService);
+    private void setupDistributedExecutor(final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
+        final StaleTaskFlushTimerTask<GROUP> bundleTask = new StaleTaskFlushTimerTask<GROUP>(topology, svc, executorTopologyService, executorMetrics);
         final TaskRebalanceTimerTask<GROUP> rebalanceTask;
         if(!svc.getExecutorConfig().isDisableWorkers())
-            rebalanceTask = new TaskRebalanceTimerTask<GROUP>(topology, localExeutorService, executorTopologyService);
+            rebalanceTask = new TaskRebalanceTimerTask<GROUP>(topology, localExeutorService, executorTopologyService, executorMetrics);
         else
             rebalanceTask = null;
         final IsMemberReadyTimerTask<GROUP> getReadyMembersTask = new IsMemberReadyTimerTask<GROUP>(topologySvc, topology);

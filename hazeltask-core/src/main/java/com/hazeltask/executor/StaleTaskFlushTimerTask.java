@@ -8,6 +8,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.yammer.metrics.core.Histogram;
@@ -26,10 +27,10 @@ public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends Backoff
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorService<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService) {
+    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorService<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
         this.svc = svc;
-        this.flushTimer = topology.getExecutorMetrics().getStaleTaskFlushTimer().getMetric();
-        this.numFlushedHistogram = topology.getExecutorMetrics().getStaleFlushCountHistogram().getMetric();
+        this.flushTimer = metrics.getStaleTaskFlushTimer().getMetric();
+        this.numFlushedHistogram = metrics.getStaleFlushCountHistogram().getMetric();
         this.executorTopologyService = executorTopologyService;
     }
 

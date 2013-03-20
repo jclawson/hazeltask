@@ -14,21 +14,20 @@ import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
-import com.hazeltask.core.metrics.MetricNamer;
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.ResponseExecutorListener;
 import com.hazeltask.executor.metrics.CollectionSizeGauge;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.metrics.TaskThroughputGauge;
 import com.hazeltask.executor.task.HazeltaskTask;
-import com.yammer.metrics.core.MetricName;
-import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
@@ -50,27 +49,31 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	private HazeltaskThreadPoolExecutor localExecutorPool;
 	private GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
+	private final HazelcastInstance hazelcast;
 	
-	private MetricNamer metricNamer;
 	private Timer taskSubmittedTimer;
 	private Timer taskExecutedTimer;
 	
-    public LocalTaskExecutorService(HazeltaskTopology<G> topology, ExecutorConfig<G> executorConfig, IExecutorTopologyService<G> executorTopologyService) {
-		this.topology = topology;
-		this.metricNamer = topology.getHazeltaskConfig().getMetricNamer();
+	private Timer getGroupSizesTimer;
+    private Timer getOldestTaskTimeTimer;
+    private Timer getQueueSizeTimer;
+	
+    public LocalTaskExecutorService(HazelcastInstance hazelcast, HazeltaskTopology<G> topology, ExecutorConfig<G> executorConfig, IExecutorTopologyService<G> executorTopologyService, ExecutorMetrics metrics) {
+		this.hazelcast = hazelcast;
+        this.topology = topology;
 		
 		ThreadFactory factory = executorConfig.getThreadFactory();
 		
 		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<G>, G>(executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
-		
-		if(topology.getHazeltaskConfig().getMetricsRegistry() != null) {
 			//TODO: move metrics to ExecutorMetrics class
-		    MetricsRegistry metrics = topology.getHazeltaskConfig().getMetricsRegistry();
-		    taskSubmittedTimer = metrics.newTimer(createName("task-submitted"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-			taskExecutedTimer = metrics.newTimer(createName("task-executed"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-			metrics.newGauge(createName("throughput"), new TaskThroughputGauge(taskSubmittedTimer, taskExecutedTimer));
-			metrics.newGauge(createName("queue-size"), new CollectionSizeGauge(taskQueue));
-		}
+		taskSubmittedTimer = metrics.getLocalTaskSubmitTimer().getMetric();
+		taskExecutedTimer = metrics.getTaskExecutionTimer().getMetric();
+		getGroupSizesTimer = metrics.getGetGroupSizesTimer().getMetric();
+		getOldestTaskTimeTimer = metrics.getGetOldestTaskTimeTimer().getMetric();
+		getQueueSizeTimer = metrics.getGetQueueSizeTimer().getMetric();
+		
+		metrics.registerCollectionSizeGauge(new CollectionSizeGauge(taskQueue));
+		metrics.registerExecutionThroughputGauge(new TaskThroughputGauge(taskSubmittedTimer, taskExecutedTimer));
 		
 		@SuppressWarnings({ "rawtypes", "unchecked" })
         BlockingQueue<Runnable> blockingQueue = (BlockingQueue<Runnable>) (BlockingQueue) taskQueue;
@@ -85,21 +88,12 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		        new AbortPolicy());
 		
 		if(executorConfig.isFutureSupportEnabled())
-		    localExecutorPool.addListener(new ResponseExecutorListener<G>(executorTopologyService, topology.getLoggingService()));
+		    localExecutorPool.addListener(new ResponseExecutorListener<G>(executorTopologyService));
 		
 		localExecutorPool.addListener(new TaskCompletionExecutorListener<G>(executorTopologyService));
 		
 		tasksInProgressTracker = new TasksInProgressTracker();
 		localExecutorPool.addListener(tasksInProgressTracker);
-	}
-	
-	private MetricName createName(String name) {
-		return metricNamer.createMetricName(
-			"hazeltask", 
-			topology.getName(), 
-			LocalTaskExecutorService.class.getSimpleName(), 
-			name
-		);
 	}
 
 	public synchronized void startup(){
@@ -163,31 +157,46 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	 * @return
 	 */
 	public Long getOldestTaskCreatedTime(){
-	    long oldest = Long.MAX_VALUE;
-	    
-	    /*
-	     * I am asking this question first, because if I ask it after I could
-	     * miss the oldest time if the oldest is polled and worked on
-	     */
-	    Long oldestQueueTime = this.taskQueue.getOldestQueueTime();
-	    if(oldestQueueTime != null)
-	        oldest = oldestQueueTime;
-	    
-	    //there is a tiny race condition here... but we just want to make our best attempt
-	    long inProgressOldestTime = tasksInProgressTracker.getOldestTime();
-	    
-	    if(inProgressOldestTime < oldest)
-	        oldest = inProgressOldestTime;
-	    
-	    return oldest;
+	    TimerContext ctx = getOldestTaskTimeTimer.time();
+	    try {
+    	    long oldest = Long.MAX_VALUE;
+    	    
+    	    /*
+    	     * I am asking this question first, because if I ask it after I could
+    	     * miss the oldest time if the oldest is polled and worked on
+    	     */
+    	    Long oldestQueueTime = this.taskQueue.getOldestQueueTime();
+    	    if(oldestQueueTime != null)
+    	        oldest = oldestQueueTime;
+    	    
+    	    //there is a tiny race condition here... but we just want to make our best attempt
+    	    long inProgressOldestTime = tasksInProgressTracker.getOldestTime();
+    	    
+    	    if(inProgressOldestTime < oldest)
+    	        oldest = inProgressOldestTime;
+    	    
+    	    return oldest;
+	    } finally {
+	        ctx.stop();
+	    }
 	}
 	
 	public long getQueueSize() {
-	    return this.taskQueue.size();
+	    TimerContext ctx = getQueueSizeTimer.time();
+	    try {
+	        return this.taskQueue.size();
+	    } finally {
+	        ctx.stop();
+	    }
 	}
 	
 	public Map<G, Integer> getGroupSizes() {
-	    return this.taskQueue.getGroupSizes();
+	    TimerContext ctx = getGroupSizesTimer.time();
+	    try {
+	        return this.taskQueue.getGroupSizes();
+	    } finally {
+	        ctx.stop();
+	    }
 	}
 	
 	public void execute(HazeltaskTask<G> command) {
@@ -200,7 +209,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		if(taskSubmittedTimer != null)
 			tCtx = taskSubmittedTimer.time();
 		try {
-			command.setHazelcastInstance(topology.getHazeltaskConfig().getHazelcast());
+			command.setHazelcastInstance(hazelcast);
 			localExecutorPool.execute(command);
 		} finally {
 			if(tCtx != null)

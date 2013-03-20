@@ -16,25 +16,28 @@ import java.util.logging.Level;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskServiceListener;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.ServiceListenable;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.collections.router.ListRouter;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskIdAdapter;
+import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.TimerContext;
 
 /**
- * TODO: too many generics warnings.  I can't make everything parameterized because ExecutorService isn't
- * TODO:  return ExecutorService to the developer, but have it really be a parameterized DistributedExecutorService
  * @author jclawson
  *
  */
 public class DistributedExecutorService<GROUP extends Serializable> implements ExecutorService, ServiceListenable<DistributedExecutorService<GROUP>> {
 
+    private static ILogger LOGGER = Logger.getLogger(DistributedExecutorService.class.getName());
+    
     private ExecutorConfig<GROUP> executorConfig;
     private final HazeltaskTopology<GROUP>        topology;
     private final ListRouter<Member>       memberRouter;
@@ -44,7 +47,7 @@ public class DistributedExecutorService<GROUP extends Serializable> implements E
     private final TaskIdAdapter<? super Object, GROUP>            taskIdAdapter;
     private final DistributedFutureTracker<GROUP> futureTracker;
     private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>>();
-    private final ILogger LOGGER;
+    
     private final IExecutorTopologyService<GROUP>  executorTopologyService;
     
     private com.yammer.metrics.core.Timer taskAddedTimer;
@@ -55,10 +58,11 @@ public class DistributedExecutorService<GROUP extends Serializable> implements E
     
     
     public DistributedExecutorService(HazeltaskTopology<GROUP>         hcTopology, 
-                                      IExecutorTopologyService<GROUP>  executorTopologyService, 
+                                      final IExecutorTopologyService<GROUP>  executorTopologyService, 
                                       ExecutorConfig<GROUP>            executorConfig, 
                                       DistributedFutureTracker<GROUP>  futureTracker, 
-                                      LocalTaskExecutorService<GROUP> localExecutorService) {
+                                      LocalTaskExecutorService<GROUP> localExecutorService,
+                                      ExecutorMetrics metrics) {
         this.topology = hcTopology;
         this.executorConfig = executorConfig;
         this.executorTopologyService = executorTopologyService;
@@ -70,15 +74,18 @@ public class DistributedExecutorService<GROUP extends Serializable> implements E
         });
         
         taskIdAdapter = executorConfig.getTaskIdAdapter();
-        
-        this.futureTracker = futureTracker;
-        
+        this.futureTracker = futureTracker;        
         this.localExecutorService = localExecutorService;
         
-        LOGGER = topology.getLoggingService().getLogger(DistributedExecutorService.class.getName());
+        taskAddedTimer = metrics.getTaskSubmitTimer().getMetric();
+        tasksRejected = metrics.getTaskRejectedMeter().getMetric();
         
-        taskAddedTimer = hcTopology.getExecutorMetrics().getTaskSubmitTimer().getMetric();
-        tasksRejected = hcTopology.getExecutorMetrics().getTaskRejectedMeter().getMetric();
+        metrics.registerLocalWriteAheadLogSizeGauge(new Gauge<Integer>(){
+            @Override
+            public Integer value() {
+                return executorTopologyService.getLocalPendingTaskMapSize();
+            }
+        });
     }
 
     public ExecutorConfig<?> getExecutorConfig() {

@@ -2,15 +2,20 @@ package com.hazeltask.executor;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
+import com.hazeltask.executor.metrics.LocalFuturesWaitingGauge;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.executor.task.TaskResponse.Status;
+import com.yammer.metrics.core.Histogram;
 
 /**
  * 
@@ -57,13 +62,24 @@ import com.hazeltask.executor.task.TaskResponse.Status;
  */
 public class DistributedFutureTracker<GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable>> {
     
-    private SetMultimap<Serializable, DistributedFuture<Serializable>> futures = 
-            Multimaps.<Serializable, DistributedFuture<Serializable>>synchronizedSetMultimap(
-                HashMultimap.<Serializable, DistributedFuture<Serializable>>create()
+    private SetMultimap<UUID, DistributedFuture<Serializable>> futures = 
+            Multimaps.<UUID, DistributedFuture<Serializable>>synchronizedSetMultimap(
+                HashMultimap.<UUID, DistributedFuture<Serializable>>create()
             );
     
-    public DistributedFutureTracker() {
-        
+    private final Histogram futureWaitTimeHistogram;
+    
+    /**
+     * 
+     * @param metrics (nullable)
+     */
+    public DistributedFutureTracker(ExecutorMetrics metrics) {
+        if(metrics != null) {
+            metrics.registerLocalFuturesWaitingGauge(new LocalFuturesWaitingGauge(this));
+            futureWaitTimeHistogram = metrics.getFutureWaitTimeHistogram().getMetric();
+        } else {
+            futureWaitTimeHistogram = null;
+        }
     }
     
     //It is required that T be Serializable
@@ -74,15 +90,23 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
         return future;
     }
     
-    protected boolean removeAll(Serializable id) {
-        return this.futures.removeAll(id).size() > 0;
+    protected Set<DistributedFuture<Serializable>> removeAll(UUID id) {
+         Set<DistributedFuture<Serializable>> futures = this.futures.removeAll(id);
+         if(futureWaitTimeHistogram != null) {
+             for(DistributedFuture<Serializable> f : futures) {
+                 //update the histogram with the elapsed time
+                 futureWaitTimeHistogram.update(System.currentTimeMillis() - f.getCreatedTime());
+             }
+         }
+         
+         return futures;
     }
     
     @Override
 	public void onMessage(Message<TaskResponse<Serializable>> message) {
         TaskResponse<Serializable> response = message.getMessageObject();
-        Serializable taskId = response.getTaskId();
-        Collection<DistributedFuture<Serializable>> taskFutures = futures.removeAll(taskId);
+        UUID taskId = response.getTaskId();
+        Collection<DistributedFuture<Serializable>> taskFutures = removeAll(taskId);
         if(taskFutures.size() > 0) {
             for(DistributedFuture<Serializable> future : taskFutures) {
                 if(response.getStatus() == Status.FAILURE) {

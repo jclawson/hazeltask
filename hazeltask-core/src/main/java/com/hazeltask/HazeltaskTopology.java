@@ -4,39 +4,26 @@ import java.io.Serializable;
 import java.util.Collection;
 
 import com.hazelcast.core.Member;
-import com.hazelcast.logging.LoggingService;
-import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.CopyOnWriteArrayListSet;
-import com.hazeltask.executor.ExecutorMetrics;
 
 /**
- * TODO:  Who should be responsible for keeping this topology up to date?  I think it should be
- *        whoever created it.  They can instantiate a TopologyUpdateTask or something...
- *        This update task will ping members for ready state, watch for when nodes leave, etc
- * 
+ * HazeltaskTopology is responsible for keeping the state of the cluster
  * 
  * @author jclawson
  */
 public class HazeltaskTopology<GROUP extends Serializable> {
-    private final HazeltaskConfig<GROUP> hazeltaskConfig;
     private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final ITopologyService<GROUP> topologyService;
+    private final Member localMember;
+    private final String topologyName;
+    private volatile boolean iAmReady;
     
-    private final LoggingService loggingService;
-    private boolean iAmReady;
-    
-    private final ExecutorMetrics executorMetrics;
-    
-    public HazeltaskTopology(HazeltaskConfig<GROUP> hazeltaskConfig, ITopologyService<GROUP> svc) {
-        this.hazeltaskConfig = hazeltaskConfig;
+    public HazeltaskTopology(String topologyName, Member localMember) {
         this.readyMembers = new CopyOnWriteArrayListSet<Member>();
-        this.topologyService = svc;
-        loggingService = hazeltaskConfig.getHazelcast().getLoggingService();
-        this.executorMetrics = new ExecutorMetrics(hazeltaskConfig);
-    }
-    
-    public LoggingService getLoggingService() {
-        return this.loggingService;
+        this.localMember = localMember;
+        this.topologyName = topologyName;
+        if(!localMember.localMember()) {
+            throw new IllegalArgumentException(localMember+" is not the local member");
+        }
     }
     
     public CopyOnWriteArrayListSet<Member> getReadyMembers() {
@@ -45,7 +32,7 @@ public class HazeltaskTopology<GROUP extends Serializable> {
     
     protected void iAmReady() {
         this.iAmReady = true;
-        this.readyMembers.add(hazeltaskConfig.getHazelcast().getCluster().getLocalMember());
+        this.readyMembers.add(localMember);
     }
     
     protected void shutdown() {
@@ -61,24 +48,10 @@ public class HazeltaskTopology<GROUP extends Serializable> {
     }
     
     public String getName() {
-        return this.hazeltaskConfig.getTopologyName();
-    }
-    
-    public ITopologyService<GROUP> getTopologyService() {
-        return this.topologyService;
-    }
-    
-    public HazeltaskConfig<GROUP> getHazeltaskConfig() {
-        return this.hazeltaskConfig;
-    }
-
-    public ExecutorMetrics getExecutorMetrics() {
-        return executorMetrics;
+        return this.topologyName;
     }
     
     public Member getLocalMember() {
-        return hazeltaskConfig.getHazelcast().getCluster().getLocalMember();
-    }
-    
-    
+        return localMember;
+    } 
 }

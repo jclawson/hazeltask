@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazelcast.core.Message;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
 
@@ -24,7 +25,7 @@ public class DistributedFutureTrackerTest {
     public void setupData() {
         workOneId = UUID.randomUUID();
         workTwoId = UUID.randomUUID();
-        tracker = new DistributedFutureTracker();
+        tracker = new DistributedFutureTracker(null);
     }
     
     @Test

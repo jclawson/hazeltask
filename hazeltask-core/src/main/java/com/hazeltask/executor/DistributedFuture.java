@@ -20,11 +20,12 @@ import com.google.common.util.concurrent.ListenableFuture;
  * @param <V>
  */
 public class DistributedFuture<V> implements Future<V>, ListenableFuture<V> {
+    private final long createdTime;
     private final Sync sync = new Sync();
     private final ExecutionList executionList = new ExecutionList();
     
     public DistributedFuture() {
-        
+        createdTime = System.currentTimeMillis();
     }
 
     protected void done() { 
@@ -35,6 +36,10 @@ public class DistributedFuture<V> implements Future<V>, ListenableFuture<V> {
         throw new RuntimeException("Not Implemented yet");
         //FIXME: send cancellation message
         //return sync.innerCancel(mayInterruptIfRunning);
+    }
+    
+    public long getCreatedTime() {
+        return this.createdTime;
     }
 
     public boolean isCancelled() {

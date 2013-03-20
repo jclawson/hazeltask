@@ -26,6 +26,7 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.clusterop.GetLocalGroupQueueSizesOp;
@@ -45,7 +46,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     private HazeltaskTopology<GROUP> topology;
     private String topologyName;
     private final Member me;
-    private ILogger LOGGER;
+    private static ILogger LOGGER = Logger.getLogger(HazelcastExecutorTopologyService.class.getName());
     
     
     private final ExecutorService communicationExecutorService;
@@ -62,8 +63,6 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         this.topology = topology;
         hazelcast = hazeltaskConfig.getHazelcast();
         this.me = hazelcast.getCluster().getLocalMember();
-        this.LOGGER = topology.getLoggingService().getLogger(HazelcastExecutorTopologyService.class.getName());
-        
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
         
         String taskDistributorName = name("task-distributor");

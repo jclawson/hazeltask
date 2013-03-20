@@ -4,17 +4,16 @@ import java.io.Serializable;
 import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.LoggingService;
+import com.hazelcast.logging.Logger;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class ResponseExecutorListener< G extends Serializable> implements ExecutorListener<G> {
     
     private IExecutorTopologyService<G> service;
-    private ILogger LOGGER;
+    private static ILogger LOGGER = Logger.getLogger(ResponseExecutorListener.class.getName());
     
-    public ResponseExecutorListener(IExecutorTopologyService<G> service, LoggingService loggingService) {
+    public ResponseExecutorListener(IExecutorTopologyService<G> service) {
         this.service = service;
-        LOGGER = loggingService.getLogger(ResponseExecutorListener.class.getName());
     }
     
     public void afterExecute(HazeltaskTask<G> runnable, Throwable exception) {
