@@ -2,8 +2,15 @@ package com.hazeltask;
 
 import java.io.Serializable;
 import java.util.UUID;
+import java.util.logging.Level;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.LifecycleEvent;
+import com.hazelcast.core.LifecycleEvent.LifecycleState;
+import com.hazelcast.core.LifecycleListener;
+import com.hazelcast.core.LifecycleService;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.config.Validator;
@@ -19,6 +26,9 @@ import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
 public class HazeltaskInstance<GROUP extends Serializable> {
+    private static ILogger LOGGER = Logger.getLogger(HazeltaskInstance.class.getName());
+    
+    
     private final DistributedExecutorServiceImpl<GROUP>       executor;
     private final HazeltaskTopology<GROUP>                topology;
     private final HazeltaskConfig<GROUP> hazeltaskConfig;
@@ -73,19 +83,24 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
 //            TODO: is it useful to only auto-start after hazelcast is done starting?
-//            LifecycleService lifecycleService = hazeltaskConfig.getHazelcast().getLifecycleService();
-//            final ReentrantLock autoStartLock = new ReentrantLock();
-//            LifecycleListener autoStartListener = new LifecycleListener() {                
-//                public void stateChanged(LifecycleEvent event) {
-//                    if(!lifecycleService.isRunning()) {
-//                        autoStartLock.lock();
-//                    }
-//                }
-//            };
+            final LifecycleService lifecycleService = hazeltaskConfig.getHazelcast().getLifecycleService();
+            LifecycleListener autoStartListener = new LifecycleListener() {                
+                public void stateChanged(LifecycleEvent event) {
+                    if(event.getState() == LifecycleState.STARTED) {
+                        LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is starting up due to Hazelcast startup");
+                        executor.startup();
+                    } else if (event.getState() == LifecycleState.SHUTTING_DOWN) {
+                        LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is shutting down due to Hazelcast shutdown");
+                        executor.shutdown();
+                    }
+                }
+            };
+            lifecycleService.addLifecycleListener(autoStartListener);
             
-//            hazeltaskConfig.getHazelcast().getLifecycleService().addLifecycleListener(autoStartListener);
-
-              executor.startup();
+            if(lifecycleService.isRunning()) {
+                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is starting up");
+                executor.startup();
+            }
         }
     }
     
@@ -107,16 +122,21 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService<GROUP>>(){
             @Override
             public void onEndStart(DistributedExecutorService<GROUP> svc) {
+                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is scheduling periodic timer tasks");
+                
                 hazeltaskTimer.schedule(bundleTask, 1000, executorConfig.getRecoveryProcessPollInterval(), 2);
                 if(rebalanceTask != null)
                     hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getLoadBalancingConfig().getRebalanceTaskPeriod());
                 
-                if(!executorConfig.isDisableWorkers())
+                if(!executorConfig.isDisableWorkers()) {
                    topology.iAmReady();
+                   LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is ready to recieve tasks");                 
+                }
             }
 
             @Override
             public void onBeginShutdown(DistributedExecutorService<GROUP> svc) {
+                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is unscheduling timer tasks and stopping the timer thread");              
                 topology.shutdown();
                 hazeltaskTimer.unschedule(bundleTask);
                 if(rebalanceTask != null)

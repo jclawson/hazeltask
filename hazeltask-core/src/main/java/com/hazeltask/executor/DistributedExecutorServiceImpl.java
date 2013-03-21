@@ -3,6 +3,7 @@ package com.hazeltask.executor;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -54,6 +55,9 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
     
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10;
+    
+    private boolean isStarted = false;
+    private boolean isShutdown = false;
     
     
     public DistributedExecutorServiceImpl(HazeltaskTopology<GROUP>         hcTopology, 
@@ -115,35 +119,37 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
         return doShutdownNow(true);
     }
     
-    protected List<HazeltaskTask<GROUP>> doShutdownNow(boolean shutdownNow) {
-        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
-            listener.onBeginShutdown(this);
-        
-        //TODO: is everything shutdown?
-        List<HazeltaskTask<GROUP>> tasks = null;
-        if(!executorConfig.isDisableWorkers()) {
-            if(shutdownNow)
-                tasks = ((LocalTaskExecutorService<GROUP>)this.localExecutorService).shutdownNow();
-            else
-                this.localExecutorService.shutdown();
+    protected synchronized List<HazeltaskTask<GROUP>> doShutdownNow(boolean shutdownNow) {
+        if(!isShutdown) {
+            isShutdown = true;
+            for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
+                listener.onBeginShutdown(this);
+            
+            //TODO: is everything shutdown?
+            List<HazeltaskTask<GROUP>> tasks = null;
+            if(!executorConfig.isDisableWorkers()) {
+                if(shutdownNow)
+                    tasks = ((LocalTaskExecutorService<GROUP>)this.localExecutorService).shutdownNow();
+                else
+                    this.localExecutorService.shutdown();
+            }
+            
+            for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
+                listener.onEndShutdown(this);
+            
+            return tasks;
         }
-        
-        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
-            listener.onEndShutdown(this);
-        
-        return tasks;
+        return Collections.emptyList();
     }
 
     @Override
     public boolean isShutdown() {
-        // TODO Auto-generated method stub
-        throw new RuntimeException("Not Implemented Yet");
+        return isShutdown;
     }
 
     @Override
     public boolean isTerminated() {
-        // TODO Auto-generated method stub
-        throw new RuntimeException("Not Implemented Yet");
+        return isShutdown;
     }
 
     @Override
@@ -306,12 +312,16 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
     }
 
     @Override
-    public void startup() {
-        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
-            listener.onBeginStart(this);
-        //TODO: clean up this code.  There isn't really a startup process anymore
-        for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
-            listener.onEndStart(this);
+    public synchronized void startup() {
+        if(!isStarted) {
+            for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
+                listener.onBeginStart(this);
+            //TODO: clean up this code.  There isn't really a startup process anymore
+            for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
+                listener.onEndStart(this);
+            
+            isStarted = true;
+        }
     }
 
     @Override

@@ -51,7 +51,7 @@ built-in support for prioritizing tasks based on an enum.
 Advanced Multi-tenent Priority Task Queue
 ------------------------------------------
 Oh yes you can.  Its easy to combine the examples above and provide per-customer HIGH, MEDIUM, and LOW prioritization.  You can 
-implement any kind of prioritization you can think of.  Any... priorities can CHANGE.  This allows you to implement features like:
+implement any kind of prioritization you can think of.  And... priorities can CHANGE.  This allows you to implement features like:
 "Bump customer 7 to the highest priority for the next hour".
 
 
