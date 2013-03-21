@@ -4,13 +4,12 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +28,7 @@ public class HazeltaskThreadPoolExecutorTest {
     public void setup() {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
-        task = new HazeltaskTask<String>("test", UUID.randomUUID(),"1", (Runnable) null);
+        task = new HazeltaskTask<String>(UUID.randomUUID(),"1", (Runnable) null);
         listener = new HazeltaskThreadPoolExecutor(1,1,1,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),Executors.defaultThreadFactory(),new AbortPolicy());
         
         listener.addListener(listener1);

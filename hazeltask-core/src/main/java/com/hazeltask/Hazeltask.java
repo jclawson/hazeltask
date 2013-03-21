@@ -15,7 +15,7 @@ public final class Hazeltask {
     }
 
     @SuppressWarnings("unchecked")
-    public static <GROUP extends Serializable> HazeltaskInstance<GROUP> getHazeltaskInstanceByTopology(String topology) {
+    public static <GROUP extends Serializable> HazeltaskInstance<GROUP> getInstanceByName(String topology) {
         return (HazeltaskInstance<GROUP>) instances.get(topology);
     }
     
@@ -28,12 +28,12 @@ public final class Hazeltask {
     @Deprecated
     public static HazeltaskInstance<Integer> getDefaultInstance() {
         HazeltaskConfig<Integer> hazeltaskConfig = new HazeltaskConfig<Integer>();
-        HazeltaskInstance<Integer> instance = getHazeltaskInstanceByTopology(DEFAULT_TOPOLOGY);
+        HazeltaskInstance<Integer> instance = getInstanceByName(DEFAULT_TOPOLOGY);
         if(instance == null) {
             try {
                 return (HazeltaskInstance<Integer>) newHazeltaskInstance(hazeltaskConfig);
             } catch (IllegalStateException e) {
-                instance = getHazeltaskInstanceByTopology(DEFAULT_TOPOLOGY);
+                instance = getInstanceByName(DEFAULT_TOPOLOGY);
             }
         }
         

@@ -9,6 +9,7 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.config.Validator;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.executor.DistributedExecutorService;
+import com.hazeltask.executor.DistributedExecutorServiceImpl;
 import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
@@ -18,7 +19,7 @@ import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
 public class HazeltaskInstance<GROUP extends Serializable> {
-    private final DistributedExecutorService<GROUP>       executor;
+    private final DistributedExecutorServiceImpl<GROUP>       executor;
     private final HazeltaskTopology<GROUP>                topology;
     private final HazeltaskConfig<GROUP> hazeltaskConfig;
     private final UUID hazeltaskInstanceId = UUID.randomUUID();
@@ -49,7 +50,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         
         
         if(!executorConfig.isDisableWorkers())
-            localExeutorService = new LocalTaskExecutorService<GROUP>(hazelcast, topology, executorConfig, executorTopologyService, executorMetrics);
+            localExeutorService = new LocalTaskExecutorService<GROUP>(hazelcast, executorConfig, hazeltaskConfig.getThreadFactory(), executorTopologyService, executorMetrics);
         else
             localExeutorService = null;
         
@@ -61,13 +62,13 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
         }
         
-        executor = new DistributedExecutorService<GROUP>(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService, executorMetrics);
+        executor = new DistributedExecutorServiceImpl<GROUP>(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService, executorMetrics);
         
     }
     
     protected void start() {
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
-        setupDistributedExecutor(topology, hazeltaskTimer, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
+        setupDistributedExecutor(topology, hazeltaskTimer, executorConfig, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
@@ -88,7 +89,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         }
     }
     
-    private void setupDistributedExecutor(final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, DistributedExecutorService<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
+    private void setupDistributedExecutor(final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, final ExecutorConfig<GROUP> executorConfig, DistributedExecutorServiceImpl<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
         final StaleTaskFlushTimerTask<GROUP> bundleTask = new StaleTaskFlushTimerTask<GROUP>(topology, svc, executorTopologyService, executorMetrics);
         final TaskRebalanceTimerTask<GROUP> rebalanceTask;
         if(!svc.getExecutorConfig().isDisableWorkers())
@@ -106,11 +107,11 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService<GROUP>>(){
             @Override
             public void onEndStart(DistributedExecutorService<GROUP> svc) {
-                hazeltaskTimer.schedule(bundleTask, 1000, svc.getExecutorConfig().getRecoveryProcessPollInterval(), 2);
+                hazeltaskTimer.schedule(bundleTask, 1000, executorConfig.getRecoveryProcessPollInterval(), 2);
                 if(rebalanceTask != null)
                     hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getLoadBalancingConfig().getRebalanceTaskPeriod());
                 
-                if(!svc.getExecutorConfig().isDisableWorkers())
+                if(!executorConfig.isDisableWorkers())
                    topology.iAmReady();
             }
 

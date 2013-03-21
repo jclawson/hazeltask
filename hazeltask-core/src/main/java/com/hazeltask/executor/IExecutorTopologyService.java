@@ -16,15 +16,16 @@ import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 
 /**
- * Create hazelcast backed implementation to abstract how we communicate in the cluster
+ * Business logic classes use an impl of his class to perform actions across the cluster
  * 
+ * @see HazelcastExecutorTopologyService
  * @author jclawson
  *
  */
 public interface IExecutorTopologyService<GROUP extends Serializable> {
     //public boolean isMemberReady(Member member);
     
-    public boolean sendTask(HazeltaskTask<GROUP> task, Member member, boolean waitForAck) throws TimeoutException;
+    public void sendTask(HazeltaskTask<GROUP> task, Member member) throws TimeoutException;
     
     
     /**

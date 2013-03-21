@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.hazelcast.logging.LoggingService;
+import com.hazeltask.executor.local.ResponseExecutorListener;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class ResponseExecutorListenerTest {
@@ -30,7 +31,7 @@ public class ResponseExecutorListenerTest {
     
     @Test
     public void testSuccessfulExecution() {        
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workId, "group-1", new SuccessCallable());
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workId, "group-1", new SuccessCallable());
         work.run();
         listener.afterExecute(work, null);
         verify(mockedSvc).broadcastTaskCompletion(eq(workId), (Serializable) any());
@@ -38,7 +39,7 @@ public class ResponseExecutorListenerTest {
     
     @Test
     public void testFailedExecution() {
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workId, "group-1", new SuccessCallable());
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workId, "group-1", new SuccessCallable());
         work.run();
         TestException e = new TestException("Darn!");
         listener.afterExecute(work, e);
@@ -48,7 +49,7 @@ public class ResponseExecutorListenerTest {
     @Test
     public void testFailedExecutionWorkFail() {
         TestException e = new TestException("Bah!");
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workId, "group-1", new ExceptionCallable(e));
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workId, "group-1", new ExceptionCallable(e));
         work.run();
         listener.afterExecute(work, null);
         verify(mockedSvc).broadcastTaskError(eq(workId), eq(e));
@@ -58,7 +59,7 @@ public class ResponseExecutorListenerTest {
     public void testFailedExecutionAllFail() {
         TestException e1 = new TestException("Bah!");
         TestException e2 = new TestException("Humbug!");
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workId, "group-1", new ExceptionCallable(e1));
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workId, "group-1", new ExceptionCallable(e1));
         work.run();
         listener.afterExecute(work, e2);
         verify(mockedSvc).broadcastTaskError(eq(workId), eq(e1));

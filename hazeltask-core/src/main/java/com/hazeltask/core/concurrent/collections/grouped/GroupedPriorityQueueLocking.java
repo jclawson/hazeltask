@@ -23,9 +23,6 @@ import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue;
 
 /**
- * This class uses locks for concurrency, so its really not ..great..  I would really like to 
- * use lock free datastructures.  The complicated part is the priority queue of routes.  we could
- * try a ConcurrentSkipListMap instead??
  * @author jclawson
  *
  * @param <E>
@@ -80,20 +77,20 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
         return Collections.unmodifiableList(groups);
     }
 
-    public List<G> getNonEmptyGroups() {
-        lock.readLock().lock();
-        try {
-            List<G> groups = new ArrayList<G>();
-            for (Entry<G, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
-                if (qEntry.getValue().size() > 0) {
-                    groups.add(qEntry.getKey());
-                }
-            }
-            return groups;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
+//    public List<G> getNonEmptyGroups() {
+//        lock.readLock().lock();
+//        try {
+//            List<G> groups = new ArrayList<G>();
+//            for (Entry<G, ITrackedQueue<E>> qEntry : queuesByGroup.entrySet()) {
+//                if (qEntry.getValue().size() > 0) {
+//                    groups.add(qEntry.getKey());
+//                }
+//            }
+//            return groups;
+//        } finally {
+//            lock.readLock().unlock();
+//        }
+//    }
 
     private Queue<E> getOrCreateGroupQueue(G group) {
         Queue<E> q = getQueueByGroup(group);
@@ -171,7 +168,7 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
                 
                 if(i > size) {
                     //since we lock, this should never happen
-                    //log this
+                    //TODO: log this
                 }
                 i++;
             }

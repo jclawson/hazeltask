@@ -100,22 +100,8 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
 //    }
 
     
-    public boolean sendTask(HazeltaskTask<GROUP> task, Member member, boolean waitForAck) throws TimeoutException {
-        @SuppressWarnings("unchecked")
-        Future<Boolean> future = (Future<Boolean>) taskDistributor.submit(MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member));
-        if(waitForAck) {
-            try {
-                return future.get(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
-            } catch (ExecutionException e) {
-                LOGGER.log(Level.SEVERE, "Unable to submit task for execution", e);
-                return false;
-            }
-        } else {
-            return true;
-        }
+    public void sendTask(HazeltaskTask<GROUP> task, Member member) throws TimeoutException {
+        taskDistributor.execute(MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member));       
     }
 
     /**
@@ -220,15 +206,14 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
                 Collection<HazeltaskTask<GROUP>> task = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
                 result.addAll(task);
             } catch (InterruptedException e) {
-                //FIXME: log... we may have just dumped work into the ether.. it will have to be recovered
-                //this really really should not happen
+                LOGGER.log(Level.SEVERE,"Unable to take tasks. I was interrupted.  We may have pulled work out of another member... it will need to be recovered", e);
                 Thread.currentThread().interrupt();
                 return result;
             } catch (ExecutionException e) {
-                //FIXME: log... we may have just dumped work into the ether.. it will have to be recovered
+                LOGGER.log(Level.SEVERE,"Unable to take tasks. I got an exception.  We may have pulled work out of another member... it will need to be recovered", e);
                 continue;
             } catch (TimeoutException e) {
-                //FIXME: log error... we just dumped work into the ether.. it will have to be recovered
+                LOGGER.log(Level.SEVERE,"Unable to take tasks within 3 minutes.  We may have pulled work out of another member... it will need to be recovered");
                 continue;
             } 
         }

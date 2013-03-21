@@ -18,12 +18,17 @@ import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
 
 /**
- * The purpose of this class is to hold onto all the related metrics we track.  This allows
- * any part of the system to find and analyze the metrics of another part.  This might be
+ * The purpose of this class is to hold onto all the related metrics we track and provide easy to
+ * read JavaDocs on all the metrics that are supported.  
+ * 
+ * This class allows any part of the system to find and analyze the metrics of another part.  This might be
  * interesting for load balancing techniques.
  * 
+ * I want to use this class to generate a statistics API.
+ * 
  * When Metrics version 3.0 comes out, we will not have to wrap in the Metics<> wrapper because
- * metrics will then be cognizant of their own names.
+ * metrics will then be cognizant of their own names and we will very likely be able to simplify
+ * a lot of this boiler plate code.
  * 
  * TODO metrics:
  *  - percent errored

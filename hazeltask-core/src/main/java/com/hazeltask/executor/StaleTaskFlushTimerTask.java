@@ -18,7 +18,7 @@ import com.yammer.metrics.core.TimerContext;
 public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends BackoffTask {
 	private static ILogger LOGGER = Logger.getLogger(StaleTaskFlushTimerTask.class.getName());
 	
-    private final DistributedExecutorService<GROUP> svc;
+    private final DistributedExecutorServiceImpl<GROUP> svc;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
 
     public static long EXPIRE_TIME_BUFFER = 5000L; //5 seconds
@@ -27,7 +27,7 @@ public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends Backoff
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorService<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
+    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorServiceImpl<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
         this.svc = svc;
         this.flushTimer = metrics.getStaleTaskFlushTimer().getMetric();
         this.numFlushedHistogram = metrics.getStaleFlushCountHistogram().getMetric();

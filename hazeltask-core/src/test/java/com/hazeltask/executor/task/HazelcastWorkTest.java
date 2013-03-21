@@ -16,7 +16,7 @@ public class HazelcastWorkTest {
     @Test
     public void testRunnable() {
         final AtomicInteger value = new AtomicInteger(0);
-        HazeltaskTask work = new HazeltaskTask("test", UUID.randomUUID(), "group", new Runnable(){
+        HazeltaskTask work = new HazeltaskTask(UUID.randomUUID(), "group", new Runnable(){
             public void run() {
                 value.set(1);
             }
@@ -27,7 +27,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallable() {
-        HazeltaskTask work = new HazeltaskTask("test", UUID.randomUUID(), "group", new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask(UUID.randomUUID(), "group", new Callable<Integer>(){
             public Integer call() throws Exception {
                 return 1;
             }
@@ -42,7 +42,7 @@ public class HazelcastWorkTest {
     
     @Test
     public void testCallableError() {
-        HazeltaskTask work = new HazeltaskTask("test", UUID.randomUUID(), "group", new Callable<Integer>(){
+        HazeltaskTask work = new HazeltaskTask(UUID.randomUUID(), "group", new Callable<Integer>(){
             public Integer call() throws Exception {
                 throw new RuntimeException("Hello");
             }
@@ -58,7 +58,7 @@ public class HazelcastWorkTest {
         HazelcastInstance myInstance = mock(HazelcastInstance.class);
         HCAwareTask task = new HCAwareTask();
         
-        HazeltaskTask work = new HazeltaskTask("test", UUID.randomUUID(), "group", task);
+        HazeltaskTask work = new HazeltaskTask(UUID.randomUUID(), "group", task);
         work.setHazelcastInstance(myInstance);
         work.run();
         Assert.assertNull(work.getException()); 
@@ -70,7 +70,7 @@ public class HazelcastWorkTest {
         HazelcastInstance myInstance = mock(HazelcastInstance.class);
         HCAwareTask2 task = new HCAwareTask2();
         
-        HazeltaskTask work = new HazeltaskTask("test", UUID.randomUUID(), "group", task);
+        HazeltaskTask work = new HazeltaskTask(UUID.randomUUID(), "group", task);
         work.setHazelcastInstance(myInstance);
         work.run();
         Assert.assertNull(work.getException()); 

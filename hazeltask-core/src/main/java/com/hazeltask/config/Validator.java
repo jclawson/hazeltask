@@ -1,7 +1,7 @@
 package com.hazeltask.config;
 
 import com.hazelcast.core.Hazelcast;
-import com.hazeltask.core.concurrent.DefaultThreadFactory;
+import com.hazeltask.core.concurrent.NamedThreadFactory;
 import com.yammer.metrics.Metrics;
 
 public class Validator { 
@@ -19,11 +19,7 @@ public class Validator {
         }
         
         if(config.getThreadFactory() == null) {
-            config.withThreadFactory(new DefaultThreadFactory("Hazeltask", config.getTopologyName()));
-        }
-        
-        if(executorConfig.getThreadFactory() == null) {
-            executorConfig.withThreadFactory(new DefaultThreadFactory("Hazeltask", config.getTopologyName()+"-worker"));
+            config.withThreadFactory(new NamedThreadFactory("Hazeltask", config.getTopologyName()));
         }
         
         if(executorConfig.getLoadBalancingConfig().getGroupPrioritizer() == null) {

@@ -20,11 +20,8 @@ public class ExecutorConfigTest {
         Assert.assertTrue(adapter.supports(task));
         
         Object group = adapter.getTaskGroup(task);
-        Object id = adapter.getTaskId(task);
         
         Assert.assertEquals(Integer.class, group.getClass());
         Assert.assertEquals(Integer.MIN_VALUE, (int)(Integer)group);
-        
-        Assert.assertEquals(UUID.class, id.getClass());
     }
 }

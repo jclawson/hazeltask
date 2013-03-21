@@ -10,7 +10,7 @@ import com.hazelcast.nio.DataSerializable;
 import com.hazeltask.Hazeltask;
 import com.hazeltask.HazeltaskInstance;
 import com.hazeltask.HazeltaskTopology;
-import com.hazeltask.executor.DistributedExecutorService;
+import com.hazeltask.executor.DistributedExecutorServiceImpl;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
 /**
@@ -36,25 +36,25 @@ public abstract class AbstractClusterOp<T, GROUP extends Serializable> implement
         writChildData(out);
     }
     
-    protected DistributedExecutorService<GROUP> getDistributedExecutorService() {
-        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+    protected DistributedExecutorServiceImpl<GROUP> getDistributedExecutorService() {
+        HazeltaskInstance<GROUP> ht = Hazeltask.getInstanceByName(topologyName);
         if(ht != null) {
-            return (DistributedExecutorService<GROUP>) ht.getExecutorService();
+            return (DistributedExecutorServiceImpl<GROUP>) ht.getExecutorService();
         }
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
     
     protected LocalTaskExecutorService<GROUP> getLocalTaskExecutorService() {
-        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+        HazeltaskInstance<GROUP> ht = Hazeltask.getInstanceByName(topologyName);
         if(ht != null) {
-            DistributedExecutorService<GROUP> service = (DistributedExecutorService<GROUP>) ht.getExecutorService();
+            DistributedExecutorServiceImpl<GROUP> service = (DistributedExecutorServiceImpl<GROUP>) ht.getExecutorService();
             return service.getLocalTaskExecutorService();
         }
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
     
     protected HazeltaskTopology<GROUP> getHazeltaskTopology() {
-        HazeltaskInstance<GROUP> ht = Hazeltask.getHazeltaskInstanceByTopology(topologyName);
+        HazeltaskInstance<GROUP> ht = Hazeltask.getInstanceByName(topologyName);
         if(ht != null) {
             return ht.getTopology();
         }

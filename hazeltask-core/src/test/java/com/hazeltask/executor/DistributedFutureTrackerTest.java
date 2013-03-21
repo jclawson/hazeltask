@@ -30,7 +30,7 @@ public class DistributedFutureTrackerTest {
     
     @Test
     public void testFutureTrackSuccess() throws InterruptedException, ExecutionException {
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId, "group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId, "group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
@@ -48,7 +48,7 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TestException.class)
     public void testFutureTrackException() throws Throwable {
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId,"group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId,"group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
@@ -69,7 +69,7 @@ public class DistributedFutureTrackerTest {
     
     @Test(expected=TimeoutException.class)
     public void testFutureTrackGetTimeout() throws InterruptedException, ExecutionException, TimeoutException {
-        HazeltaskTask<String> work = new HazeltaskTask<String>("default", workOneId, "group-1", (Callable<?>)null);
+        HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId, "group-1", (Callable<?>)null);
         DistributedFuture<String> future = tracker.createFuture(work);        
         Assert.assertEquals(future.get(10, TimeUnit.MILLISECONDS), "Yay!");
     }

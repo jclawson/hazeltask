@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -17,13 +16,12 @@ import java.util.logging.Level;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
+import com.hazeltask.core.concurrent.NamedThreadFactory;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
-import com.hazeltask.executor.ResponseExecutorListener;
 import com.hazeltask.executor.metrics.CollectionSizeGauge;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.metrics.TaskThroughputGauge;
@@ -45,7 +43,6 @@ public class LocalTaskExecutorService<G extends Serializable> {
 
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
-	private final HazeltaskTopology<G> topology;
 	private HazeltaskThreadPoolExecutor localExecutorPool;
 	private GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
@@ -58,11 +55,8 @@ public class LocalTaskExecutorService<G extends Serializable> {
     private Timer getOldestTaskTimeTimer;
     private Timer getQueueSizeTimer;
 	
-    public LocalTaskExecutorService(HazelcastInstance hazelcast, HazeltaskTopology<G> topology, ExecutorConfig<G> executorConfig, IExecutorTopologyService<G> executorTopologyService, ExecutorMetrics metrics) {
+    public LocalTaskExecutorService(HazelcastInstance hazelcast, ExecutorConfig<G> executorConfig, NamedThreadFactory namedThreadFactory, IExecutorTopologyService<G> executorTopologyService, ExecutorMetrics metrics) {
 		this.hazelcast = hazelcast;
-        this.topology = topology;
-		
-		ThreadFactory factory = executorConfig.getThreadFactory();
 		
 		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<G>, G>(executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
 			//TODO: move metrics to ExecutorMetrics class
@@ -84,7 +78,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		        executorConfig.getMaxThreadKeepAlive(), 
 		        TimeUnit.MILLISECONDS, 
 		        blockingQueue, 
-		        factory, 
+		        namedThreadFactory.named("worker"), 
 		        new AbortPolicy());
 		
 		if(executorConfig.isFutureSupportEnabled())
@@ -94,10 +88,6 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		
 		tasksInProgressTracker = new TasksInProgressTracker();
 		localExecutorPool.addListener(tasksInProgressTracker);
-	}
-
-	public synchronized void startup(){
-		 LOGGER.log(Level.FINE, "LocalTaskExecutorService started for "+topology.getName());
 	}
 	
 	/**

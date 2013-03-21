@@ -1,10 +1,12 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.local;
 
 import java.io.Serializable;
 import java.util.logging.Level;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.hazeltask.executor.ExecutorListener;
+import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class ResponseExecutorListener< G extends Serializable> implements ExecutorListener<G> {

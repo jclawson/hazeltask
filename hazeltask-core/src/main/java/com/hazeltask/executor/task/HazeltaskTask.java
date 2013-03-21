@@ -29,7 +29,6 @@ public class HazeltaskTask< G extends Serializable>
 	private long createdAtMillis;
 	private UUID id;
 	private G group;
-	private String topology;
 	private int submissionCount;
 	private transient HazelcastInstance hazelcastInstance;
 	
@@ -39,20 +38,18 @@ public class HazeltaskTask< G extends Serializable>
     //required for DataSerializable
     protected HazeltaskTask(){}
     
-	public HazeltaskTask(String topology, UUID id, G group, Runnable task){
+	public HazeltaskTask(UUID id, G group, Runnable task){
 		this.runTask = task;
 		this.id = id;
 		this.group = group;
-		this.topology = topology;
 		createdAtMillis = System.currentTimeMillis();
 		this.submissionCount = 1;
 	}
 	
-	public HazeltaskTask(String topology, UUID id, G group, Callable<?> task){
+	public HazeltaskTask(UUID id, G group, Callable<?> task){
         this.callTask = task;
         this.id = id;
         this.group = group;
-        this.topology = topology;
         createdAtMillis = System.currentTimeMillis();
         this.submissionCount = 1;
     }
@@ -67,14 +64,6 @@ public class HazeltaskTask< G extends Serializable>
 	
 	public void updateCreatedTime(){
 	    this.createdAtMillis = System.currentTimeMillis();
-	}
-	
-//	public Runnable getDelegate(){
-//	    return task;
-//	}
-	
-	public String getTopologyName() {
-		return topology;
 	}
 
 	public G getGroup() {
@@ -131,25 +120,28 @@ public class HazeltaskTask< G extends Serializable>
     
     @Override
     public void writeData(DataOutput out) throws IOException {
-        SerializationHelper.writeObject(out, id);
+        out.writeLong(id.getMostSignificantBits());
+        out.writeLong(id.getLeastSignificantBits());
+        
         SerializationHelper.writeObject(out, group);
         SerializationHelper.writeObject(out, runTask);
         SerializationHelper.writeObject(out, callTask);
         out.writeLong(createdAtMillis);
-        out.writeUTF(topology);
         out.writeInt(submissionCount);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void readData(DataInput in) throws IOException {
-        id = (UUID) SerializationHelper.readObject(in);
+        long m = in.readLong();
+        long l = in.readLong();
+        
+        id = new UUID(m, l);
         group = (G) SerializationHelper.readObject(in);
         runTask = (Runnable) SerializationHelper.readObject(in);
         callTask = (Callable<?>) SerializationHelper.readObject(in);
         
         createdAtMillis = in.readLong();
-        topology = in.readUTF();
         submissionCount = in.readInt();
     }
 	
