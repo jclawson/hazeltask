@@ -4,10 +4,13 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
+import java.util.logging.Level;
 
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 
 /**
@@ -18,7 +21,9 @@ import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
  *
  */
 public class IsMemberReadyTimerTask<GROUP extends Serializable> extends BackoffTask implements MembershipListener {
-	private final ITopologyService<GROUP> topologyService;
+    private static ILogger LOGGER = Logger.getLogger(IsMemberReadyTimerTask.class.getName());
+    
+    private final ITopologyService<GROUP> topologyService;
 	private final HazeltaskTopology<GROUP> topology;
 	
 	public IsMemberReadyTimerTask(ITopologyService<GROUP> topologyService, HazeltaskTopology<GROUP> topology) {
@@ -28,23 +33,29 @@ public class IsMemberReadyTimerTask<GROUP extends Serializable> extends BackoffT
 	
 	@Override
 	public boolean execute() {
-	    Collection<Member> readyMembers = topologyService.getReadyMembers();
-	    Member me = topology.getLocalMember();
-
-        Collection<Member> members = new ArrayList<Member>(readyMembers.size());    
-        for (Member m : readyMembers) {
-           // we need to make sure the member thinks its local if it is
-           // hazelcast is dumb
-           if (m.equals(me)) m = me;
-                
-           if(!m.isLiteMember())
-              members.add(m);
-        }
-        
-        //set the ready members on the topology instance
-        topology.setReadyMembers(members);
-        
-        return true;
+	    try {
+    	    Collection<Member> readyMembers = topologyService.getReadyMembers();
+    	    Member me = topology.getLocalMember();
+    
+            Collection<Member> members = new ArrayList<Member>(readyMembers.size());    
+            for (Member m : readyMembers) {
+               // we need to make sure the member thinks its local if it is
+               // hazelcast is dumb
+               if (m.equals(me)) m = me;
+                    
+               if(!m.isLiteMember())
+                  members.add(m);
+            }
+            
+            //set the ready members on the topology instance
+            topology.setReadyMembers(members);
+            
+            return true;
+	    } catch(Throwable t) {
+	        //swallow this exception so the task isn't cancelled
+	        LOGGER.log(Level.SEVERE, "An error in the while determining ready members", t);
+	        return true;
+	    }
 	}
 
     public void memberAdded(MembershipEvent membershipEvent) {

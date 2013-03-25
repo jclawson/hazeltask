@@ -19,20 +19,24 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 public class HazeltaskTopologyService<GROUP extends Serializable> implements ITopologyService<GROUP> {
 private String topologyName;
     
     private final ExecutorService communicationExecutorService;
     private final HazelcastInstance hazelcast;
+    private final Timer getReadyMembersTimer;
     
     //TOOD: pass in the communication service?
     //or make the svc accessible to the ExecutorTopologyService? so we don't have to manage
     //the name in 2 places
-    public HazeltaskTopologyService(HazeltaskConfig<GROUP> hazeltaskConfig) {
+    public HazeltaskTopologyService(HazeltaskConfig<GROUP> hazeltaskConfig, Timer getReadyMembersTimer) {
         topologyName = hazeltaskConfig.getTopologyName();
         hazelcast = hazeltaskConfig.getHazelcast();
         communicationExecutorService = hazelcast.getExecutorService(name("com"));
+        this.getReadyMembersTimer = getReadyMembersTimer;
     }
     
     private String name(String name) {
@@ -52,15 +56,20 @@ private String topologyName;
     }
 
     public Set<Member> getReadyMembers() {
-        Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
-                communicationExecutorService, hazelcast.getCluster().getMembers(),
-                new IsMemberReadyOp<GROUP>(topologyName));
-        Set<Member> result = new HashSet<Member>(responses.size());
-        for(MemberResponse<Boolean> response : responses) {
-            if(response.getValue())
-                result.add(response.getMember());
+        TimerContext ctx = getReadyMembersTimer.time();
+        try {
+            Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
+                    communicationExecutorService, hazelcast.getCluster().getMembers(),
+                    new IsMemberReadyOp<GROUP>(topologyName));
+            Set<Member> result = new HashSet<Member>(responses.size());
+            for(MemberResponse<Boolean> response : responses) {
+                if(response.getValue())
+                    result.add(response.getMember());
+            }
+            return result;
+        } finally {
+            ctx.stop();
         }
-        return result;
     }
     
     public void shutdown() {

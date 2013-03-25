@@ -26,6 +26,7 @@ import com.hazeltask.executor.metrics.CollectionSizeGauge;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.metrics.TaskThroughputGauge;
 import com.hazeltask.executor.task.HazeltaskTask;
+import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
@@ -43,28 +44,35 @@ public class LocalTaskExecutorService<G extends Serializable> {
 
     private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
     
-	private HazeltaskThreadPoolExecutor localExecutorPool;
-	private GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
+	private final HazeltaskThreadPoolExecutor localExecutorPool;
+	private final GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
 	private final HazelcastInstance hazelcast;
 	
-	private Timer taskSubmittedTimer;
-	private Timer taskExecutedTimer;
+	private final Timer taskSubmittedTimer;
+	private final Timer taskExecutedTimer;
 	
-	private Timer getGroupSizesTimer;
-    private Timer getOldestTaskTimeTimer;
-    private Timer getQueueSizeTimer;
+	private final Timer getGroupSizesTimer;
+    private final Timer getOldestTaskTimeTimer;
+    private final Timer getQueueSizeTimer;
+    
+    private final Meter taskErrorsMeter;
+    private final Timer removeFromWriteAheadLogTimer;
+    private final Timer taskFinishedNotificationTimer;
 	
     public LocalTaskExecutorService(HazelcastInstance hazelcast, ExecutorConfig<G> executorConfig, NamedThreadFactory namedThreadFactory, IExecutorTopologyService<G> executorTopologyService, ExecutorMetrics metrics) {
 		this.hazelcast = hazelcast;
 		
 		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<G>, G>(metrics, executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
-			//TODO: move metrics to ExecutorMetrics class
+
 		taskSubmittedTimer = metrics.getLocalTaskSubmitTimer().getMetric();
 		taskExecutedTimer = metrics.getTaskExecutionTimer().getMetric();
 		getGroupSizesTimer = metrics.getGetGroupSizesTimer().getMetric();
 		getOldestTaskTimeTimer = metrics.getGetOldestTaskTimeTimer().getMetric();
 		getQueueSizeTimer = metrics.getGetQueueSizeTimer().getMetric();
+		taskErrorsMeter = metrics.getTaskErrors().getMetric();
+		removeFromWriteAheadLogTimer = metrics.getRemoveFromWriteAheadLogTimer().getMetric();
+		taskFinishedNotificationTimer = metrics.getTaskFinishedNotificationTimer().getMetric();
 		
 		metrics.registerCollectionSizeGauge(new CollectionSizeGauge(taskQueue));
 		metrics.registerExecutionThroughputGauge(new TaskThroughputGauge(taskSubmittedTimer, taskExecutedTimer));
@@ -82,9 +90,9 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		        new AbortPolicy());
 		
 		if(executorConfig.isFutureSupportEnabled())
-		    localExecutorPool.addListener(new ResponseExecutorListener<G>(executorTopologyService));
+		    localExecutorPool.addListener(new ResponseExecutorListener<G>(executorTopologyService, taskFinishedNotificationTimer));
 		
-		localExecutorPool.addListener(new TaskCompletionExecutorListener<G>(executorTopologyService));
+		localExecutorPool.addListener(new TaskCompletionExecutorListener<G>(executorTopologyService, taskErrorsMeter, removeFromWriteAheadLogTimer));
 		
 		tasksInProgressTracker = new TasksInProgressTracker();
 		localExecutorPool.addListener(tasksInProgressTracker);
@@ -125,16 +133,29 @@ public class LocalTaskExecutorService<G extends Serializable> {
     
     private static class TaskCompletionExecutorListener< G extends Serializable> implements ExecutorListener<G> {
         private final IExecutorTopologyService<G> executorTopologyService;
+        private final Meter taskErrorsMeter;
+        private final Timer removeFromWriteAheadLogTimer;
         
-        public TaskCompletionExecutorListener(IExecutorTopologyService<G> executorTopologyService) {
+        public TaskCompletionExecutorListener(IExecutorTopologyService<G> executorTopologyService, Meter taskErrorsMeter, Timer removeFromWriteAheadLogTimer) {
             this.executorTopologyService = executorTopologyService;
+            this.taskErrorsMeter = taskErrorsMeter;
+            this.removeFromWriteAheadLogTimer = removeFromWriteAheadLogTimer;
         }
         
         public void afterExecute(HazeltaskTask<G> runnable, Throwable exception) {
+            if(exception != null) {
+                taskErrorsMeter.mark();
+            }
+            
             HazeltaskTask<G> task = (HazeltaskTask<G>)runnable;
             //TODO: add task exceptions handling / retry logic
             //for now, just remove the work because its completed
-            executorTopologyService.removePendingTask(task);
+            TimerContext ctx = removeFromWriteAheadLogTimer.time();
+            try {
+                executorTopologyService.removePendingTask(task);
+            } finally {
+                ctx.stop();
+            }
         }
 
         public void beforeExecute(HazeltaskTask<G> runnable) {}

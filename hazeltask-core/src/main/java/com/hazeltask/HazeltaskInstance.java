@@ -58,8 +58,9 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         executorConfig = hazeltaskConfig.getExecutorConfig();
         HazelcastInstance hazelcast = hazeltaskConfig.getHazelcast();
         final String topologyName = hazeltaskConfig.getTopologyName();
-        topologyService = new HazeltaskTopologyService<GROUP>(hazeltaskConfig);
         executorMetrics = new ExecutorMetrics(hazeltaskConfig);
+        topologyService = new HazeltaskTopologyService<GROUP>(hazeltaskConfig, executorMetrics.getGetReadyMemberTimer().getMetric());
+        
         
         this.topology = new HazeltaskTopology<GROUP>(topologyName, hazelcast.getCluster().getLocalMember());
         executorTopologyService = new HazelcastExecutorTopologyService<GROUP>(hazeltaskConfig, topology);

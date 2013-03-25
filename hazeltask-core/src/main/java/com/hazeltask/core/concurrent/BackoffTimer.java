@@ -4,6 +4,10 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 
 /**
  * Similar to java.util.Timer and TimerTask only this Timer does an exponential backoff on how often it
@@ -18,6 +22,8 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class BackoffTimer {
+    private static ILogger LOGGER = Logger.getLogger(BackoffTimer.class.getName());
+    
     
     DelayQueue<DelayedTimerTask> queue = new DelayQueue<DelayedTimerTask>();
     private String name;
@@ -247,13 +253,21 @@ public class BackoffTimer {
         				}
 
         				//if the task throws an exception, it will never be run again
-        				currentTask.run();
-
-        				//task could have been cancelled via unschedule or the task itself
-        				synchronized (queue) {
-        					//put that task back so we run it again later
-        					if(!currentTask.isCancelled())
-        						queue.offer(currentTask);
+        				try {
+        				    currentTask.run();
+            				//task could have been cancelled via unschedule or the task itself
+            				synchronized (queue) {
+            					//put that task back so we run it again later
+            					if(!currentTask.isCancelled())
+            						queue.offer(currentTask);
+            				}
+        				} catch (Throwable t) {
+        				    if(t instanceof InterruptedException) {
+        				        throw (InterruptedException)t;
+        				    }
+        				    
+        				    LOGGER.log(Level.SEVERE, "A BackoffTask: "+currentTask.getClass()+" threw an exception.  It will be cancelled. ", t);
+        				    //ignore exception... just get rid of the task
         				}
         			} else {
         				//if the queue is empty, then end our thread loop

@@ -26,7 +26,7 @@ public class ResponseExecutorListenerTest {
     public void setupData() {
         workId = UUID.randomUUID();
         mockedSvc = mock(IExecutorTopologyService.class);
-        listener = new ResponseExecutorListener(mockedSvc);
+        listener = new ResponseExecutorListener(mockedSvc, null);
     }
     
     @Test

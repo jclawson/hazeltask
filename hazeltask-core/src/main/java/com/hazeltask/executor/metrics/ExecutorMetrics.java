@@ -2,6 +2,7 @@ package com.hazeltask.executor.metrics;
 
 import java.util.concurrent.TimeUnit;
 
+import com.hazeltask.HazeltaskTopologyService;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.metrics.Metric;
 import com.hazeltask.core.metrics.MetricNamer;
@@ -10,6 +11,7 @@ import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 import com.hazeltask.executor.task.TaskRecoveryTimerTask;
+import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Meter;
@@ -29,21 +31,6 @@ import com.yammer.metrics.core.Timer;
  * When Metrics version 3.0 comes out, we will not have to wrap in the Metics<> wrapper because
  * metrics will then be cognizant of their own names and we will very likely be able to simplify
  * a lot of this boiler plate code.
- * 
- * TODO metrics:
- *  - percent errored
- *  - percent routes skipped
- *  - meter of how often can't find route when polling
- *  - timer on rebalance
- *  - timer on recover
- *  - histogram on number recovered
- *  - histogram on number rebalanced
- *  - meter per hour on how often rebalance is needed
- *  - meter per hour on how often recovery is needed
- *  - timer on remove task from write ahead log
- *  - timer on notification into response topic
- *  
- *  - timer on HazeltaskTopologyService.getReadyMembers
  *  
  *  TODO: break up these metrics into other metrics container classes
  * 
@@ -78,14 +65,14 @@ public class ExecutorMetrics {
     private final Metric<Meter> routesSkipped;
     private final Metric<Meter> routeNotFound;
     private final Metric<Timer> taskQueuePollTimer;
-    private final Metric<Timer> taskRebalanceTimer;
-    private final Metric<Timer> taskRecoveryTimer;
     
-    private final Metric<Meter> rebalanceMeter;
+    private final Metric<Counter> noRebalanceToDo;
     private final Metric<Meter> recoveryMeter;
     
     private final Metric<Timer> removeFromWriteAheadLogTimer;
     private final Metric<Timer> taskFinishedNotificationTimer;
+    
+    private final Metric<Timer> getReadyMemberTimer;
     
     public ExecutorMetrics(HazeltaskConfig<?> config) {
         this.topologyName = config.getTopologyName();
@@ -149,16 +136,8 @@ public class ExecutorMetrics {
         taskQueuePollTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));   
         
         
-        name = createMetricName(TaskRebalanceTimerTask.class, "task-rebalance-time");
-        taskRebalanceTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));   
-        
-        name = createMetricName(TaskRecoveryTimerTask.class, "task-recovery-time");
-        taskRecoveryTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
-        
-        
-        name = createMetricName(TaskRebalanceTimerTask.class, "task-rebalance");
-        rebalanceMeter = new Metric<Meter>(name, metrics.newMeter(name, "task rebalance", TimeUnit.MINUTES));
-        
+        name = createMetricName(TaskRebalanceTimerTask.class, "task-rebalance-noop");
+        noRebalanceToDo = new Metric<Counter>(name, metrics.newCounter(name));   
         
         name = createMetricName(TaskRecoveryTimerTask.class, "task-recovery");
         recoveryMeter = new Metric<Meter>(name, metrics.newMeter(name, "task recovery", TimeUnit.MINUTES));
@@ -169,12 +148,15 @@ public class ExecutorMetrics {
         name = createMetricName(LocalTaskExecutorService.class, "task-finished-notification-time");
         taskFinishedNotificationTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
 
+        //FIXME: this metric doesn't belong here
+        name = createMetricName(HazeltaskTopologyService.class, "getReadyMembers-time");
+        getReadyMemberTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
     }
     
     
     
     
-    public Metric<Timer> getStaleTaskFlushTimer() {
+    public Metric<Timer> getRecoveryTimer() {
         return staleTaskFlushTimer;
     }
 
@@ -305,22 +287,9 @@ public class ExecutorMetrics {
 
 
 
-    public Metric<Timer> getTaskRebalanceTimer() {
-        return taskRebalanceTimer;
-    }
 
-
-
-
-    public Metric<Timer> getTaskRecoveryTimer() {
-        return taskRecoveryTimer;
-    }
-
-
-
-
-    public Metric<Meter> getRebalanceMeter() {
-        return rebalanceMeter;
+    public Metric<Counter> getRebalanceNoopCounter() {
+        return noRebalanceToDo;
     }
 
 
@@ -345,15 +314,18 @@ public class ExecutorMetrics {
     }
 
 
+    
+
+    public Metric<Timer> getGetReadyMemberTimer() {
+        return getReadyMemberTimer;
+    }
+
+
 
 
     public Metric<Timer> getTaskQueuePollTimer() {
         return taskQueuePollTimer;
     }
     
-    
-    
-//    private MetricName createMetricName(String type, String name) {
-//        return namer.createMetricName("hazelcast-work", topologyName, type, name);
-//    }
+
 }
