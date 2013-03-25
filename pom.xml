@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.hazeltask</groupId>
     <artifactId>hazeltask-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>Hazeltask Parent POM</name>
     <description>Hazeltask - an advanced Hazelcast based work distribution library</description>
     <packaging>pom</packaging>
