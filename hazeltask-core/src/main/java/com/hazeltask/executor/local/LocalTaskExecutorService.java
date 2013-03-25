@@ -58,7 +58,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
     public LocalTaskExecutorService(HazelcastInstance hazelcast, ExecutorConfig<G> executorConfig, NamedThreadFactory namedThreadFactory, IExecutorTopologyService<G> executorTopologyService, ExecutorMetrics metrics) {
 		this.hazelcast = hazelcast;
 		
-		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<G>, G>(executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
+		taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<G>, G>(metrics, executorConfig.getLoadBalancingConfig().getGroupPrioritizer());
 			//TODO: move metrics to ExecutorMetrics class
 		taskSubmittedTimer = metrics.getLocalTaskSubmitTimer().getMetric();
 		taskExecutedTimer = metrics.getTaskExecutionTimer().getMetric();

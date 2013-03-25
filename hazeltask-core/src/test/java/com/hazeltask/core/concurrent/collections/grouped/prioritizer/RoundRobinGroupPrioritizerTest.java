@@ -5,7 +5,9 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.hazelcast.util.concurrent.ConcurrentSkipListSet;
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 
 import data.MyGroupableItem;
 
@@ -73,7 +75,7 @@ public class RoundRobinGroupPrioritizerTest {
     @Test
     public void testWithGroupedPriorityQueue() {
         RoundRobinGroupPrioritizer<Long> prioritizer = new RoundRobinGroupPrioritizer<Long>();
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(prioritizer);
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), prioritizer);
         
         queue.add(new MyGroupableItem(1,1));
         queue.add(new MyGroupableItem(2,2));
@@ -96,7 +98,7 @@ public class RoundRobinGroupPrioritizerTest {
     @Test
     public void testWithGroupedPriorityQueue2() {
         RoundRobinGroupPrioritizer<Long> prioritizer = new RoundRobinGroupPrioritizer<Long>();
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(prioritizer);
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), prioritizer);
         
         queue.add(new MyGroupableItem(1,1));
         queue.add(new MyGroupableItem(2,2));

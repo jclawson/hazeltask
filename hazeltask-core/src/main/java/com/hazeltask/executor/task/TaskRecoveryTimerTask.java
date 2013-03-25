@@ -1,4 +1,4 @@
-package com.hazeltask.executor;
+package com.hazeltask.executor.task;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -8,15 +8,16 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
+import com.hazeltask.executor.DistributedExecutorServiceImpl;
+import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
-import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
-public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends BackoffTask {
-	private static ILogger LOGGER = Logger.getLogger(StaleTaskFlushTimerTask.class.getName());
+public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTask {
+	private static ILogger LOGGER = Logger.getLogger(TaskRecoveryTimerTask.class.getName());
 	
     private final DistributedExecutorServiceImpl<GROUP> svc;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
@@ -27,7 +28,7 @@ public class StaleTaskFlushTimerTask<GROUP extends Serializable> extends Backoff
     private Timer flushTimer;
     private Histogram numFlushedHistogram;
     
-    public StaleTaskFlushTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorServiceImpl<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
+    public TaskRecoveryTimerTask(HazeltaskTopology<GROUP> topology, DistributedExecutorServiceImpl<GROUP> svc, IExecutorTopologyService<GROUP> executorTopologyService, ExecutorMetrics metrics) {
         this.svc = svc;
         this.flushTimer = metrics.getStaleTaskFlushTimer().getMetric();
         this.numFlushedHistogram = metrics.getStaleFlushCountHistogram().getMetric();

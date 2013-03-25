@@ -82,7 +82,7 @@ public class HazeltaskConfig<GROUP extends Serializable> {
     }
     
     public MetricsRegistry getMetricsRegistry() {
-        return this.metricsConfig.metricsRegistry;
+        return this.metricsConfig.getMetricsRegistry();
     }
 
     public HazelcastInstance getHazelcast() {

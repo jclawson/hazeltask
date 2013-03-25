@@ -4,9 +4,12 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.Groupable;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
+
 import static com.hazeltask.core.concurrent.collections.grouped.prioritizer.EnumPrioritizerTest.Priority.*;
 
 public class EnumPrioritizerTest {
@@ -14,7 +17,7 @@ public class EnumPrioritizerTest {
     public void simple1() {
         EnumOrdinalPrioritizer<Priority> prioritizer = new EnumOrdinalPrioritizer<Priority>();
         GroupedPriorityQueueLocking<MyPriorityItem,Priority> queue 
-            = new GroupedPriorityQueueLocking<MyPriorityItem,Priority>(prioritizer);
+            = new GroupedPriorityQueueLocking<MyPriorityItem,Priority>(new ExecutorMetrics(new HazeltaskConfig()), prioritizer);
         
         queue.add(new MyPriorityItem(1,HIGH));
         queue.add(new MyPriorityItem(2,HIGH));
@@ -35,7 +38,7 @@ public class EnumPrioritizerTest {
     public void simple2() {
         EnumOrdinalPrioritizer<Priority> prioritizer = new EnumOrdinalPrioritizer<Priority>();
         GroupedPriorityQueueLocking<MyPriorityItem,Priority> queue 
-            = new GroupedPriorityQueueLocking<MyPriorityItem,Priority>(prioritizer);
+            = new GroupedPriorityQueueLocking<MyPriorityItem,Priority>(new ExecutorMetrics(new HazeltaskConfig()), prioritizer);
         
         queue.add(new MyPriorityItem(3,MEDIUM));
         queue.add(new MyPriorityItem(1,HIGH));

@@ -4,8 +4,10 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.GroupMetadata;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 
 import data.MyGroupableItem;
 
@@ -13,7 +15,7 @@ public class SimplePrioritizerTest {
     @Test
     public void simple1() {
         MyPrioritizer prioritizer = new MyPrioritizer();
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(prioritizer);
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), prioritizer);
         
         queue.add(new MyGroupableItem(2,2000));
         queue.add(new MyGroupableItem(4,2));

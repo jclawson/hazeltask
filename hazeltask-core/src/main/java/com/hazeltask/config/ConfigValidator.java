@@ -4,7 +4,7 @@ import com.hazelcast.core.Hazelcast;
 import com.hazeltask.core.concurrent.NamedThreadFactory;
 import com.yammer.metrics.Metrics;
 
-public class Validator { 
+public class ConfigValidator { 
     @SuppressWarnings("deprecation")
     public static void validate(HazeltaskConfig<?> config) {
         ExecutorConfig<?> executorConfig = config.getExecutorConfig();

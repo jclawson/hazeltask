@@ -6,7 +6,9 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.RoundRobinGroupPrioritizer;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 
 import data.MyGroupableItem;
 
@@ -45,7 +47,7 @@ public class GroupedPriorityQueueTest {
     
     @Test
     public void emptyGroupHandling() {
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<Long>());
         //add 2 items to 10 groups
         for(long i=0; i<4; i++) {
             MyGroupableItem item = new MyGroupableItem(i);

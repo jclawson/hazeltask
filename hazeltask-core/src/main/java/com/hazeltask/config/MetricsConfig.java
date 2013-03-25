@@ -2,6 +2,7 @@ package com.hazeltask.config;
 
 import com.hazeltask.core.metrics.MetricNamer;
 import com.hazeltask.core.metrics.ScopeFirstMetricNamer;
+import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 
 public class MetricsConfig {
@@ -33,6 +34,8 @@ public class MetricsConfig {
     }
     
     public MetricsRegistry getMetricsRegistry() {
+        if(this.metricsRegistry == null)
+            this.metricsRegistry = Metrics.defaultRegistry();
         return this.metricsRegistry;
     }
     

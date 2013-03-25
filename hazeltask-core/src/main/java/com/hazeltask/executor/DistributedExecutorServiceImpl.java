@@ -240,7 +240,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
         }
     }
     
-    protected boolean submitHazeltaskTask(HazeltaskTask<GROUP> wrapper, boolean isResubmitting) {      
+    public boolean submitHazeltaskTask(HazeltaskTask<GROUP> wrapper, boolean isResubmitting) {      
         
         //WorkId workKey = wrapper.getWorkId();
         boolean executeTask = true;

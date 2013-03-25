@@ -13,7 +13,9 @@ import org.junit.Test;
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.google.common.collect.Lists;
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.RoundRobinGroupPrioritizer;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 
 import data.MyGroupableItem;
 
@@ -56,7 +58,7 @@ public class GroupedPriorityQueuePerformanceTest {
     @Test
     @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5)
     public void offer_lock() {
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<Long>());
         runOfferTest(queue);
     }
     
@@ -132,7 +134,7 @@ public class GroupedPriorityQueuePerformanceTest {
     @Test
     @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5, concurrency = -1)
     public void poll_locking() {
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<Long>());
         
         runPollTest(queue);
 
@@ -144,7 +146,7 @@ public class GroupedPriorityQueuePerformanceTest {
     @Test
     @BenchmarkOptions(benchmarkRounds = 2, warmupRounds = 0)
     public void offerAndPoll_locking() {
-        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<Long>());
         runOfferAndPollTest(queue);
         Assert.assertEquals(0, queue.size());
     }

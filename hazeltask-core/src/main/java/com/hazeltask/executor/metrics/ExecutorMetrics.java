@@ -7,9 +7,9 @@ import com.hazeltask.core.metrics.Metric;
 import com.hazeltask.core.metrics.MetricNamer;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.DistributedFutureTracker;
-import com.hazeltask.executor.StaleTaskFlushTimerTask;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
+import com.hazeltask.executor.task.TaskRecoveryTimerTask;
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Meter;
@@ -74,31 +74,43 @@ public class ExecutorMetrics {
     
     private final Metric<Histogram> futureWaitTimeHistogram;
     
+    private final Metric<Meter> taskErrors;
+    private final Metric<Meter> routesSkipped;
+    private final Metric<Meter> routeNotFound;
+    private final Metric<Timer> taskQueuePollTimer;
+    private final Metric<Timer> taskRebalanceTimer;
+    private final Metric<Timer> taskRecoveryTimer;
+    
+    private final Metric<Meter> rebalanceMeter;
+    private final Metric<Meter> recoveryMeter;
+    
+    private final Metric<Timer> removeFromWriteAheadLogTimer;
+    private final Metric<Timer> taskFinishedNotificationTimer;
     
     public ExecutorMetrics(HazeltaskConfig<?> config) {
         this.topologyName = config.getTopologyName();
         this.metrics = config.getMetricsRegistry();
         this.namer = config.getMetricNamer();
         
-        MetricName name = createMetricName(StaleTaskFlushTimerTask.class, "flush-timer");
+        MetricName name = createMetricName(TaskRecoveryTimerTask.class, "flush-timer");
         
         staleTaskFlushTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES)); 
                 
         //StaleWorkFlushTimerTask metrics
-        name = createMetricName(StaleTaskFlushTimerTask.class, "task-recovered");
+        name = createMetricName(TaskRecoveryTimerTask.class, "task-recovered");
         staleFlushCountHistogram = new Metric<Histogram>(name, metrics.newHistogram(name, true));
         
         //Work rebalancing metrics
         name = createMetricName(TaskRebalanceTimerTask.class, "tasks-redistributed");
         taskBalanceHistogram = new Metric<Histogram>(name, metrics.newHistogram(name, false));
         
-        name = createMetricName(TaskRebalanceTimerTask.class, "balance-timer");
+        name = createMetricName(TaskRebalanceTimerTask.class, "balance-time");
         taskBalanceTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));        
         
-        name = createMetricName(TaskRebalanceTimerTask.class, "lock-wait-timer");
+        name = createMetricName(TaskRebalanceTimerTask.class, "lock-wait-time");
         taskBalanceLockWaitTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
-        name = createMetricName(DistributedExecutorService.class, "task-submit-timer");
+        name = createMetricName(DistributedExecutorService.class, "task-submit-time");
         taskSubmitTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
         name = createMetricName(DistributedExecutorService.class, "task-rejected-meter");
@@ -110,17 +122,53 @@ public class ExecutorMetrics {
         name = createMetricName(LocalTaskExecutorService.class, "task-executed");
         taskExecutionTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
-        name = createMetricName(LocalTaskExecutorService.class, "getGroupSizesTimer");
+        name = createMetricName(LocalTaskExecutorService.class, "getGroupSizes-timer");
         getGroupSizesTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
-        name = createMetricName(LocalTaskExecutorService.class, "getOldestTaskTimeTimer");
+        name = createMetricName(LocalTaskExecutorService.class, "getOldestTaskTime-timer");
         getOldestTaskTimeTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
-        name = createMetricName(LocalTaskExecutorService.class, "getQueueSizeTimer");
+        name = createMetricName(LocalTaskExecutorService.class, "getQueueSize-time");
         getQueueSizeTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
         
         name = createMetricName(DistributedFutureTracker.class, "future-wait-time");
         futureWaitTimeHistogram = new Metric<Histogram>(name, metrics.newHistogram(name, false));
+        
+        
+        
+        name = createMetricName(LocalTaskExecutorService.class, "task-errors");
+        taskErrors = new Metric<Meter>(name, metrics.newMeter(name, "tasks errored", TimeUnit.MINUTES));
+        
+        name = createMetricName("GroupedPriorityQueue", "routes-skipped");
+        routesSkipped = new Metric<Meter>(name, metrics.newMeter(name, "routes skipped", TimeUnit.SECONDS));
+        
+        name = createMetricName("GroupedPriorityQueue", "route-not-found");
+        routeNotFound = new Metric<Meter>(name, metrics.newMeter(name, "routes not found", TimeUnit.SECONDS));
+        
+        name = createMetricName("GroupedPriorityQueue", "poll-time");
+        taskQueuePollTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));   
+        
+        
+        name = createMetricName(TaskRebalanceTimerTask.class, "task-rebalance-time");
+        taskRebalanceTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));   
+        
+        name = createMetricName(TaskRecoveryTimerTask.class, "task-recovery-time");
+        taskRecoveryTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
+        
+        
+        name = createMetricName(TaskRebalanceTimerTask.class, "task-rebalance");
+        rebalanceMeter = new Metric<Meter>(name, metrics.newMeter(name, "task rebalance", TimeUnit.MINUTES));
+        
+        
+        name = createMetricName(TaskRecoveryTimerTask.class, "task-recovery");
+        recoveryMeter = new Metric<Meter>(name, metrics.newMeter(name, "task recovery", TimeUnit.MINUTES));
+        
+        name = createMetricName(LocalTaskExecutorService.class, "remove-from-write-ahead-log-time");
+        removeFromWriteAheadLogTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
+        
+        name = createMetricName(LocalTaskExecutorService.class, "task-finished-notification-time");
+        taskFinishedNotificationTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
+
     }
     
     
@@ -164,6 +212,10 @@ public class ExecutorMetrics {
     
     private MetricName createMetricName(Class<?> clz, String name) {
         return namer.createMetricName("hazeltask", topologyName, clz.getSimpleName(), name);
+    }
+    
+    private MetricName createMetricName(String className, String name) {
+        return namer.createMetricName("hazeltask", topologyName, className, name);
     }
 
 
@@ -228,6 +280,78 @@ public class ExecutorMetrics {
         MetricName name = createMetricName(DistributedExecutorService.class, "write-ahead-log-size");
         metrics.newGauge(name, gauge);
     }
+
+
+
+
+    public Metric<Meter> getTaskErrors() {
+        return taskErrors;
+    }
+
+
+
+
+    public Metric<Meter> getRoutesSkipped() {
+        return routesSkipped;
+    }
+
+
+
+
+    public Metric<Meter> getRouteNotFound() {
+        return routeNotFound;
+    }
+
+
+
+
+    public Metric<Timer> getTaskRebalanceTimer() {
+        return taskRebalanceTimer;
+    }
+
+
+
+
+    public Metric<Timer> getTaskRecoveryTimer() {
+        return taskRecoveryTimer;
+    }
+
+
+
+
+    public Metric<Meter> getRebalanceMeter() {
+        return rebalanceMeter;
+    }
+
+
+
+
+    public Metric<Meter> getRecoveryMeter() {
+        return recoveryMeter;
+    }
+
+
+
+
+    public Metric<Timer> getRemoveFromWriteAheadLogTimer() {
+        return removeFromWriteAheadLogTimer;
+    }
+
+
+
+
+    public Metric<Timer> getTaskFinishedNotificationTimer() {
+        return taskFinishedNotificationTimer;
+    }
+
+
+
+
+    public Metric<Timer> getTaskQueuePollTimer() {
+        return taskQueuePollTimer;
+    }
+    
+    
     
 //    private MetricName createMetricName(String type, String name) {
 //        return namer.createMetricName("hazelcast-work", topologyName, type, name);

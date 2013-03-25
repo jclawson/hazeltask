@@ -13,17 +13,17 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.config.Validator;
+import com.hazeltask.config.ConfigValidator;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.DistributedExecutorServiceImpl;
 import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
-import com.hazeltask.executor.StaleTaskFlushTimerTask;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
+import com.hazeltask.executor.task.TaskRecoveryTimerTask;
 
 /**
  * TODO: this class is messy... clean it up
@@ -53,7 +53,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     protected HazeltaskInstance(HazeltaskConfig<GROUP> hazeltaskConfig) {
         this.hazeltaskConfig = hazeltaskConfig;
         
-        Validator.validate(hazeltaskConfig);
+        ConfigValidator.validate(hazeltaskConfig);
         
         executorConfig = hazeltaskConfig.getExecutorConfig();
         HazelcastInstance hazelcast = hazeltaskConfig.getHazelcast();
@@ -111,7 +111,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     }
     
     private void setupDistributedExecutor(final HazelcastInstance hazelcast, final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, final ExecutorConfig<GROUP> executorConfig, DistributedExecutorServiceImpl<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
-        final StaleTaskFlushTimerTask<GROUP> bundleTask = new StaleTaskFlushTimerTask<GROUP>(topology, svc, executorTopologyService, executorMetrics);
+        final TaskRecoveryTimerTask<GROUP> bundleTask = new TaskRecoveryTimerTask<GROUP>(topology, svc, executorTopologyService, executorMetrics);
         final TaskRebalanceTimerTask<GROUP> rebalanceTask;
         if(!svc.getExecutorConfig().isDisableWorkers())
             rebalanceTask = new TaskRebalanceTimerTask<GROUP>(topology, localExeutorService, executorTopologyService, executorMetrics);

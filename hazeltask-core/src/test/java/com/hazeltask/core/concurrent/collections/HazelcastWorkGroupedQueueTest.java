@@ -7,8 +7,10 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.RoundRobinGroupPrioritizer;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class HazelcastWorkGroupedQueueTest {
@@ -18,7 +20,7 @@ public class HazelcastWorkGroupedQueueTest {
     @SuppressWarnings("unchecked")
     @Before
     public void setupData() {
-        taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<String>, String>(new RoundRobinGroupPrioritizer<String>());
+        taskQueue = new GroupedPriorityQueueLocking<HazeltaskTask<String>, String>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<String>());
         
         HazeltaskTask<String> work1 = mock(HazeltaskTask.class);
         HazeltaskTask<String> work2 = mock(HazeltaskTask.class);

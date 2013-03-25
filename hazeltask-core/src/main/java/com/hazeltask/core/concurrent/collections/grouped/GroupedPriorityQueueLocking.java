@@ -21,6 +21,10 @@ import com.hazeltask.core.concurrent.collections.grouped.prioritizer.GroupPriori
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue;
+import com.hazeltask.executor.metrics.ExecutorMetrics;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * @author jclawson
@@ -47,9 +51,16 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
 
     private final ReentrantReadWriteLock          lock          = new ReentrantReadWriteLock(false);
     private final Condition                       notEmpty      = lock.writeLock().newCondition();
-
-    public GroupedPriorityQueueLocking(GroupPrioritizer<G> groupPrioritizer) {
+    
+    private final Meter routesSkipped;
+    private final Meter routeNotFound;
+    private final Timer pollTimer;
+    
+    public GroupedPriorityQueueLocking(ExecutorMetrics metrics, GroupPrioritizer<G> groupPrioritizer) {
         this.groupPrioritizer = groupPrioritizer;
+        this.routesSkipped = metrics.getRoutesSkipped().getMetric();
+        this.routeNotFound = metrics.getRouteNotFound().getMetric();
+        this.pollTimer = metrics.getTaskQueuePollTimer().getMetric();
     }
 
     // /**
@@ -146,36 +157,45 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
     }
 
     public E poll() {
-        lock.writeLock().lock();
+        TimerContext ctx = pollTimer.time();
         try {
-            E value = null;
-            // this loop is blocking everyone...
-            int i = 1;
-            int size = groups.size();
-            while (value == null && !groupRoute.isEmpty()) {
-                GroupMetadata<G> route = groupRoute.pollLast();
-                ITrackedQueue<E> queue = getQueueByGroup(route.getGroup());
-                value = queue.poll();
-                if (value == null) {
-                    // stash route in empty queues
-                    emptyQueues.put(route.getGroup(), route);
-                } else {
-                    // recompute priority for route
-                    long priority = groupPrioritizer.computePriority(route);
-                    groupRoute.add(new GroupMetadata<G>(route.getGroup(), priority));
-                    return value;
+            lock.writeLock().lock();
+            try {
+                E value = null;
+                // this loop is blocking everyone...
+                int i = 1;
+                int size = groups.size();
+                while (value == null && !groupRoute.isEmpty()) {
+                    GroupMetadata<G> route = groupRoute.pollLast();
+                    ITrackedQueue<E> queue = getQueueByGroup(route.getGroup());
+                    value = queue.poll();
+                    if (value == null) {
+                        // stash route in empty queues
+                        routesSkipped.mark();
+                        emptyQueues.put(route.getGroup(), route);
+                    } else {
+                        // recompute priority for route
+                        long priority = groupPrioritizer.computePriority(route);
+                        groupRoute.add(new GroupMetadata<G>(route.getGroup(), priority));
+                        return value;
+                    }
+                    
+                    if(i > size) {
+                        //since we lock, this should never happen
+                        //TODO: log this
+                    }
+                    i++;
                 }
                 
-                if(i > size) {
-                    //since we lock, this should never happen
-                    //TODO: log this
-                }
-                i++;
+                if(groupRoute.isEmpty()) 
+                    routeNotFound.mark();
+    
+                return null;
+            } finally {
+                lock.writeLock().unlock();
             }
-
-            return null;
         } finally {
-            lock.writeLock().unlock();
+            ctx.stop();
         }
     }
 
