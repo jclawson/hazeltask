@@ -15,7 +15,8 @@ public class ExecutorConfig<GROUP extends Serializable> {
     protected TaskIdAdapter<?, GROUP>    taskIdAdapter  = (TaskIdAdapter<?, GROUP>) new DefaultTaskIdAdapter();
     protected boolean          autoStart                = true;
     private boolean            enableFutureTracking     = true;
-    
+    private boolean            asyncronousTaskDistribution = false;
+    private int                asyncronousTaskDistributionQueueSize = 500;
     private long               recoveryProcessPollInterval = 30000;
     
     private ExecutorLoadBalancingConfig<GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<GROUP>();
@@ -27,11 +28,43 @@ public class ExecutorConfig<GROUP extends Serializable> {
         
     }
 
-//    Future use
-//    public ExecutorConfig<GROUP> useAsyncronousTaskDistribution() {
-//
-//        return this;
-//    }
+    /**
+     * This setting will make HazelTask buffer task distributions in a bounded queue
+     * before they are sent off to the worker nodes.  This helps you get around slowness
+     * in worker nodes due to GC pauses, or other load that may negatively impact 
+     * Hazelcast's ability to handle calls.
+     * 
+     * NOTE: I think hazelcast might already actually do this???  Still testing... I will 
+     * remove this code if hazelcast does do this behind the scenes.
+     * 
+     * @return
+     */
+    @Deprecated
+    public ExecutorConfig<GROUP> useAsyncronousTaskDistribution() {
+        asyncronousTaskDistribution = true;
+        return this;
+    }
+    
+    /**
+     * When using asyncronousTaskDistribution you may define how many tasks are allowed 
+     * to buffer before it start blocking the calling thread.  If a worker is JVM thrashing
+     * and hazelcast is having trouble talking to it, this buffer will fill up.  This is 
+     * meant to protect against JVM pauses.  You really don't want the buffer to be infinite
+     * in case things go bad in your cluster.  You just want it to be big enough to get around
+     * occasional JVM pauses due to GC.
+     * 
+     * NOTE: I think hazelcast might already actually do this???  Still testing... I will 
+     * remove this code if hazelcast does do this behind the scenes.
+     * 
+     * @see useAsyncronousTaskDistribution()
+     * @param queueSize
+     * @return
+     */
+    @Deprecated
+    public ExecutorConfig<GROUP> withAsyncronousTaskDistributionQueueSize(int queueSize) {
+        this.asyncronousTaskDistributionQueueSize = queueSize;
+        return this;
+    }
 
     /**
      * This option is false by default.
@@ -172,4 +205,14 @@ public class ExecutorConfig<GROUP extends Serializable> {
     public ExecutorLoadBalancingConfig<GROUP> getLoadBalancingConfig() {
         return this.executorLoadBalancingConfig;
     }
+
+    public boolean isAsyncronousTaskDistribution() {
+        return asyncronousTaskDistribution;
+    }
+
+    public int getAsyncronousTaskDistributionQueueSize() {
+        return asyncronousTaskDistributionQueueSize;
+    }
+    
+    
 }

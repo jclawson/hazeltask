@@ -9,8 +9,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -19,6 +23,7 @@ import java.util.logging.Level;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapIndexConfig;
+import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
@@ -58,7 +63,10 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     private final ITopic<TaskResponse<Serializable>>      taskResponseTopic;
     private final HazelcastInstance hazelcast;
     
+    private final Executor asyncTaskDistributorExecutor;
+    
     public HazelcastExecutorTopologyService(HazeltaskConfig<GROUP> hazeltaskConfig, HazeltaskTopology<GROUP> topology) {
+        com.hazeltask.config.ExecutorConfig<GROUP> executorConfig = hazeltaskConfig.getExecutorConfig();
         topologyName = hazeltaskConfig.getTopologyName();
         this.topology = topology;
         hazelcast = hazeltaskConfig.getHazelcast();
@@ -77,6 +85,15 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         
         taskDistributor =  hazelcast.getExecutorService(taskDistributorName);
         //readyMembers = new CopyOnWriteArrayListSet<Member>();
+        
+        if(hazeltaskConfig.getExecutorConfig().isAsyncronousTaskDistribution())
+            asyncTaskDistributorExecutor =  new ThreadPoolExecutor(1, 1,
+                            0L, TimeUnit.MILLISECONDS,
+                            new LinkedBlockingQueue<Runnable>(executorConfig.getAsyncronousTaskDistributionQueueSize()),
+                            hazeltaskConfig.getThreadFactory().named("async"),
+                            new CallerRunsPolicy());
+        else
+            asyncTaskDistributorExecutor = null;
         
         String pendingTaskMapName = name("pending-tasks");
         hazelcast.getConfig()
@@ -98,10 +115,29 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
 //        // TODO Auto-generated method stub
 //        return false;
 //    }
-
     
     public void sendTask(HazeltaskTask<GROUP> task, Member member) throws TimeoutException {
-        taskDistributor.execute(MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member));       
+        DistributedTask<Boolean> distTask = MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member);
+        if(asyncTaskDistributorExecutor != null) {
+            asyncTaskDistributorExecutor.execute(new $SendTaskToWorker(distTask, taskDistributor));
+        } else {
+            taskDistributor.execute(distTask);
+        }
+    }
+    
+    private static class $SendTaskToWorker implements Runnable {
+        private final ExecutorService taskDistributor;
+        private final DistributedTask<Boolean> task;
+        
+        private $SendTaskToWorker(DistributedTask<Boolean> task, ExecutorService taskDistributor) {
+            this.task = task;
+            this.taskDistributor = taskDistributor;
+        }
+        
+        @Override
+        public void run() {
+            taskDistributor.execute(task);
+        }
     }
 
     /**
