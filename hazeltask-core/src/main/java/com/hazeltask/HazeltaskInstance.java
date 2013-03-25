@@ -25,6 +25,12 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 
+/**
+ * TODO: this class is messy... clean it up
+ * @author jclawson
+ *
+ * @param <GROUP>
+ */
 public class HazeltaskInstance<GROUP extends Serializable> {
     private static ILogger LOGGER = Logger.getLogger(HazeltaskInstance.class.getName());
     
@@ -78,7 +84,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     
     protected void start() {
         BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
-        setupDistributedExecutor(topology, hazeltaskTimer, executorConfig, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
+        setupDistributedExecutor(hazeltaskConfig.getHazelcast(), topology, hazeltaskTimer, executorConfig, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
@@ -104,7 +110,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         }
     }
     
-    private void setupDistributedExecutor(final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, final ExecutorConfig<GROUP> executorConfig, DistributedExecutorServiceImpl<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
+    private void setupDistributedExecutor(final HazelcastInstance hazelcast, final HazeltaskTopology<GROUP> topology, final BackoffTimer hazeltaskTimer, final ExecutorConfig<GROUP> executorConfig, DistributedExecutorServiceImpl<GROUP> svc, ITopologyService<GROUP> topologySvc, IExecutorTopologyService<GROUP> executorTopologyService, LocalTaskExecutorService<GROUP> localExeutorService, ExecutorMetrics executorMetrics) {
         final StaleTaskFlushTimerTask<GROUP> bundleTask = new StaleTaskFlushTimerTask<GROUP>(topology, svc, executorTopologyService, executorMetrics);
         final TaskRebalanceTimerTask<GROUP> rebalanceTask;
         if(!svc.getExecutorConfig().isDisableWorkers())
@@ -124,7 +130,13 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             public void onEndStart(DistributedExecutorService<GROUP> svc) {
                 LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is scheduling periodic timer tasks");
                 
-                hazeltaskTimer.schedule(bundleTask, 1000, executorConfig.getRecoveryProcessPollInterval(), 2);
+                boolean isLiteMember = hazelcast.getCluster().getLocalMember().isLiteMember();
+                /*
+                 * We don't need to run the recovery task if we are a lite member because we don't store data
+                 */
+                if(!isLiteMember)
+                    hazeltaskTimer.schedule(bundleTask, 1000, executorConfig.getRecoveryProcessPollInterval(), 2);
+                
                 if(rebalanceTask != null)
                     hazeltaskTimer.schedule(rebalanceTask, 1000, hazeltaskConfig.getExecutorConfig().getLoadBalancingConfig().getRebalanceTaskPeriod());
                 
@@ -138,11 +150,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             public void onBeginShutdown(DistributedExecutorService<GROUP> svc) {
                 LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is unscheduling timer tasks and stopping the timer thread");              
                 topology.shutdown();
-                hazeltaskTimer.unschedule(bundleTask);
-                if(rebalanceTask != null)
-                    hazeltaskTimer.unschedule(rebalanceTask);
-                hazeltaskTimer.unschedule(getReadyMembersTask);
-                hazeltaskTimer.stop();//this would stop after 5 min anyways
+                hazeltaskTimer.stop();
             }      
         });
     }
