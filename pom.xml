@@ -13,8 +13,16 @@
         <maven.compiler.target>1.6</maven.compiler.target>
     </properties>
 
+	<scm>
+        <connection>scm:git:git://github.com/jclawson/hazeltask.git</connection>
+        <developerConnection>scm:git:git@github.com:jclawson/hazeltask.git</developerConnection>
+        <url>https://github.com/jclawson/hazeltask/</url>
+    </scm>
+
+
     <developers>
         <developer>
+            <id>jclawson</id>
             <name>Jason Clawson</name>
             <email>jason.clawson@gmail.com</email>
             <timezone>-7</timezone>
@@ -155,6 +163,19 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+		        <groupId>org.apache.maven.plugins</groupId>
+		        <artifactId>maven-gpg-plugin</artifactId>
+		        <executions>
+		          <execution>
+		            <id>sign-artifacts</id>
+		            <phase>verify</phase>
+		            <goals>
+		              <goal>sign</goal>
+		            </goals>
+		          </execution>
+		        </executions>
+		      </plugin>
         </plugins>
     </build>
 
