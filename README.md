@@ -59,4 +59,3 @@ Future Plans
 =============
 - Release the batching API branch.  Batching allows you to collect a set of items and batch them up into a task which is submitted for execution
 - Allow task retries if a task fails to execute due to an exception in user code.  Retry after _ time option.
-- Lite member support
