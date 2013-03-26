@@ -121,6 +121,9 @@ public class ExecutorConfig<GROUP extends Serializable> {
      */
     public ExecutorConfig<GROUP> withThreadCount(int threadCount) {
         this.corePoolSize = threadCount;
+        
+        //for now we will have a fixed thread pool size
+        this.maxPoolSize = threadCount;
         return this;
     }
 
