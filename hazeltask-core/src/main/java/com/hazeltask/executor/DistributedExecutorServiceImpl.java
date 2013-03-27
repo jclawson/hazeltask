@@ -176,7 +176,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                 //    so if you don't care about the result, no harm
                 LOGGER.log(Level.SEVERE, "Unable to submit HazeltaskTask to worker member");
                 future.setCancelled();
-                futureTracker.removeAll(taskWrapper.getId());
+                futureTracker.remove(taskWrapper.getId());
             }
             return future;
         } finally {

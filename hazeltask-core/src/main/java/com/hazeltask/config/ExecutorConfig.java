@@ -1,20 +1,23 @@
 package com.hazeltask.config;
 
 import java.io.Serializable;
+import java.util.concurrent.TimeUnit;
 
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
 public class ExecutorConfig<GROUP extends Serializable> {
-    protected boolean          disableWorkers           = false;
-    protected int              corePoolSize             = 4;
-    protected int              maxPoolSize              = 4;
-    protected long             maxThreadKeepAlive       = 60000;
+    protected boolean          disableWorkers              = false;
+    protected int              corePoolSize                = 4;
+    protected int              maxPoolSize                 = 4;
+    protected long             maxThreadKeepAlive          = 60000;
 
     @SuppressWarnings("unchecked")
-    protected TaskIdAdapter<?, GROUP>    taskIdAdapter  = (TaskIdAdapter<?, GROUP>) new DefaultTaskIdAdapter();
-    protected boolean          autoStart                = true;
-    private boolean            enableFutureTracking     = true;
+    protected TaskIdAdapter<?, GROUP>    taskIdAdapter     = (TaskIdAdapter<?, GROUP>) new DefaultTaskIdAdapter();
+    protected boolean          autoStart                   = true;
+    private boolean            enableFutureTracking        = true;
+    private long               maximumFutureWaitTime = TimeUnit.MINUTES.toMillis(60);
+    
     private boolean            asyncronousTaskDistribution = false;
     private int                asyncronousTaskDistributionQueueSize = 500;
     private long               recoveryProcessPollInterval = 30000;
@@ -139,6 +142,21 @@ public class ExecutorConfig<GROUP extends Serializable> {
     }
     
     /**
+     * By default the longest we will track a future is 60 minutes.  If partition data is 
+     * lost, we try to figure out which futures were possible affected and error them.  This
+     * setting is a fallback in case we miss erroring a future and ensures it will be cleaned up.
+     * 
+     * Futures waiting for longer than this time will be errored with a TimeoutException
+     * 
+     * @param millis
+     * @return
+     */
+    public ExecutorConfig<GROUP> withMaximumFutureWaitTime(long millis) {
+        this.maximumFutureWaitTime = millis;
+        return this;
+    }
+    
+    /**
      * This interval is the period in which the write ahead log is checked to see if any 
      * lost tasks are present.
      * 
@@ -216,6 +234,8 @@ public class ExecutorConfig<GROUP extends Serializable> {
     public int getAsyncronousTaskDistributionQueueSize() {
         return asyncronousTaskDistributionQueueSize;
     }
-    
-    
+
+    public long getMaximumFutureWaitTime() {
+        return maximumFutureWaitTime;
+    }
 }

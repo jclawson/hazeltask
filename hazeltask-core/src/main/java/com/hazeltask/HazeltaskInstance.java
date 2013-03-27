@@ -1,6 +1,7 @@
 package com.hazeltask;
 
 import java.io.Serializable;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -9,11 +10,15 @@ import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.core.LifecycleService;
+import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.hazelcast.partition.MigrationEvent;
+import com.hazelcast.partition.Partition;
+import com.hazelcast.partition.PartitionService;
+import com.hazeltask.config.ConfigValidator;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
-import com.hazeltask.config.ConfigValidator;
 import com.hazeltask.core.concurrent.BackoffTimer;
 import com.hazeltask.executor.DistributedExecutorService;
 import com.hazeltask.executor.DistributedExecutorServiceImpl;
@@ -24,6 +29,8 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
 import com.hazeltask.executor.task.TaskRecoveryTimerTask;
+import com.hazeltask.hazelcast.HazelcastPartitionManager;
+import com.hazeltask.hazelcast.HazelcastPartitionManager.PartitionLostListener;
 
 /**
  * TODO: this class is messy... clean it up
@@ -61,6 +68,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         executorMetrics = new ExecutorMetrics(hazeltaskConfig);
         topologyService = new HazeltaskTopologyService<GROUP>(hazeltaskConfig, executorMetrics.getGetReadyMemberTimer().getMetric());
         
+        PartitionService partitionService = hazelcast.getPartitionService();
         
         this.topology = new HazeltaskTopology<GROUP>(topologyName, hazelcast.getCluster().getLocalMember());
         executorTopologyService = new HazelcastExecutorTopologyService<GROUP>(hazeltaskConfig, topology);
@@ -71,12 +79,47 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         else
             localExeutorService = null;
         
-        DistributedFutureTracker<GROUP> futureTracker = null;
+        final DistributedFutureTracker<GROUP> futureTracker;
         
 
         if(executorConfig.isFutureSupportEnabled()) {
-            futureTracker = new DistributedFutureTracker<GROUP>(executorMetrics);
+                       
+            futureTracker = new DistributedFutureTracker<GROUP>(executorMetrics, executorConfig);
+            final HazelcastPartitionManager partitionManager = new HazelcastPartitionManager(partitionService);
+            
+            /*
+             * TODO: we can make losing partitions nicer:
+             * 1) don't loop so much... this is like O(p*n).. we can make it O(n)
+             * 2) optionally have the future listener store the HazeltaskTask its watching.  It can re-add
+             *    the task if the partition is lost.  (possible race condition here-- would double do work)
+             * 3) organize futures in 2 hashmaps... partitionId -> uuid -> future.
+             */
+            partitionManager.addPartitionListener(new PartitionLostListener() {
+                @Override
+                public void partitionLost(MigrationEvent migrationEvent) {
+                    //FIXME: make this faster, too many loops
+                    Set<UUID> uuids = futureTracker.getTrackedTaskIds();
+                    for(UUID uuid : uuids) {
+                        Partition partition = partitionManager.getPartition(uuid);
+                        if(migrationEvent.getPartitionId() == partition.getPartitionId()) {
+                            futureTracker.errorFuture(uuid, new MemberLeftException());
+                        }
+                    }
+                }
+            });
+            
+            
+            //TODO: it would be nice if hazelcast provided events when data was lost in 
+            //       the cluster.  this member removed is pretty costly to run :(
+            
+            //FIXME: move this code out.  This class is getting big and complicated
+            
+            
+            
+            
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
+        } else {
+            futureTracker = null;
         }
         
         executor = new DistributedExecutorServiceImpl<GROUP>(topology, executorTopologyService, executorConfig, futureTracker, localExeutorService, executorMetrics);
@@ -84,7 +127,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     }
     
     protected void start() {
-        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory());
+        BackoffTimer hazeltaskTimer = new BackoffTimer(hazeltaskConfig.getTopologyName(), hazeltaskConfig.getThreadFactory().named("timertasks"));
         setupDistributedExecutor(hazeltaskConfig.getHazelcast(), topology, hazeltaskTimer, executorConfig, executor, topologyService, executorTopologyService, localExeutorService, executorMetrics);
         
         //if autoStart... we need to start

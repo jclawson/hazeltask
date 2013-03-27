@@ -106,8 +106,14 @@ public class MemberTasks {
                 //Member targetMember = getFutureInner(future).getMember();            	
             	//LOGGER.log(Level.INFO, "Unable to execute task on "+targetMember+". It has left the cluster.", e);
             } catch (ExecutionException e) {
-            	Member targetMember = getFutureInner(future).getMember();
-            	LOGGER.log(Level.WARNING, "Unable to execute task on "+targetMember+". There was an error.", e);
+            	if(e.getCause() instanceof InterruptedException) {
+            	    //restore interrupted state and return
+            	    Thread.currentThread().interrupt();
+            	    return result;
+            	} else {
+            	    Member targetMember = getFutureInner(future).getMember();
+            	    LOGGER.log(Level.WARNING, "Unable to execute task on "+targetMember+". There was an error.", e);
+            	}
             } catch (TimeoutException e) {
             	Member targetMember = getFutureInner(future).getMember();
             	LOGGER.log(Level.SEVERE, "Unable to execute task on "+targetMember+" within 10 seconds.");

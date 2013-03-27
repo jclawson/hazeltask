@@ -1,5 +1,6 @@
 package com.hazeltask.core.concurrent;
 
+import java.util.Iterator;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ThreadFactory;
@@ -71,8 +72,17 @@ public class BackoffTimer {
 	    	synchronized (queue) {
 	            if(timerRunnable != null) {
 	            	isShutdown = true;
-	            	while(!queue.isEmpty()) {
-	            	    unschedule(queue.poll().task);
+	            	timerRunnable.newTasksMayBeScheduled = false;
+	            	if(!queue.isEmpty()) {
+	            	    Iterator<DelayedTimerTask> it = queue.iterator();
+	            	    while(it.hasNext()) {
+    	            	    DelayedTimerTask task = it.next();
+    	            	    it.remove();
+    	            	    if(task != null) {
+        	            	    BackoffTask backoffTask = task.getBackoffTask();
+        	            	    unschedule(backoffTask);
+    	            	    }
+	            	    }
 	            	}
 	            	queue.clear();
 		            workerThread.interrupt();
@@ -152,6 +162,8 @@ public class BackoffTimer {
         private boolean forceCancel = false;
         
         DelayedTimerTask(BackoffTask task, long minDelay, long maxDelay, double backoffMultiplier) {
+            if(task == null)
+                throw new NullPointerException("Task can't be null");
             this.task = task;
             this.minDelay = minDelay;
             this.maxDelay = maxDelay;
@@ -160,11 +172,17 @@ public class BackoffTimer {
         }
         
         DelayedTimerTask(BackoffTask task, long initialDelay, long fixedDelay) {
+            if(task == null)
+                throw new NullPointerException("Task can't be null");
             this.task = task;
             this.minDelay = fixedDelay;
             this.maxDelay = fixedDelay;
             this.backoffMultiplier = 1000;
             this.currentDelay = initialDelay;
+        }
+        
+        public BackoffTask getBackoffTask() {
+            return task;
         }
         
         public int compareTo(Delayed o) {
@@ -244,7 +262,7 @@ public class BackoffTimer {
         	while (true) {
         		try {
         			currentTask = null;
-        			currentTask = queue.poll(5, TimeUnit.MINUTES);
+        			currentTask = queue.take();
         			if(currentTask != null) {
         				long expiredDelay = currentTask.getDelay(TimeUnit.MILLISECONDS);
         				//expired delay should optimally be 0
@@ -258,7 +276,7 @@ public class BackoffTimer {
             				//task could have been cancelled via unschedule or the task itself
             				synchronized (queue) {
             					//put that task back so we run it again later
-            					if(!currentTask.isCancelled())
+            					if(!currentTask.isCancelled() && newTasksMayBeScheduled)
             						queue.offer(currentTask);
             				}
         				} catch (Throwable t) {

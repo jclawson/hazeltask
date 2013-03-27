@@ -24,7 +24,7 @@ public class HazeltaskConfig<GROUP extends Serializable> {
     private String                topologyName   = Hazeltask.DEFAULT_TOPOLOGY;
     private ExecutorConfig<GROUP> executorConfig = new ExecutorConfig<GROUP>();
     private MetricsConfig         metricsConfig  = new MetricsConfig();
-    private NamedThreadFactory         threadFactory;
+    private NamedThreadFactory    threadFactory;
     
     /**
      * Topology names allow you to run multiple Hazeltask platforms on the same JVM.  You may retrive your Hazeltask intance

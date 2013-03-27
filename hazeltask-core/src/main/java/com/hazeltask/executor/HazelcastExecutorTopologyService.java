@@ -58,7 +58,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
 
     private final ExecutorService taskDistributor;
     //private final CopyOnWriteArrayListSet<Member> readyMembers;
-    private final IMap<Serializable, HazeltaskTask<GROUP>>                            pendingTask;
+    private final IMap<UUID, HazeltaskTask<GROUP>>                            pendingTask;
     private final ILock rebalanceTasksLock;
     private final ITopic<TaskResponse<Serializable>>      taskResponseTopic;
     private final HazelcastInstance hazelcast;
@@ -193,7 +193,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     }
 
     public Collection<HazeltaskTask<GROUP>> getLocalPendingTasks(String predicate) {
-        Set<Serializable> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
+        Set<UUID> keys = pendingTask.localKeySet(new SqlPredicate(predicate));
         return pendingTask.getAll(keys).values();
     }
 
@@ -267,5 +267,4 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
              new GetOldestTimestampOp<GROUP>(topology.getName())
         );
     }
-
 }

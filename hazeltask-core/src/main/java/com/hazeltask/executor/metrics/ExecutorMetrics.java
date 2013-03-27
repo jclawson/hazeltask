@@ -74,6 +74,9 @@ public class ExecutorMetrics {
     
     private final Metric<Timer> getReadyMemberTimer;
     
+    private final Metric<Timer> findFailedFuturesTimer;
+    private final Metric<Counter> failedFuturesCount;
+    
     public ExecutorMetrics(HazeltaskConfig<?> config) {
         this.topologyName = config.getTopologyName();
         this.metrics = config.getMetricsRegistry();
@@ -151,6 +154,12 @@ public class ExecutorMetrics {
         //FIXME: this metric doesn't belong here
         name = createMetricName(HazeltaskTopologyService.class, "getReadyMembers-time");
         getReadyMemberTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
+        
+        name = createMetricName(DistributedFutureTracker.class, "find-failed-futures-time");
+        findFailedFuturesTimer = new Metric<Timer>(name, metrics.newTimer(name, TimeUnit.MILLISECONDS, TimeUnit.MINUTES));
+        
+        name = createMetricName(DistributedFutureTracker.class, "failed-futures-count");
+        failedFuturesCount = new Metric<Counter>(name, metrics.newCounter(name));
     }
     
     
@@ -325,6 +334,20 @@ public class ExecutorMetrics {
 
     public Metric<Timer> getTaskQueuePollTimer() {
         return taskQueuePollTimer;
+    }
+
+
+
+
+    public Metric<Timer> getFindFailedFuturesTimer() {
+        return findFailedFuturesTimer;
+    }
+
+
+
+
+    public Metric<Counter> getFailedFuturesCount() {
+        return failedFuturesCount;
     }
     
 
