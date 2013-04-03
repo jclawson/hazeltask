@@ -5,10 +5,8 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Similar to java.util.Timer and TimerTask only this Timer does an exponential backoff on how often it
@@ -18,13 +16,13 @@ import com.hazelcast.logging.Logger;
  * This thread will shutdown if there are no tasks in its queue for 5 minutes.  So, if you schedule something, then unschedule it
  * it will shutdown.  You may schedule it again and a new thread will be spawned for it as long as stop() hasn't been called
  * 
+ * FIXME: leverage scheduled thread pool instead
  * 
  * @author jclawson
  *
  */
+@Slf4j
 public class BackoffTimer {
-    private static ILogger LOGGER = Logger.getLogger(BackoffTimer.class.getName());
-    
     
     DelayQueue<DelayedTimerTask> queue = new DelayQueue<DelayedTimerTask>();
     private String name;
@@ -284,7 +282,7 @@ public class BackoffTimer {
         				        throw (InterruptedException)t;
         				    }
         				    
-        				    LOGGER.log(Level.SEVERE, "A BackoffTask: "+currentTask.getClass()+" threw an exception.  It will be cancelled. ", t);
+        				    log.error("A BackoffTask: "+currentTask.getClass()+" threw an exception.  It will be cancelled. ", t);
         				    //ignore exception... just get rid of the task
         				}
         			} else {

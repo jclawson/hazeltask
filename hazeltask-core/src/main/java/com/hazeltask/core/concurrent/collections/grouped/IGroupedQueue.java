@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
+import com.google.common.base.Predicate;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 
 
@@ -17,8 +18,10 @@ public interface IGroupedQueue<E extends Groupable<G>, G> extends BlockingQueue<
 
     public Collection<G> getGroups();
     
-    public Map<G, Integer> getGroupSizes();
+    public Map<G, Integer> getGroupSizes(Predicate<G> predicate);
     
     public ITrackedQueue<E> getQueueByGroup(G group);
+    
+    public void clearGroup(G group);
     
 }

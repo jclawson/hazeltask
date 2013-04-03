@@ -18,8 +18,10 @@ import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
-import java.util.logging.Level;
 
+import lombok.extern.slf4j.Slf4j;
+
+import com.google.common.base.Predicate;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapIndexConfig;
@@ -30,13 +32,13 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
+import com.hazeltask.clusterop.ClearGroupQueueOp;
 import com.hazeltask.clusterop.GetLocalGroupQueueSizesOp;
 import com.hazeltask.clusterop.GetLocalQueueSizesOp;
 import com.hazeltask.clusterop.GetOldestTimestampOp;
+import com.hazeltask.clusterop.GetThreadPoolSizesOp;
 import com.hazeltask.clusterop.StealTasksOp;
 import com.hazeltask.clusterop.SubmitTaskOp;
 import com.hazeltask.config.HazeltaskConfig;
@@ -46,13 +48,12 @@ import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
 
+@Slf4j
 public class HazelcastExecutorTopologyService<GROUP extends Serializable> implements IExecutorTopologyService<GROUP> {
     //private final BloomFilter<CharSequence> bloomFilter;
     private HazeltaskTopology<GROUP> topology;
     private String topologyName;
     private final Member me;
-    private static ILogger LOGGER = Logger.getLogger(HazelcastExecutorTopologyService.class.getName());
-    
     
     private final ExecutorService communicationExecutorService;
 
@@ -242,14 +243,14 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
                 Collection<HazeltaskTask<GROUP>> task = f.get(3, TimeUnit.MINUTES);//wait at most 3 minutes
                 result.addAll(task);
             } catch (InterruptedException e) {
-                LOGGER.log(Level.SEVERE,"Unable to take tasks. I was interrupted.  We may have pulled work out of another member... it will need to be recovered", e);
+                log.error("Unable to take tasks. I was interrupted.  We may have pulled work out of another member... it will need to be recovered", e);
                 Thread.currentThread().interrupt();
                 return result;
             } catch (ExecutionException e) {
-                LOGGER.log(Level.SEVERE,"Unable to take tasks. I got an exception.  We may have pulled work out of another member... it will need to be recovered", e);
+                log.error("Unable to take tasks. I got an exception.  We may have pulled work out of another member... it will need to be recovered", e);
                 continue;
             } catch (TimeoutException e) {
-                LOGGER.log(Level.SEVERE,"Unable to take tasks within 3 minutes.  We may have pulled work out of another member... it will need to be recovered");
+                log.error("Unable to take tasks within 3 minutes.  We may have pulled work out of another member... it will need to be recovered");
                 continue;
             } 
         }
@@ -265,6 +266,38 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
              communicationExecutorService, 
              topology.getReadyMembers(),
              new GetOldestTimestampOp<GROUP>(topology.getName())
+        );
+    }
+    
+    @Override
+    public Collection<MemberResponse<Integer>> getThreadPoolSizes() {
+        return MemberTasks.executeOptimistic(
+                communicationExecutorService, 
+                topology.getReadyMembers(),
+                new GetThreadPoolSizesOp<GROUP>(topology.getName())
+        );
+    }
+
+    @Override
+    public Collection<MemberResponse<Map<GROUP, Integer>>> getGroupSizes(Predicate<GROUP> predicate) {
+        if(predicate != null && !(predicate instanceof Serializable)) {
+            //using illegalargument instead of notserializable because its dumb to have a checked exception here
+            throw new IllegalArgumentException(predicate.getClass().getName()+" is not serializable");
+        }
+        
+        return MemberTasks.executeOptimistic(
+                communicationExecutorService, 
+                topology.getReadyMembers(),
+                new GetLocalGroupQueueSizesOp<GROUP>(topology.getName(), predicate)
+        );
+    }
+
+    @Override
+    public void clearGroupQueue(GROUP group) {
+        MemberTasks.executeOptimistic(
+                communicationExecutorService, 
+                topology.getReadyMembers(),
+                new ClearGroupQueueOp<GROUP>(topology.getName(), group)
         );
     }
 }

@@ -20,6 +20,7 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 
+import com.google.common.base.Predicate;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.GroupPrioritizer;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
@@ -244,10 +245,13 @@ public class GroupedPriorityQueueLockFree<E extends Groupable<G> & TrackCreated,
     }
 
     @Override
-    public Map<G, Integer> getGroupSizes() {
+    public Map<G, Integer> getGroupSizes(Predicate<G> predicate) {
         Map<G, Integer> result = new HashMap<G, Integer>(queues.size());
-        for (Entry<G, ITrackedQueue<E>> group : queues.entrySet()) {
-            result.put(group.getKey(), group.getValue().size());
+        for (Entry<G, ITrackedQueue<E>> groupQueue : queues.entrySet()) {
+            G group = groupQueue.getKey();
+            if(predicate.apply(group)) {
+                result.put(group, groupQueue.getValue().size());
+            }
         }
         return result;
     }
@@ -383,6 +387,14 @@ public class GroupedPriorityQueueLockFree<E extends Groupable<G> & TrackCreated,
             if (it != null) it.remove();
         }
 
+    }
+    
+    @Override
+    public void clearGroup(G group) {
+        Queue<E> q = getQueueByGroup(group);
+        if(q != null) {
+            q.clear();
+        }
     }
 
 }

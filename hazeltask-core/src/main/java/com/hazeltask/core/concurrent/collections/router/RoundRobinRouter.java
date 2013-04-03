@@ -4,9 +4,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
-
 /**
  * This round robin router is concurrency safe.  It is not guaranteed to be
  * perfectly accurate if the list is changing out from underneath it.  It will 
@@ -41,8 +38,6 @@ public class RoundRobinRouter<T> implements ListRouter<T> {
     private List<T> list;
     private Callable<List<T>> fetchList;
     private RouteCondition<T> condition;
-    
-    ILogger logger = Logger.getLogger(RoundRobinRouter.class.getName());
     
     private AtomicInteger lastIndex = new AtomicInteger(-1);
     

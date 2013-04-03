@@ -2,10 +2,9 @@ package com.hazeltask.executor.task;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.logging.Level;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
+
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.executor.DistributedExecutorServiceImpl;
@@ -17,9 +16,8 @@ import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
+@Slf4j
 public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTask {
-	private static ILogger LOGGER = Logger.getLogger(TaskRecoveryTimerTask.class.getName());
-	
     private final DistributedExecutorServiceImpl<GROUP> svc;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
 
@@ -84,7 +82,7 @@ public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTa
     	        if(works.size() > 0) {
     	            flushed = true;
     	            recoveryMeter.mark();
-    	            LOGGER.log(Level.INFO, "Recovering "+works.size()+" works. "+sql);
+    	            log.info("Recovering "+works.size()+" works. "+sql);
     	        }
     	        
     	        for(HazeltaskTask<GROUP> work : works) {
@@ -92,7 +90,7 @@ public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTa
     	        }
     	        
     	        if(works.size() > 0)
-    	        	LOGGER.log(Level.INFO, "Done recovering "+works.size()+" works");
+    	        	log.info("Done recovering "+works.size()+" works");
     	        
     	        numFlushedHistogram.update(works.size());
     	        
@@ -103,7 +101,7 @@ public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTa
         	return flushed;
     	} catch(Throwable t) {
     	    //swallow this exception so it doens't cancel this task
-    	    LOGGER.log(Level.SEVERE, "An error occurred while trying to recover tasks", t);
+    	    log.error("An error occurred while trying to recover tasks", t);
     	    return true;//backoff
     	}
     }

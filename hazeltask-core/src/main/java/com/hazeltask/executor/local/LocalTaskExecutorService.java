@@ -11,11 +11,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
+import lombok.extern.slf4j.Slf4j;
+
+import com.google.common.base.Predicate;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.core.concurrent.NamedThreadFactory;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
@@ -40,10 +40,9 @@ import com.yammer.metrics.core.TimerContext;
  * if we could index this.  Otherwise we will need to evaluate a predicate against all groups.
  *
  */
+@Slf4j
 public class LocalTaskExecutorService<G extends Serializable> {
 
-    private static ILogger LOGGER = Logger.getLogger(LocalTaskExecutorService.class.getName());
-    
 	private final HazeltaskThreadPoolExecutor localExecutorPool;
 	private final GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
@@ -83,7 +82,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		localExecutorPool = new HazeltaskThreadPoolExecutor(
 		        executorConfig.getThreadCount(), 
 		        executorConfig.getMaxThreadPoolSize(), 
-		        executorConfig.getMaxThreadKeepAlive(), 
+		        executorConfig.getMaxThreadKeepAliveTime(), 
 		        TimeUnit.MILLISECONDS, 
 		        blockingQueue, 
 		        namedThreadFactory.named("worker"), 
@@ -202,17 +201,25 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	}
 	
 	public Map<G, Integer> getGroupSizes() {
-	    TimerContext ctx = getGroupSizesTimer.time();
-	    try {
-	        return this.taskQueue.getGroupSizes();
-	    } finally {
-	        ctx.stop();
-	    }
+	    return getGroupSizes(null);
 	}
+	
+	public Map<G, Integer> getGroupSizes(Predicate<G> predicate) {
+        TimerContext ctx = getGroupSizesTimer.time();
+        try {
+            return this.taskQueue.getGroupSizes(predicate);
+        } finally {
+            ctx.stop();
+        }
+    }
+	
+    public void clearGroup(G group) {
+        taskQueue.clearGroup(group);
+    }
 	
 	public void execute(HazeltaskTask<G> command) {
 		if(localExecutorPool.isShutdown()) {
-		    LOGGER.log(Level.WARNING, "Cannot enqueue the task "+command+".  The executor threads are shutdown.");
+		    log.warn("Cannot enqueue the task "+command+".  The executor threads are shutdown.");
 		    return;
 		}
 	    
@@ -220,7 +227,8 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		if(taskSubmittedTimer != null)
 			tCtx = taskSubmittedTimer.time();
 		try {
-			command.setHazelcastInstance(hazelcast);
+			command.setExecutionTimer(taskExecutedTimer);
+		    command.setHazelcastInstance(hazelcast);
 			localExecutorPool.execute(command);
 		} finally {
 			if(tCtx != null)
@@ -255,7 +263,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
     	    
     	    return result;
 	    } else {
-	        LOGGER.log(Level.WARNING,"Cannot steal "+numberOfTasks+" tasks.  The executor threads are shutdown.");
+	        log.warn("Cannot steal "+numberOfTasks+" tasks.  The executor threads are shutdown.");
 	        return Collections.emptyList();
 	    }
 	}

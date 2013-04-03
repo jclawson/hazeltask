@@ -11,6 +11,9 @@ import com.hazeltask.executor.task.HazeltaskTask;
  * Methods here that act on multiple members will query for ready members
  * to ensure they have the most up to date data.
  * 
+ * TODO: move this to the ClusterService
+ * 
+ * 
  * @author jclawson
  *
  */

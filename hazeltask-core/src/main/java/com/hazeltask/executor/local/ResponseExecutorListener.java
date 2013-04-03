@@ -1,20 +1,19 @@
 package com.hazeltask.executor.local;
 
 import java.io.Serializable;
-import java.util.logging.Level;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
+
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
+@Slf4j
 public class ResponseExecutorListener< G extends Serializable> implements ExecutorListener<G> {
     
     private IExecutorTopologyService<G> service;
-    private static ILogger LOGGER = Logger.getLogger(ResponseExecutorListener.class.getName());
     private final Timer taskFinishedNotificationTimer;
     
     public ResponseExecutorListener(IExecutorTopologyService<G> service, Timer taskFinishedNotificationTimer) {
@@ -46,7 +45,7 @@ public class ResponseExecutorListener< G extends Serializable> implements Execut
             //topology.getWorkResponseTopic().publish(response);
             //service.broadcastTaskCompletion(response);
         } catch(RuntimeException e) {
-            LOGGER.log(Level.SEVERE, "An error occurred while attempting to notify members of completed task", e);
+            log.error("An error occurred while attempting to notify members of completed task", e);
         } finally {
            if(ctx != null) {
                ctx.stop();

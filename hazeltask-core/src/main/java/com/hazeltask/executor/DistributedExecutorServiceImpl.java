@@ -12,12 +12,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.hazelcast.core.Member;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskServiceListener;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.config.ExecutorConfig;
@@ -34,10 +33,9 @@ import com.yammer.metrics.core.TimerContext;
  * @author jclawson
  *
  */
+@Slf4j
 public class DistributedExecutorServiceImpl<GROUP extends Serializable> implements DistributedExecutorService<GROUP> {
 
-    private static ILogger LOGGER = Logger.getLogger(DistributedExecutorServiceImpl.class.getName());
-    
     private ExecutorConfig<GROUP> executorConfig;
     private final HazeltaskTopology<GROUP>        topology;
     private final ListRouter<Member>       memberRouter;
@@ -174,7 +172,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                 //TODO: should we cancel or throw an exception?
                 //  - i think cancel, because presumably the work is going to run we just can't track it
                 //    so if you don't care about the result, no harm
-                LOGGER.log(Level.SEVERE, "Unable to submit HazeltaskTask to worker member");
+                log.error("Unable to submit HazeltaskTask to worker member");
                 future.setCancelled();
                 futureTracker.remove(taskWrapper.getId());
             }
@@ -261,7 +259,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
             if(executeTask) {
                 Member m = memberRouter.next();
                 if(m == null) {
-                    LOGGER.log(Level.WARNING, "Work submitted to writeAheadLog but no members are online to do the work.");
+                    log.warn("Work submitted to writeAheadLog but no members are online to do the work.");
                     tasksRejected.mark();
                     return false;
                 }
@@ -270,10 +268,10 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                     executorTopologyService.sendTask(wrapper, m);
                     return true;
                 } catch (RuntimeException e) {
-                    LOGGER.log(Level.SEVERE, "Tried to distribute task, but I got an exception",e);
+                    log.error("Tried to distribute task, but I got an exception",e);
                     isResubmitting = true;
                 } catch (TimeoutException e) {
-                    LOGGER.log(Level.WARNING, "Timed out while trying to submit task for try #"+tries+", trying again...");
+                    log.warn("Timed out while trying to submit task for try #"+tries+", trying again...");
                     isResubmitting = true;
                 }
             } else {

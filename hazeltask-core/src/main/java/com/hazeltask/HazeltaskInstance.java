@@ -3,7 +3,8 @@ package com.hazeltask;
 import java.io.Serializable;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
@@ -11,8 +12,6 @@ import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.core.LifecycleService;
 import com.hazelcast.core.MemberLeftException;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazelcast.partition.MigrationEvent;
 import com.hazelcast.partition.Partition;
 import com.hazelcast.partition.PartitionService;
@@ -38,9 +37,8 @@ import com.hazeltask.hazelcast.HazelcastPartitionManager.PartitionLostListener;
  *
  * @param <GROUP>
  */
+@Slf4j
 public class HazeltaskInstance<GROUP extends Serializable> {
-    private static ILogger LOGGER = Logger.getLogger(HazeltaskInstance.class.getName());
-    
     
     private final DistributedExecutorServiceImpl<GROUP>       executor;
     private final HazeltaskTopology<GROUP>                topology;
@@ -48,6 +46,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     private final UUID hazeltaskInstanceId = UUID.randomUUID();
     private final ExecutorConfig<GROUP> executorConfig;
     
+    private final ClusterService<GROUP> clusterService;
     private final ITopologyService<GROUP> topologyService;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
     private final LocalTaskExecutorService<GROUP> localExeutorService;
@@ -68,11 +67,12 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         executorMetrics = new ExecutorMetrics(hazeltaskConfig);
         topologyService = new HazeltaskTopologyService<GROUP>(hazeltaskConfig, executorMetrics.getGetReadyMemberTimer().getMetric());
         
+        
         PartitionService partitionService = hazelcast.getPartitionService();
         
         this.topology = new HazeltaskTopology<GROUP>(topologyName, hazelcast.getCluster().getLocalMember());
         executorTopologyService = new HazelcastExecutorTopologyService<GROUP>(hazeltaskConfig, topology);
-        
+        clusterService = new HazeltaskStatisticsService<GROUP>(executorTopologyService);
         
         if(!executorConfig.isDisableWorkers())
             localExeutorService = new LocalTaskExecutorService<GROUP>(hazelcast, executorConfig, hazeltaskConfig.getThreadFactory(), executorTopologyService, executorMetrics);
@@ -137,10 +137,10 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             LifecycleListener autoStartListener = new LifecycleListener() {                
                 public void stateChanged(LifecycleEvent event) {
                     if(event.getState() == LifecycleState.STARTED) {
-                        LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is starting up due to Hazelcast startup");
+                        log.info(topology.getName()+" Hazeltask instance is starting up due to Hazelcast startup");
                         executor.startup();
                     } else if (event.getState() == LifecycleState.SHUTTING_DOWN) {
-                        LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is shutting down due to Hazelcast shutdown");
+                        log.info(topology.getName()+" Hazeltask instance is shutting down due to Hazelcast shutdown");
                         executor.shutdown();
                     }
                 }
@@ -148,7 +148,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             lifecycleService.addLifecycleListener(autoStartListener);
             
             if(lifecycleService.isRunning()) {
-                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is starting up");
+                log.info(topology.getName()+" Hazeltask instance is starting up");
                 executor.startup();
             }
         }
@@ -172,7 +172,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         svc.addServiceListener(new HazeltaskServiceListener<DistributedExecutorService<GROUP>>(){
             @Override
             public void onEndStart(DistributedExecutorService<GROUP> svc) {
-                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is scheduling periodic timer tasks");
+                log.info(topology.getName()+" Hazeltask instance is scheduling periodic timer tasks");
                 
                 boolean isLiteMember = hazelcast.getCluster().getLocalMember().isLiteMember();
                 /*
@@ -186,13 +186,13 @@ public class HazeltaskInstance<GROUP extends Serializable> {
                 
                 if(!executorConfig.isDisableWorkers()) {
                    topology.iAmReady();
-                   LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is ready to recieve tasks");                 
+                   log.info(topology.getName()+" Hazeltask instance is ready to recieve tasks");                 
                 }
             }
 
             @Override
             public void onBeginShutdown(DistributedExecutorService<GROUP> svc) {
-                LOGGER.log(Level.INFO, topology.getName()+" Hazeltask instance is unscheduling timer tasks and stopping the timer thread");              
+                log.info(topology.getName()+" Hazeltask instance is unscheduling timer tasks and stopping the timer thread");              
                 topology.shutdown();
                 hazeltaskTimer.stop();
             }      
@@ -205,6 +205,10 @@ public class HazeltaskInstance<GROUP extends Serializable> {
 
     public HazeltaskTopology<GROUP> getTopology() {
         return topology;
+    }
+    
+    public ClusterService<GROUP> getClusterService() {
+        return this.clusterService;
     }
 
     public HazeltaskConfig<GROUP> getHazeltaskConfig() {

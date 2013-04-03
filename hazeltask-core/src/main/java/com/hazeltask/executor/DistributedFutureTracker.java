@@ -6,7 +6,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -15,8 +16,6 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.metrics.LocalFuturesWaitingGauge;
@@ -25,10 +24,8 @@ import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.executor.task.TaskResponse.Status;
 import com.yammer.metrics.core.Histogram;
 
+@Slf4j
 public class DistributedFutureTracker<GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable>> {
-    private static ILogger LOGGER = Logger.getLogger(DistributedFutureTracker.class.getName());
-    
-    
     private Cache<UUID, DistributedFuture<Serializable>> futures;
     
     private final Histogram futureWaitTimeHistogram;
@@ -50,7 +47,7 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
                             notification.getValue().set(new TimeoutException("Future timed out waiting.  Waited "+(TimeUnit.MILLISECONDS.toMinutes(waitTimeMillis))+" minutes"));
                         } else if(notification.getCause() == RemovalCause.COLLECTED) {
                             //future was GC'd because we didn't want to track it
-                            LOGGER.log(Level.FINEST, "Future "+notification.getKey()+" was garabge collected and removed from the tracker");
+                            log.debug("Future "+notification.getKey()+" was garabge collected and removed from the tracker");
                         }
                     }
                  })

@@ -7,16 +7,15 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
+
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.task.HazeltaskTask;
 
+@Slf4j
 public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
-    private static ILogger LOGGER = Logger.getLogger(HazeltaskThreadPoolExecutor.class.getName());
-    
+     
     private final Collection<ExecutorListener<?>> listeners = new CopyOnWriteArrayList<ExecutorListener<?>>();
     
     public HazeltaskThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime,
@@ -37,7 +36,7 @@ public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
                 listener.beforeExecute((HazeltaskTask)runnable);
             } catch(Throwable e) {
               //ignore and log
-                LOGGER.log(Level.SEVERE, "An unexpected error occurred in the before Executor Listener", e);
+                log.error("An unexpected error occurred in the before Executor Listener", e);
             }
         }
     }
@@ -50,7 +49,7 @@ public class HazeltaskThreadPoolExecutor extends ThreadPoolExecutor {
                 listener.afterExecute((HazeltaskTask)runnable, exception);
             } catch(Throwable e) {
               //ignore and log
-                LOGGER.log(Level.SEVERE, "An unexpected error occurred in the after Executor Listener", e);
+                log.error("An unexpected error occurred in the after Executor Listener", e);
             }
         }
     }

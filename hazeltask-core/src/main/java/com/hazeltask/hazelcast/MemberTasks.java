@@ -9,7 +9,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.collect.Lists;
 import com.hazelcast.core.DistributedTask;
@@ -17,13 +18,10 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.impl.InnerFutureTask;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 
+@Slf4j
 public class MemberTasks {
     
-	private static ILogger LOGGER = Logger.getLogger(MemberTasks.class.getName());
-	
 	public static class MemberResponse<T> implements Serializable {
         private static final long serialVersionUID = 1L;
         
@@ -104,7 +102,7 @@ public class MemberTasks {
             } catch (MemberLeftException e) {
             	//ignore that this member left....
                 //Member targetMember = getFutureInner(future).getMember();            	
-            	//LOGGER.log(Level.INFO, "Unable to execute task on "+targetMember+". It has left the cluster.", e);
+            	//log.info("Unable to execute task on "+targetMember+". It has left the cluster.", e);
             } catch (ExecutionException e) {
             	if(e.getCause() instanceof InterruptedException) {
             	    //restore interrupted state and return
@@ -112,14 +110,14 @@ public class MemberTasks {
             	    return result;
             	} else {
             	    Member targetMember = getFutureInner(future).getMember();
-            	    LOGGER.log(Level.WARNING, "Unable to execute task on "+targetMember+". There was an error.", e);
+            	    log.warn("Unable to execute task on "+targetMember+". There was an error.", e);
             	}
             } catch (TimeoutException e) {
             	Member targetMember = getFutureInner(future).getMember();
-            	LOGGER.log(Level.SEVERE, "Unable to execute task on "+targetMember+" within 10 seconds.");
+            	log.error("Unable to execute task on "+targetMember+" within 10 seconds.");
             } catch (RuntimeException e) {
             	Member targetMember = getFutureInner(future).getMember();
-            	LOGGER.log(Level.SEVERE, "Unable to execute task on "+targetMember+". An unexpected error occurred.", e);
+            	log.error("Unable to execute task on "+targetMember+". An unexpected error occurred.", e);
             }
         }
         

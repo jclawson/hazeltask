@@ -11,6 +11,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.nio.SerializationHelper;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
@@ -31,6 +33,7 @@ public class HazeltaskTask< G extends Serializable>
 	private G group;
 	private int submissionCount;
 	private transient HazelcastInstance hazelcastInstance;
+	private transient Timer taskExecutedTimer;
 	
 	private volatile transient Object result;
     private volatile transient Exception e;
@@ -83,7 +86,8 @@ public class HazeltaskTask< G extends Serializable>
 	}
 
     public void run() {
-        try {
+        TimerContext ctx = taskExecutedTimer.time();
+        try {            
             if(callTask != null) {
     		    if(callTask instanceof HazelcastInstanceAware) {
     		        ((HazelcastInstanceAware) callTask).setHazelcastInstance(hazelcastInstance);
@@ -97,6 +101,8 @@ public class HazeltaskTask< G extends Serializable>
     		}
         } catch (Exception t) {
             this.e = t;
+        } finally {
+            ctx.stop();
         }
 	}
     
@@ -143,6 +149,10 @@ public class HazeltaskTask< G extends Serializable>
         
         createdAtMillis = in.readLong();
         submissionCount = in.readInt();
+    }
+
+    public void setExecutionTimer(Timer taskExecutedTimer) {
+        this.taskExecutedTimer = taskExecutedTimer;
     }
 	
 }

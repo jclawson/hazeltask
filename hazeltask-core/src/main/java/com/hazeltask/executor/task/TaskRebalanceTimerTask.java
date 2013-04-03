@@ -4,11 +4,10 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.locks.Lock;
-import java.util.logging.Level;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.hazelcast.core.Member;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.executor.IExecutorTopologyService;
@@ -33,8 +32,8 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author jclawson
  */
+@Slf4j
 public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffTask {
-    private static ILogger LOGGER = Logger.getLogger(TaskRebalanceTimerTask.class.getName());
     private final Member localMember;
     private final IExecutorTopologyService<GROUP> executorTopologyService;
     private final LocalTaskExecutorService<GROUP> localSvc;
@@ -67,7 +66,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
 	@Override
     public boolean execute() {
 	    try {
-    	    LOGGER.log(Level.FINER, "Running Rebalance Task");
+    	    log.debug( "Running Rebalance Task");
     	    TimerContext waitCtx = lockWaitTimer.time();
     	    try {    	        
     	        LOCK.lock();
@@ -114,13 +113,13 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
         		if(localQueueSize == -1) {
         		    //the localQueueSize was not fetched for some reason... 
         		    //TODO: throw exception?
-        		    LOGGER.log(Level.SEVERE, "Cannot get localQueueSize");
+        		    log.error( "Cannot get localQueueSize");
         		    return false;
         		}	
         		
         		if(localQueueSize >= optimalSize || (optimalSize * THRESHOLD) <= localQueueSize) {
         		    //nothing to do
-        		    LOGGER.log(Level.INFO, "No rebalance needed");
+        		    log.info( "No rebalance needed");
         		    getRebalanceNoopCounter.inc();
         		    return false;
         		}
@@ -137,8 +136,8 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
         		final long needToTake =  optimalSize - localQueueSize;
         		LinkedList<MemberValuePair<Long>> numToTake = new LinkedList<MemberValuePair<Long>>();
         		
-        		LOGGER.log(Level.INFO, "Total Size: "+totalSize+", Optimal size: "+optimalSize+", Local Size: "+localQueueSize);
-        		LOGGER.log(Level.INFO, "I will take "+needToTake+" tasks from "+numToTake.size()+" nodes");
+        		log.info( "Total Size: "+totalSize+", Optimal size: "+optimalSize+", Local Size: "+localQueueSize);
+        		log.info( "I will take "+needToTake+" tasks from "+numToTake.size()+" nodes");
         		
         		//------------------------
         		// Take a percentage according to the total available to take
@@ -148,7 +147,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
         		        double percent = ((double)response.getValue() / (double)totalExceedingIdeal);
         		        long take = (long) Math.round(needToTake * percent);
         		    	numToTake.add(new MemberValuePair<Long>(response.getMember(), take));
-        		    	LOGGER.log(Level.INFO, "I will take "+take+" tasks from "+response.getMember());
+        		    	log.info( "I will take "+take+" tasks from "+response.getMember());
         		    }
         		}
     		
@@ -169,7 +168,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
         		if(histogram != null)
         		    histogram.update(totalAdded);
         		
-        		LOGGER.log(Level.INFO, "Done adding "+totalAdded+"...");
+        		log.info( "Done adding "+totalAdded+"...");
         		
         		
     	    } finally {
@@ -182,7 +181,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
             return false;
 	    } catch (Throwable t) {
 	        //catch all exceptions and swallow so it doens't cancel our timer task
-	        LOGGER.log(Level.SEVERE, "Error running Rebalance Task", t);
+	        log.error( "Error running Rebalance Task", t);
 	        return true;
 	    }
 	}

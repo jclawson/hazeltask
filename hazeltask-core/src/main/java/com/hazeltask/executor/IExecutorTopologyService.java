@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 
+import com.google.common.base.Predicate;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
 import com.hazeltask.executor.task.HazeltaskTask;
@@ -17,6 +18,7 @@ import com.hazeltask.hazelcast.MemberValuePair;
 
 /**
  * Business logic classes use an impl of his class to perform actions across the cluster
+ * 
  * 
  * @see HazelcastExecutorTopologyService
  * @author jclawson
@@ -45,12 +47,18 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
     
     /**
      * Get the local queue sizes for each member
+     * 
+     * FIXME: rename to getMemberQueueSizes
+     * 
      * @return
      */
     public Collection<MemberResponse<Long>> getLocalQueueSizes();
     
     /**
      * Get the local queue sizes for each group on each member
+     * 
+     * FIXME: rename to getMemberGroupSizes
+     * 
      * @return
      */
     public Collection<MemberResponse<Map<GROUP, Integer>>> getLocalGroupSizes();
@@ -80,4 +88,8 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
     
     public Collection<HazeltaskTask<GROUP>> stealTasks(List<MemberValuePair<Long>> numToTake);
     //public boolean addTaskToLocalQueue(HazelcastWork task);
+    
+    public Collection<MemberResponse<Integer>> getThreadPoolSizes();
+    public Collection<MemberResponse<Map<GROUP, Integer>>> getGroupSizes(Predicate<GROUP> predicate);
+    public void clearGroupQueue(GROUP group);
 }

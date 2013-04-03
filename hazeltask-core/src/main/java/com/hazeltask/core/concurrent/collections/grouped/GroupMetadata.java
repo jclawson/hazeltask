@@ -23,7 +23,12 @@ public final class GroupMetadata<G> implements Comparable<GroupMetadata<G>> {
     }
     
     /**
-     * compareTo must be consistent with equals
+     * compareTo must be consistent with equals.  If the priority is
+     * equal however, and the groups are NOT equal, we want to place 
+     * *this* item at the end of the priority queue.
+     * 
+     * TODO: do we still need to do this "hack" now that we use a skiplist and
+     *       not a priority queue that breaks ties arbitrarily?
      */
     @Override
     public int compareTo(GroupMetadata<G> o) {
@@ -47,6 +52,9 @@ public final class GroupMetadata<G> implements Comparable<GroupMetadata<G>> {
         return result;
     }
 
+    /**
+     * equals only cares about group equality.  It doesn't compare priority.
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;

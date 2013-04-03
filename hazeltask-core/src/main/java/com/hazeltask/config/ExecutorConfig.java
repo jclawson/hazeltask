@@ -214,7 +214,12 @@ public class ExecutorConfig<GROUP extends Serializable> {
         return this.maxPoolSize;
     }
     
-    public long getMaxThreadKeepAlive() {
+    public ExecutorConfig<GROUP> withMaxThreadKeepAliveTime(long tti) {
+        this.maxThreadKeepAlive = tti;
+        return this;
+    }
+    
+    public long getMaxThreadKeepAliveTime() {
         return maxThreadKeepAlive;
     }
     
