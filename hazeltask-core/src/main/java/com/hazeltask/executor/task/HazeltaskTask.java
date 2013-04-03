@@ -86,7 +86,9 @@ public class HazeltaskTask< G extends Serializable>
 	}
 
     public void run() {
-        TimerContext ctx = taskExecutedTimer.time();
+        TimerContext ctx = null;
+        if(taskExecutedTimer != null)
+            ctx = taskExecutedTimer.time();
         try {            
             if(callTask != null) {
     		    if(callTask instanceof HazelcastInstanceAware) {
@@ -102,7 +104,8 @@ public class HazeltaskTask< G extends Serializable>
         } catch (Exception t) {
             this.e = t;
         } finally {
-            ctx.stop();
+            if(ctx != null)
+                ctx.stop();
         }
 	}
     
