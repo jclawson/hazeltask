@@ -21,7 +21,4 @@ public interface IGroupedQueue<E extends Groupable<G>, G> extends BlockingQueue<
     public Map<G, Integer> getGroupSizes(Predicate<G> predicate);
     
     public ITrackedQueue<E> getQueueByGroup(G group);
-    
-    public void clearGroup(G group);
-    
 }

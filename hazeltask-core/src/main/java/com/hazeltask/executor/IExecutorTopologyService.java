@@ -92,4 +92,6 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
     public Collection<MemberResponse<Integer>> getThreadPoolSizes();
     public Collection<MemberResponse<Map<GROUP, Integer>>> getGroupSizes(Predicate<GROUP> predicate);
     public void clearGroupQueue(GROUP group);
+    
+    public boolean cancelTask(GROUP group, UUID taskId);
 }

@@ -4,8 +4,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +50,8 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	private final GroupedPriorityQueueLocking<HazeltaskTask<G>, G> taskQueue;
 	private final TasksInProgressTracker tasksInProgressTracker;
 	private final HazelcastInstance hazelcast;
+	private final IExecutorTopologyService<G> executorTopologyService;
+	private final ExecutorConfig<G> executorConfig;
 	
 	private final Timer taskSubmittedTimer;
 	private final Timer taskExecutedTimer;
@@ -95,6 +100,9 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		
 		tasksInProgressTracker = new TasksInProgressTracker();
 		localExecutorPool.addListener(tasksInProgressTracker);
+		
+		this.executorTopologyService = executorTopologyService;
+		this.executorConfig = executorConfig;
 	}
 	
 	/**
@@ -127,6 +135,15 @@ public class LocalTaskExecutorService<G extends Serializable> {
             }
             return oldestTime;
         }
+        
+//        public boolean cancelTask(UUID uuid) {
+//            HazeltaskTask<G> task = tasksInProgress.get(uuid);
+//            if(task != null) {
+//                //FIXME: we need the reference to the future to do the interrupt
+//                return true;
+//            }
+//            return false;
+//        }
         
     }
     
@@ -212,9 +229,21 @@ public class LocalTaskExecutorService<G extends Serializable> {
             ctx.stop();
         }
     }
-	
+    
     public void clearGroup(G group) {
-        taskQueue.clearGroup(group);
+        Queue<HazeltaskTask<G>> q = taskQueue.getQueueByGroup(group);
+        Iterator<HazeltaskTask<G>> queueIterator = q.iterator();
+        while(queueIterator.hasNext()) {
+            try {
+                HazeltaskTask<G> next = queueIterator.next();
+                if(executorConfig.isFutureSupportEnabled())
+                    executorTopologyService.broadcastTaskCancellation(next.getId());
+                executorTopologyService.removePendingTask(next);
+                queueIterator.remove();            
+            } catch (NoSuchElementException e) {
+                return;//bail out
+            }
+        }
     }
 	
 	public void execute(HazeltaskTask<G> command) {
@@ -283,5 +312,24 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	public boolean isShutdown() {
 		return localExecutorPool.isShutdown();
 	}
+
+    public Boolean cancelTask(UUID taskId, G group) {
+        ITrackedQueue<HazeltaskTask<G>> queue = this.taskQueue.getQueueByGroup(group);
+        if(queue != null) {
+            Iterator<HazeltaskTask<G>> it = queue.iterator();
+            while(it.hasNext()) {
+                HazeltaskTask<G> task = it.next();
+                if(task.getId().equals(taskId)) {
+                    if(executorConfig.isFutureSupportEnabled())
+                        executorTopologyService.broadcastTaskCancellation(taskId);                
+                    it.remove();
+                    return true;
+                }
+            }
+        }
+        
+        //TODO: allow cancelling of inprogress tasks but we need access to the Thread that is running it
+        return false;
+    }
 
 }

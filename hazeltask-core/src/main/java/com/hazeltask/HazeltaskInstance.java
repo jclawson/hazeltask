@@ -84,7 +84,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
 
         if(executorConfig.isFutureSupportEnabled()) {
                        
-            futureTracker = new DistributedFutureTracker<GROUP>(executorMetrics, executorConfig);
+            futureTracker = new DistributedFutureTracker<GROUP>(executorTopologyService, executorMetrics, executorConfig);
             final HazelcastPartitionManager partitionManager = new HazelcastPartitionManager(partitionService);
             
             /*

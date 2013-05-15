@@ -34,6 +34,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MessageListener;
 import com.hazelcast.query.SqlPredicate;
 import com.hazeltask.HazeltaskTopology;
+import com.hazeltask.clusterop.CancelTaskOp;
 import com.hazeltask.clusterop.ClearGroupQueueOp;
 import com.hazeltask.clusterop.GetLocalGroupQueueSizesOp;
 import com.hazeltask.clusterop.GetLocalQueueSizesOp;
@@ -299,5 +300,20 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
                 topology.getReadyMembers(),
                 new ClearGroupQueueOp<GROUP>(topology.getName(), group)
         );
+    }
+
+    @Override
+    public boolean cancelTask(GROUP group, UUID taskId) {
+        Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
+             communicationExecutorService, 
+             topology.getReadyMembers(),
+             new CancelTaskOp<GROUP>(topology.getName(), taskId, group)
+        );
+        
+        for(MemberResponse<Boolean> response : responses) {
+            if(response.getValue() == true)
+                return true;
+        }
+        return false;
     }
 }

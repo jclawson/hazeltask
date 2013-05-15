@@ -15,7 +15,7 @@ import com.google.common.util.concurrent.Futures;
 public class DistributedFutureTest {
     @Test
     public void testSetValue() {
-        DistributedFuture<String> f = new DistributedFuture<String>();
+        DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
         Assert.assertFalse(f.isDone());
         f.set("Succinct");
         Assert.assertTrue(f.isDone());
@@ -23,20 +23,20 @@ public class DistributedFutureTest {
     
     @Test(expected=ExecutionException.class)
     public void testSetException() throws InterruptedException, ExecutionException {
-        DistributedFuture<String> f = new DistributedFuture<String>();
-        f.set(new TestException());
+        DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
+        f.setException(new TestException());
         f.get();
     }
     
     @Test(expected=TimeoutException.class)
     public void testGetTimeout() throws InterruptedException, ExecutionException, TimeoutException {
-        DistributedFuture<String> f = new DistributedFuture<String>();
+        DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
         f.get(10, TimeUnit.MILLISECONDS);
     }
     
     @Test(timeout=300)
     public void testGetWithThreadedSet() throws InterruptedException, ExecutionException, TimeoutException {
-        final DistributedFuture<String> f = new DistributedFuture<String>();
+        final DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
         Thread t = new Thread(){
             @Override
             public void run() {
@@ -56,7 +56,7 @@ public class DistributedFutureTest {
     public void testListenableFuture() throws InterruptedException {
         final AtomicReference<String> ref = new AtomicReference<String>();
         
-        final DistributedFuture<String> f = new DistributedFuture<String>();
+        final DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
         Futures.addCallback(f, new FutureCallback<String>() {
             @Override
             public void onSuccess(String result) {
@@ -85,7 +85,7 @@ public class DistributedFutureTest {
     public void testListenableFutureException() throws InterruptedException {
         final AtomicReference<Boolean> ref = new AtomicReference<Boolean>();
         
-        final DistributedFuture<String> f = new DistributedFuture<String>();
+        final DistributedFuture<String, String> f = new DistributedFuture<String, String>(null, null, null);
         Futures.addCallback(f, new FutureCallback<String>() {
             @Override
             public void onSuccess(String result) {
@@ -101,7 +101,7 @@ public class DistributedFutureTest {
         Thread t = new Thread(){
             @Override
             public void run() {
-               f.set(new TestException());
+               f.setException(new TestException());
             }
         };
         t.start();

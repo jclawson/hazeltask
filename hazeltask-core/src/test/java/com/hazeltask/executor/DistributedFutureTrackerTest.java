@@ -26,13 +26,13 @@ public class DistributedFutureTrackerTest {
     public void setupData() {
         workOneId = UUID.randomUUID();
         workTwoId = UUID.randomUUID();
-        tracker = new DistributedFutureTracker(null, ExecutorConfigs.basic());
+        tracker = new DistributedFutureTracker(null, null, ExecutorConfigs.basic());
     }
     
     @Test
     public void testFutureTrackSuccess() throws InterruptedException, ExecutionException {
         HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId, "group-1", (Callable<?>)null);
-        DistributedFuture<String> future = tracker.createFuture(work);
+        DistributedFuture<String, String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
                                         null, 
@@ -50,7 +50,7 @@ public class DistributedFutureTrackerTest {
     @Test(expected=TestException.class)
     public void testFutureTrackException() throws Throwable {
         HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId,"group-1", (Callable<?>)null);
-        DistributedFuture<String> future = tracker.createFuture(work);
+        DistributedFuture<String, String> future = tracker.createFuture(work);
         
         TaskResponse response = new TaskResponse(
                                         null, 
@@ -71,7 +71,7 @@ public class DistributedFutureTrackerTest {
     @Test(expected=TimeoutException.class)
     public void testFutureTrackGetTimeout() throws InterruptedException, ExecutionException, TimeoutException {
         HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId, "group-1", (Callable<?>)null);
-        DistributedFuture<String> future = tracker.createFuture(work);        
+        DistributedFuture<String, String> future = tracker.createFuture(work);        
         Assert.assertEquals(future.get(10, TimeUnit.MILLISECONDS), "Yay!");
     }
     

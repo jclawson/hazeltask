@@ -429,18 +429,10 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
         Map<G, Integer> result = new HashMap<G, Integer>(queuesByGroup.size());
         for (Entry<G, ITrackedQueue<E>> groupQueue : queuesByGroup.entrySet()) {
             G group = groupQueue.getKey();
-            if(predicate.apply(group)) {
+            if(predicate == null || predicate.apply(group)) {
                 result.put(group, groupQueue.getValue().size());
             }
         }
         return result;
-    }
-
-    @Override
-    public void clearGroup(G group) {
-        Queue<E> q = getQueueByGroup(group);
-        if(q != null) {
-            q.clear();
-        }
     }
 }

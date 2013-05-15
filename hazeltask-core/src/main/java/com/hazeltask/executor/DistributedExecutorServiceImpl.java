@@ -164,7 +164,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                 throw new IllegalStateException("FutureTracker is null");
             
             HazeltaskTask<GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
-            DistributedFuture<T> future = futureTracker.createFuture(taskWrapper);
+            DistributedFuture<GROUP, T> future = futureTracker.createFuture(taskWrapper);
             if(!submitHazeltaskTask(taskWrapper, false)) {
                 //remove future from tracker, error out future with duplicate exception
                 //i hate this... it would be a cool feature to attach this future to the 
@@ -173,7 +173,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                 //  - i think cancel, because presumably the work is going to run we just can't track it
                 //    so if you don't care about the result, no harm
                 log.error("Unable to submit HazeltaskTask to worker member");
-                future.setCancelled();
+                future.setCancelled(false);
                 futureTracker.remove(taskWrapper.getId());
             }
             return future;
@@ -230,7 +230,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
                 throw new IllegalStateException("FutureTracker is null");
             
             HazeltaskTask<GROUP> taskWrapper = createHazeltaskTaskWrapper(task);
-            DistributedFuture<?> future = futureTracker.createFuture(taskWrapper);
+            DistributedFuture<GROUP, ?> future = futureTracker.createFuture(taskWrapper);
             submitHazeltaskTask(taskWrapper, false);
             return future;
         } finally {
