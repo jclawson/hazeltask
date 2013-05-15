@@ -41,8 +41,7 @@ public class IsMemberReadyTimerTask<GROUP extends Serializable> extends BackoffT
                // hazelcast is dumb
                if (m.equals(me)) m = me;
                     
-               if(!m.isLiteMember())
-                  members.add(m);
+               members.add(m);
             }
             
             //set the ready members on the topology instance
