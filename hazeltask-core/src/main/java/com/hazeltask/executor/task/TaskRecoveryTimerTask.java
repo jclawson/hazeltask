@@ -43,18 +43,7 @@ public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTa
             TimerContext timerCtx = flushTimer.time();
         	
         	try {
-    //	    	IMap<String, HazelcastWork> map = topology.getPendingWork();
-    	        // find out the oldest times in each partitioned queue
-    	        // find Math.min() of those times (the oldest)
-    	        // find all HazelcastWork in the map where createdAtMillis < oldestTime
-    	        // remove and resubmit all of them (or rather... update them)
-    	        // FIXME: replace this with hazelcast-lambdaj code
-    	
-    //	        Collection<MemberResponse<Long>> results = MemberTasks.executeOptimistic(topology.getCommunicationExecutorService(),
-    //	                topology.getReadyMembers(), new GetOldestTime(topology.getName()));
-        	    
-    //    	    Collection<MemberResponse<Long>> results = executorTopologyService.getLocalQueueSizes();
-        	    
+  
         	    Collection<MemberResponse<Long>> results = executorTopologyService.getOldestTaskTimestamps();
     	
     	        long min = Long.MAX_VALUE;

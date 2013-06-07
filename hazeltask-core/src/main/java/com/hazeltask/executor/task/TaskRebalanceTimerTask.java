@@ -90,14 +90,12 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
     	        //ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();
         		
         	    //BOUNDED: MemberTasks.executeOptimistic waits a max of 60 seconds
-        	    Collection<MemberResponse<Long>> queueSizes = executorTopologyService.getLocalQueueSizes();
+        	    Collection<MemberResponse<Long>> queueSizes = executorTopologyService.getMemberQueueSizes();
         	    if(queueSizes.size() == 0) {
         	        getRebalanceNoopCounter.inc();
         	        return false;
         	    }
         		
-        	    //TODO: check if response.getMember().localMember() works below so we don't have to do this
-        	    //Member localMember = this.distributedExecutorService.getTopology().getHazelcast().getCluster().getLocalMember();
                 long localQueueSize = -1;        
         		long totalSize = 0;
         	
@@ -161,7 +159,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
         		//add to local queue
         		int totalAdded = 0;
         		for(HazeltaskTask<GROUP> task : stolenTasks) {
-        		    localSvc.execute(task); //TODO: what if it returns false?
+        		    localSvc.execute(task);
         		    totalAdded++;
         		}
         		

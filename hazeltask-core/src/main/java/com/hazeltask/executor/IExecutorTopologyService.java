@@ -48,20 +48,18 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
     /**
      * Get the local queue sizes for each member
      * 
-     * FIXME: rename to getMemberQueueSizes
      * 
      * @return
      */
-    public Collection<MemberResponse<Long>> getLocalQueueSizes();
+    public Collection<MemberResponse<Long>> getMemberQueueSizes();
     
     /**
      * Get the local queue sizes for each group on each member
      * 
-     * FIXME: rename to getMemberGroupSizes
      * 
      * @return
      */
-    public Collection<MemberResponse<Map<GROUP, Integer>>> getLocalGroupSizes();
+    public Collection<MemberResponse<Map<GROUP, Integer>>> getMemberGroupSizes();
     
     /**
      * Get the local partition's size of the pending work map

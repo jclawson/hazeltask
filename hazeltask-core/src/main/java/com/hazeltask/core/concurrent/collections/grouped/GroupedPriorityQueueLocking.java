@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.google.common.base.Predicate;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.GroupPrioritizer;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
@@ -33,6 +35,7 @@ import com.yammer.metrics.core.TimerContext;
  * @param <E>
  * @param <G>
  */
+@Slf4j
 public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, G> extends
         AbstractQueue<E> implements IGroupedQueue<E, G>, BlockingQueue<E> {
     private final Map<G, ITrackedQueue<E>>        queuesByGroup = new HashMap<G, ITrackedQueue<E>>();
@@ -183,7 +186,7 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
                     
                     if(i > size) {
                         //since we lock, this should never happen
-                        //TODO: log this
+                        log.warn("This shouldn't happen, but tracking it just in case: i: {} size: {}", i, groups.size());
                     }
                     i++;
                 }

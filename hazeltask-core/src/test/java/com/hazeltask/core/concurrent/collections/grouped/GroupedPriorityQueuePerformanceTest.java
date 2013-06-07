@@ -48,12 +48,6 @@ public class GroupedPriorityQueuePerformanceTest {
 //        }
     }
     
-    //@Test
-    @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5)
-    public void offer_lockFree() {
-        GroupedPriorityQueueLockFree<MyGroupableItem,Long> queue = new GroupedPriorityQueueLockFree<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
-        runOfferTest(queue);
-    }
     
     @Test
     @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5)
@@ -119,18 +113,6 @@ public class GroupedPriorityQueuePerformanceTest {
 //        t4.interrupt();
     }
     
-    //@Test
-    @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 0, concurrency = -1)
-    public void poll_lockFree() {
-        GroupedPriorityQueueLockFree<MyGroupableItem,Long> queue = new GroupedPriorityQueueLockFree<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
-        
-        runPollTest(queue);
-        
-        //System.out.println(queue.size());
-        Assert.assertEquals(0, queue.size());
-        
-    }
-    
     @Test
     @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5, concurrency = -1)
     public void poll_locking() {
@@ -150,15 +132,6 @@ public class GroupedPriorityQueuePerformanceTest {
         runOfferAndPollTest(queue);
         Assert.assertEquals(0, queue.size());
     }
-    
-    //@Test
-    @BenchmarkOptions(benchmarkRounds = 50, warmupRounds = 5)
-    public void offerAndPoll_lockFree() {
-        GroupedPriorityQueueLockFree<MyGroupableItem,Long> queue = new GroupedPriorityQueueLockFree<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
-        runOfferAndPollTest(queue);
-        Assert.assertEquals(0, queue.size());
-    }
-    
     
     private void runOfferAndPollTest(BlockingQueue<MyGroupableItem> queue) {
         new PollThread(queue).start();

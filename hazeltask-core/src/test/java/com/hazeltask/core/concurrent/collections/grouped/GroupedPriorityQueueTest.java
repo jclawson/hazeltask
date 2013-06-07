@@ -15,7 +15,7 @@ import data.MyGroupableItem;
 public class GroupedPriorityQueueTest {
    // @Test
     public void performanceTest() {       
-        GroupedPriorityQueueLockFree<MyGroupableItem,Long> queue = new GroupedPriorityQueueLockFree<MyGroupableItem,Long>(new RoundRobinGroupPrioritizer<Long>());
+        GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(null, new RoundRobinGroupPrioritizer<Long>());
         
         long start,stop;
         

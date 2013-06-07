@@ -113,11 +113,6 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         return topologyName + "-" + name;
     }
     
-//    public boolean isMemberReady(Member member) {
-//        // TODO Auto-generated method stub
-//        return false;
-//    }
-    
     public void sendTask(HazeltaskTask<GROUP> task, Member member) throws TimeoutException {
         DistributedTask<Boolean> distTask = MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member);
         if(asyncTaskDistributorExecutor != null) {
@@ -168,17 +163,6 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         return true;
     }
 
-
-    public boolean addToPreventDuplicateSetIfAbsent(String itemId) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    public boolean removePreventDuplicateItem(String itemId) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
     public void broadcastTaskCompletion(UUID taskId, Serializable response) {
         TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, response, TaskResponse.Status.SUCCESS);
         taskResponseTopic.publish(message);
@@ -199,7 +183,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         return pendingTask.getAll(keys).values();
     }
 
-    public Collection<MemberResponse<Long>> getLocalQueueSizes() {
+    public Collection<MemberResponse<Long>> getMemberQueueSizes() {
         return MemberTasks.executeOptimistic(
                 communicationExecutorService, 
                 topology.getReadyMembers(),
@@ -210,7 +194,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
 
 
     @Override
-    public Collection<MemberResponse<Map<GROUP, Integer>>> getLocalGroupSizes() {
+    public Collection<MemberResponse<Map<GROUP, Integer>>> getMemberGroupSizes() {
         return MemberTasks.executeOptimistic(
                 communicationExecutorService, 
                 topology.getReadyMembers(),

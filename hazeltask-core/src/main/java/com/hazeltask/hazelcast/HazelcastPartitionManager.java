@@ -3,11 +3,14 @@ package com.hazeltask.hazelcast;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.hazelcast.partition.MigrationEvent;
 import com.hazelcast.partition.MigrationListener;
 import com.hazelcast.partition.Partition;
 import com.hazelcast.partition.PartitionService;
 
+@Slf4j
 public class HazelcastPartitionManager {
     private final CopyOnWriteArrayList<PartitionLostListener> listeners = new CopyOnWriteArrayList<PartitionLostListener>();
     private final PartitionService partitionService; 
@@ -33,7 +36,7 @@ public class HazelcastPartitionManager {
                             listener.partitionLost(migrationEvent);
                         } catch (Exception e) {
                             //swallow
-                            //TODO: log
+                            log.error("An exception was thrown by our partitionLost event listener.  I will ignore it. ", e);
                         }
                     }
                 }

@@ -37,11 +37,6 @@ import com.yammer.metrics.core.TimerContext;
  * 
  * @author Jason Clawson
  *
- * TODO: allow querying of queues by some group property.  For example you might have
- * HIGH, MED, LOW priority queues for each customer.  You may want to get all of a customer's
- * queues based on customerId (which is part of group along with priority).  It would be cool
- * if we could index this.  Otherwise we will need to evaluate a predicate against all groups.
- *
  */
 @Slf4j
 public class LocalTaskExecutorService<G extends Serializable> {
@@ -221,6 +216,12 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	    return getGroupSizes(null);
 	}
 	
+	/**
+	 * TODO: should we index this predicate somehow?
+	 * 
+	 * @param predicate
+	 * @return
+	 */
 	public Map<G, Integer> getGroupSizes(Predicate<G> predicate) {
         TimerContext ctx = getGroupSizesTimer.time();
         try {
@@ -287,7 +288,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
     	    }
     	    
     	    if(result.size() < numberOfTasks) {
-    	        //FIXME: should we really care? or is this good enough...
+    	        //TODO: should we really care? or is this good enough...
     	    }   
     	    
     	    return result;

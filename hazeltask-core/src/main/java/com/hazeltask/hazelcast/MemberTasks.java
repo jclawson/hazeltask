@@ -92,7 +92,7 @@ public class MemberTasks {
         for(DistributedTask<MemberResponse<T>> future : futures) {
             try {
                 if(maxWaitTime > 0)
-                	result.add(future.get(maxWaitTime, unit)); //wait up to 10 seconds for response.. TODO: make configurable
+                	result.add(future.get(maxWaitTime, unit));
                 else
                 	result.add(future.get());
                 //ignore exceptions... return what you can

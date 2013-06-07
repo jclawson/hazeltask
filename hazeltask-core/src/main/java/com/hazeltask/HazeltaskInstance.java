@@ -53,7 +53,6 @@ public class HazeltaskInstance<GROUP extends Serializable> {
     private final ExecutorMetrics executorMetrics;
     
     /**
-     * FIXME: fix  executorConfig.isDisableWorkers()
      * @param hazeltaskConfig
      */
     protected HazeltaskInstance(HazeltaskConfig<GROUP> hazeltaskConfig) {
@@ -89,7 +88,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             
             /*
              * TODO: we can make losing partitions nicer:
-             * 1) don't loop so much... this is like O(p*n).. we can make it O(n)
+             * 1) don't loop so much... this is like o(p*n).. we can make it o(n)
              * 2) optionally have the future listener store the HazeltaskTask its watching.  It can re-add
              *    the task if the partition is lost.  (possible race condition here-- would double do work)
              * 3) organize futures in 2 hashmaps... partitionId -> uuid -> future.
@@ -97,7 +96,7 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             partitionManager.addPartitionListener(new PartitionLostListener() {
                 @Override
                 public void partitionLost(MigrationEvent migrationEvent) {
-                    //FIXME: make this faster, too many loops
+                    //TODO: make this faster, too many loops
                     Set<UUID> uuids = futureTracker.getTrackedTaskIds();
                     for(UUID uuid : uuids) {
                         Partition partition = partitionManager.getPartition(uuid);
@@ -107,15 +106,6 @@ public class HazeltaskInstance<GROUP extends Serializable> {
                     }
                 }
             });
-            
-            
-            //TODO: it would be nice if hazelcast provided events when data was lost in 
-            //       the cluster.  this member removed is pretty costly to run :(
-            
-            //FIXME: move this code out.  This class is getting big and complicated
-            
-            
-            
             
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
         } else {
@@ -132,7 +122,6 @@ public class HazeltaskInstance<GROUP extends Serializable> {
         
         //if autoStart... we need to start
         if(executorConfig.isAutoStart()) {
-//            TODO: is it useful to only auto-start after hazelcast is done starting?
             final LifecycleService lifecycleService = hazeltaskConfig.getHazelcast().getLifecycleService();
             LifecycleListener autoStartListener = new LifecycleListener() {                
                 public void stateChanged(LifecycleEvent event) {

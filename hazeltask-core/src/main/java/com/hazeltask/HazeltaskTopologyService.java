@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
@@ -22,6 +24,7 @@ import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
+@Slf4j
 public class HazeltaskTopologyService<GROUP extends Serializable> implements ITopologyService<GROUP> {
 private String topologyName;
     
@@ -29,9 +32,6 @@ private String topologyName;
     private final HazelcastInstance hazelcast;
     private final Timer getReadyMembersTimer;
     
-    //TOOD: pass in the communication service?
-    //or make the svc accessible to the ExecutorTopologyService? so we don't have to manage
-    //the name in 2 places
     public HazeltaskTopologyService(HazeltaskConfig<GROUP> hazeltaskConfig, Timer getReadyMembersTimer) {
         topologyName = hazeltaskConfig.getTopologyName();
         hazelcast = hazeltaskConfig.getHazelcast();
@@ -73,6 +73,7 @@ private String topologyName;
     }
     
     public void shutdown() {
+        log.debug("Sending shutdown signal to members");
         MemberTasks.executeOptimistic(communicationExecutorService, 
                                       hazelcast.getCluster().getMembers(), 
                                       new ShutdownOp<GROUP>(topologyName, false)
@@ -80,6 +81,7 @@ private String topologyName;
     }
     
     public List<HazeltaskTask<GROUP>> shutdownNow() {
+        log.debug("Sending shutdown-now signal to members");
         Collection<MemberResponse<Collection<HazeltaskTask<GROUP>>>> responses = MemberTasks.executeOptimistic(communicationExecutorService, 
             hazelcast.getCluster().getMembers(), 
             new ShutdownOp<GROUP>(topologyName, true)
@@ -87,11 +89,7 @@ private String topologyName;
         List<HazeltaskTask<GROUP>> tasks = new ArrayList<HazeltaskTask<GROUP>>();
         for(MemberResponse<Collection<HazeltaskTask<GROUP>>> response : responses) {
             Collection<HazeltaskTask<GROUP>> responseValue = response.getValue();
-            if(responseValue == null) {
-                //TODO: log this
-            } else {
-                tasks.addAll(responseValue);
-            }
+            tasks.addAll(responseValue);
         }
         return tasks;
     }

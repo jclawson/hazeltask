@@ -11,8 +11,6 @@ import com.google.common.collect.Lists;
  * This router can starve out other groups.  If there are always high priority items, it will
  * never execute low priority items
  * 
- * TODO: I feel like the immutable state of the queue groups is making routing
- *       inefficient
  * 
  * @author jclawson
  *

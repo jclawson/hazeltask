@@ -17,12 +17,12 @@ public class HazeltaskStatisticsService<GROUP extends Serializable> implements C
 
     @Override
     public Collection<MemberResponse<Long>> getQueueSizes() {
-        return executorTopologyService.getLocalQueueSizes();
+        return executorTopologyService.getMemberQueueSizes();
     }
 
     @Override
     public Collection<MemberResponse<Map<GROUP, Integer>>> getGroupSizes() {
-        return executorTopologyService.getLocalGroupSizes();
+        return executorTopologyService.getMemberGroupSizes();
     }
 
     @Override
