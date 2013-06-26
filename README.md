@@ -1,13 +1,13 @@
 Hazeltask
 ==============
-An advanced task distribution system based on Hazelcast with a familiar ExecutorService API.
+An advanced general purpose task distribution system based on Hazelcast with a familiar ExecutorService API.
 
-Hazeltask was originally designed to provide large multi-tenent SaaS applications with an easy to use general purpose work distribution platform focusing on fair customer task load balancing.  It has evolved from this mission to be much more powerful and configurable.
+Hazeltask was originally designed to provide large multi-tenent SaaS applications with an easy to use general purpose work distribution platform focusing on fair customer task load balancing.  It has evolved from this mission to be much more powerful and configurable but still really easy to use!
 
-Winning Features
+Top Features
 -------------
 1.  Fault tolerant with task recovery
-2.  Auto-balancing task allocation
+2.  Automatic node task rebalancing
 3.  Configurable task prioritization
 4.  ExecutorService API
 
@@ -57,5 +57,5 @@ implement any kind of prioritization you can think of.  And... priorities can CH
 
 Future Plans
 =============
-- Release the batching API branch.  Batching allows you to collect a set of items and batch them up into a task which is submitted for execution
+- Migrate to Hazelcast 3.0 to take advantage of SPI and custom datastructure implementation
 - Allow task retries if a task fails to execute due to an exception in user code.  Retry after _ time option.
