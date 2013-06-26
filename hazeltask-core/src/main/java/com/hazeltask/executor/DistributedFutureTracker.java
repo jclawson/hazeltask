@@ -40,7 +40,6 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
         futures = CacheBuilder.newBuilder()
                 //no future will wait for more than this time
                 .expireAfterAccess(config.getMaximumFutureWaitTime(), TimeUnit.MILLISECONDS)
-                .weakValues() //if you don't reference your future anymore... we won't either
                 .removalListener(new RemovalListener<UUID, DistributedFuture<GROUP, Serializable>>() {
                     @Override
                     public void onRemoval(RemovalNotification<UUID, DistributedFuture<GROUP, Serializable>> notification) {
