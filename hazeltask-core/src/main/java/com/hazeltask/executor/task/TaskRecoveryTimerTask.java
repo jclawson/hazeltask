@@ -5,16 +5,15 @@ import java.util.Collection;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
 import com.hazeltask.executor.DistributedExecutorServiceImpl;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
-import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 @Slf4j
 public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTask {
@@ -40,7 +39,7 @@ public class TaskRecoveryTimerTask<GROUP extends Serializable> extends BackoffTa
     public boolean execute() {
     	try {
             boolean flushed = false;
-            TimerContext timerCtx = flushTimer.time();
+            Timer.Context timerCtx = flushTimer.time();
         	
         	try {
   

@@ -1,18 +1,16 @@
 package com.hazeltask.executor.task;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import com.codahale.metrics.Timer;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
-import com.hazelcast.nio.SerializationHelper;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 /**
  * This class wraps a runnable and provides other metadata we need to searching work items
@@ -86,7 +84,7 @@ public class HazeltaskTask< G extends Serializable>
 	}
 
     public void run() {
-        TimerContext ctx = null;
+        Timer.Context ctx = null;
         if(taskExecutedTimer != null)
             ctx = taskExecutedTimer.time();
         try {            
@@ -128,27 +126,28 @@ public class HazeltaskTask< G extends Serializable>
     }
     
     @Override
-    public void writeData(DataOutput out) throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeLong(id.getMostSignificantBits());
         out.writeLong(id.getLeastSignificantBits());
         
-        SerializationHelper.writeObject(out, group);
-        SerializationHelper.writeObject(out, runTask);
-        SerializationHelper.writeObject(out, callTask);
+        out.writeObject(group);
+        out.writeObject(runTask);
+        out.writeObject(callTask);
+        
         out.writeLong(createdAtMillis);
         out.writeInt(submissionCount);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public void readData(DataInput in) throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         long m = in.readLong();
         long l = in.readLong();
         
         id = new UUID(m, l);
-        group = (G) SerializationHelper.readObject(in);
-        runTask = (Runnable) SerializationHelper.readObject(in);
-        callTask = (Callable<?>) SerializationHelper.readObject(in);
+        group = (G) in.readObject();
+        runTask = (Runnable) in.readObject();
+        callTask = (Callable<?>) in.readObject();
         
         createdAtMillis = in.readLong();
         submissionCount = in.readInt();

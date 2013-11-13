@@ -1,11 +1,11 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 
-import com.hazelcast.nio.DataSerializable;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 
 /**
  * This cluster task does nothing
@@ -19,11 +19,11 @@ public class NoOp implements Callable<Object>, DataSerializable {
         return null;
     }
 
-    public void writeData(DataOutput out) throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         
     }
 
-    public void readData(DataInput in) throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         
     }
 

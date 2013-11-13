@@ -1,13 +1,9 @@
 package com.hazeltask.config;
 
-import com.hazeltask.core.metrics.MetricNamer;
-import com.hazeltask.core.metrics.ScopeFirstMetricNamer;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.MetricsRegistry;
+import com.codahale.metrics.MetricRegistry;
 
 public class MetricsConfig {
-    protected MetricNamer     metricNamer    = new ScopeFirstMetricNamer();
-    protected MetricsRegistry metricsRegistry;
+    protected MetricRegistry metricsRegistry;
     
     /**
      * The instance of your metrics registry instance.  This will default to 
@@ -16,30 +12,14 @@ public class MetricsConfig {
      * @param metricsRegistry
      * @return
      */
-    public MetricsConfig withMetricsRegistry(MetricsRegistry metricsRegistry) {
+    public MetricsConfig withMetricsRegistry(MetricRegistry metricsRegistry) {
         this.metricsRegistry = metricsRegistry;
         return this;
     }
-    
-    /**
-     * Allows you to customize how metrics are named.  By default Hazeltask changes 
-     * the way metrics are named to order MBeans correctly in JMX tools such as VisualVM
-     * 
-     * @param metricNamer
-     * @return
-     */
-    public MetricsConfig withMetricNamer(MetricNamer metricNamer) {
-        this.metricNamer = metricNamer;
-        return this;
-    }
-    
-    public MetricsRegistry getMetricsRegistry() {
+   
+    public MetricRegistry getMetricsRegistry() {
         if(this.metricsRegistry == null)
-            this.metricsRegistry = Metrics.defaultRegistry();
+            this.metricsRegistry = new MetricRegistry();
         return this.metricsRegistry;
-    }
-    
-    public MetricNamer getMetricNamer() {
-        return this.metricNamer;
     }
 }

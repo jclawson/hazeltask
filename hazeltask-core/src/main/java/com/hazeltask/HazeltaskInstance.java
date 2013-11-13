@@ -12,9 +12,9 @@ import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleListener;
 import com.hazelcast.core.LifecycleService;
 import com.hazelcast.core.MemberLeftException;
-import com.hazelcast.partition.MigrationEvent;
-import com.hazelcast.partition.Partition;
-import com.hazelcast.partition.PartitionService;
+import com.hazelcast.core.MigrationEvent;
+import com.hazelcast.core.Partition;
+import com.hazelcast.core.PartitionService;
 import com.hazeltask.config.ConfigValidator;
 import com.hazeltask.config.ExecutorConfig;
 import com.hazeltask.config.HazeltaskConfig;
@@ -163,7 +163,9 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             public void onEndStart(DistributedExecutorService<GROUP> svc) {
                 log.info(topology.getName()+" Hazeltask instance is scheduling periodic timer tasks");
                 
-                boolean isLiteMember = hazelcast.getCluster().getLocalMember().isLiteMember();
+                boolean isLiteMember = false; //THERE ARE NO MORE LITE MEMBERS
+                //FIXME: this will change when hazelcast adds member groups
+                
                 /*
                  * We don't need to run the recovery task if we are a lite member because we don't store data
                  */

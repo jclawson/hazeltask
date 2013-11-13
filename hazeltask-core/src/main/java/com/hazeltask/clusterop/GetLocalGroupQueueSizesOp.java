@@ -1,14 +1,13 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 
 import com.google.common.base.Predicate;
-import com.hazelcast.nio.SerializationHelper;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
 /**
@@ -42,12 +41,12 @@ public class GetLocalGroupQueueSizesOp<GROUP extends Serializable> extends Abstr
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void readChildData(DataInput in) throws IOException {
-        predicate = (Predicate<GROUP>) SerializationHelper.readObject(in);
+    protected void readChildData(ObjectDataInput in) throws IOException {
+        predicate = (Predicate<GROUP>) in.readObject();
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {  
-        SerializationHelper.writeObject(out, predicate);
+    protected void writeChildData(ObjectDataOutput out) throws IOException {  
+        out.writeObject(predicate);
     }       
 }

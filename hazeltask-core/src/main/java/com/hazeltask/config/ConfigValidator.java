@@ -1,21 +1,24 @@
 package com.hazeltask.config;
 
+import lombok.extern.slf4j.Slf4j;
+
+import com.codahale.metrics.MetricRegistry;
 import com.hazelcast.core.Hazelcast;
 import com.hazeltask.core.concurrent.NamedThreadFactory;
-import com.yammer.metrics.Metrics;
 
+@Slf4j
 public class ConfigValidator { 
-    @SuppressWarnings("deprecation")
     public static void validate(HazeltaskConfig<?> config) {
         ExecutorConfig<?> executorConfig = config.getExecutorConfig();
         MetricsConfig metricsConfig = config.getMetricsConfig();
         
         if(config.getHazelcast() == null) {
-            config.withHazelcastInstance(Hazelcast.getDefaultInstance());
+            log.warn("No hazelcast instance provided, creating a default one to use.");
+        	config.withHazelcastInstance(Hazelcast.newHazelcastInstance());
         }
         
         if(metricsConfig.getMetricsRegistry() == null) {
-            metricsConfig.withMetricsRegistry(Metrics.defaultRegistry());
+            metricsConfig.withMetricsRegistry(new MetricRegistry());
         }
         
         if(config.getThreadFactory() == null) {

@@ -59,3 +59,11 @@ Future Plans
 =============
 - Migrate to Hazelcast 3.0 to take advantage of SPI and custom datastructure implementation
 - Allow task retries if a task fails to execute due to an exception in user code.  Retry after _ time option.
+
+
+Change Log
+===============
+
+2.0.0-SNAPSHOT
+---------------
+Refactored for Hazelcast 3.1 support

@@ -9,6 +9,7 @@ import java.util.concurrent.TimeoutException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Histogram;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalCause;
@@ -22,7 +23,6 @@ import com.hazeltask.executor.metrics.LocalFuturesWaitingGauge;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
 import com.hazeltask.executor.task.TaskResponse.Status;
-import com.yammer.metrics.core.Histogram;
 
 @Slf4j
 public class DistributedFutureTracker<GROUP extends Serializable> implements MessageListener<TaskResponse<Serializable>> {

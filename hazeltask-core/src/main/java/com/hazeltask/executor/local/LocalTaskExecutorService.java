@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.google.common.base.Predicate;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazeltask.config.ExecutorConfig;
@@ -29,9 +31,6 @@ import com.hazeltask.executor.metrics.CollectionSizeGauge;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.metrics.TaskThroughputGauge;
 import com.hazeltask.executor.task.HazeltaskTask;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 /**
  * 
@@ -161,7 +160,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
             HazeltaskTask<G> task = (HazeltaskTask<G>)runnable;
             //TODO: add task exceptions handling / retry logic
             //for now, just remove the work because its completed
-            TimerContext ctx = removeFromWriteAheadLogTimer.time();
+            Timer.Context ctx = removeFromWriteAheadLogTimer.time();
             try {
                 executorTopologyService.removePendingTask(task);
             } finally {
@@ -179,7 +178,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	 * @return
 	 */
 	public Long getOldestTaskCreatedTime(){
-	    TimerContext ctx = getOldestTaskTimeTimer.time();
+	    Timer.Context ctx = getOldestTaskTimeTimer.time();
 	    try {
     	    long oldest = Long.MAX_VALUE;
     	    
@@ -204,7 +203,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	}
 	
 	public long getQueueSize() {
-	    TimerContext ctx = getQueueSizeTimer.time();
+	    Timer.Context ctx = getQueueSizeTimer.time();
 	    try {
 	        return this.taskQueue.size();
 	    } finally {
@@ -223,7 +222,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	 * @return
 	 */
 	public Map<G, Integer> getGroupSizes(Predicate<G> predicate) {
-        TimerContext ctx = getGroupSizesTimer.time();
+        Timer.Context ctx = getGroupSizesTimer.time();
         try {
             return this.taskQueue.getGroupSizes(predicate);
         } finally {
@@ -253,7 +252,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
 		    return;
 		}
 	    
-	    TimerContext tCtx = null;
+	    Timer.Context tCtx = null;
 		if(taskSubmittedTimer != null)
 			tCtx = taskSubmittedTimer.time();
 		try {

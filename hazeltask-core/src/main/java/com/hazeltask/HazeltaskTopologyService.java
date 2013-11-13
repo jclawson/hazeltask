@@ -6,13 +6,13 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.hazelcast.core.DistributedTask;
+import com.codahale.metrics.Timer;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.Member;
 import com.hazeltask.clusterop.IsMemberReadyOp;
 import com.hazeltask.clusterop.NoOp;
@@ -21,14 +21,12 @@ import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.hazelcast.MemberTasks;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 @Slf4j
 public class HazeltaskTopologyService<GROUP extends Serializable> implements ITopologyService<GROUP> {
 private String topologyName;
     
-    private final ExecutorService communicationExecutorService;
+    private final IExecutorService communicationExecutorService;
     private final HazelcastInstance hazelcast;
     private final Timer getReadyMembersTimer;
     
@@ -47,8 +45,7 @@ private String topologyName;
     public long pingMember(Member member) {
         try {
             long start = System.currentTimeMillis();
-            DistributedTask<Object> ping = new DistributedTask<Object>(new NoOp(), member);
-            communicationExecutorService.submit(ping).get(4, TimeUnit.SECONDS);
+            communicationExecutorService.submitToMember(new NoOp(), member).get(4, TimeUnit.SECONDS);
             return System.currentTimeMillis() - start;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -56,7 +53,7 @@ private String topologyName;
     }
 
     public Set<Member> getReadyMembers() {
-        TimerContext ctx = getReadyMembersTimer.time();
+        Timer.Context ctx = getReadyMembersTimer.time();
         try {
             Collection<MemberResponse<Boolean>> responses = MemberTasks.executeOptimistic(
                     communicationExecutorService, hazelcast.getCluster().getMembers(),

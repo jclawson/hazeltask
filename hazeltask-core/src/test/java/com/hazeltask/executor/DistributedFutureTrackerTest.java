@@ -11,9 +11,10 @@ import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.hazelcast.core.Member;
 import com.hazelcast.core.Message;
+import com.hazelcast.instance.MemberImpl;
 import com.hazeltask.config.defaults.ExecutorConfigs;
-import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskResponse;
 
@@ -33,6 +34,7 @@ public class DistributedFutureTrackerTest {
     public void testFutureTrackSuccess() throws InterruptedException, ExecutionException {
         HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId, "group-1", (Callable<?>)null);
         DistributedFuture<String, String> future = tracker.createFuture(work);
+        Member localMember = new MemberImpl();
         
         TaskResponse response = new TaskResponse(
                                         null, 
@@ -41,7 +43,7 @@ public class DistributedFutureTrackerTest {
                                         TaskResponse.Status.SUCCESS
                                     );
         
-        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response);
+        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response,System.currentTimeMillis(), localMember);
         tracker.onMessage(responseMessage);
         
         Assert.assertEquals(future.get(), "Yay!");
@@ -51,6 +53,7 @@ public class DistributedFutureTrackerTest {
     public void testFutureTrackException() throws Throwable {
         HazeltaskTask<String> work = new HazeltaskTask<String>(workOneId,"group-1", (Callable<?>)null);
         DistributedFuture<String, String> future = tracker.createFuture(work);
+        Member localMember = new MemberImpl();
         
         TaskResponse response = new TaskResponse(
                                         null, 
@@ -58,7 +61,7 @@ public class DistributedFutureTrackerTest {
                                         new TestException("No!")
                                     );
         
-        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response);
+        Message<TaskResponse> responseMessage = new Message<TaskResponse>("default-topic", response, System.currentTimeMillis(), localMember);
         tracker.onMessage(responseMessage);
         
         try {

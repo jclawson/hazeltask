@@ -1,10 +1,10 @@
 package com.hazeltask.executor.metrics;
 
+import com.codahale.metrics.Gauge;
 import com.hazeltask.executor.DistributedFutureTracker;
-import com.yammer.metrics.core.Gauge;
 
 @SuppressWarnings("rawtypes")
-public class LocalFuturesWaitingGauge extends Gauge<Integer> {
+public class LocalFuturesWaitingGauge implements Gauge<Integer> {
 	
     private DistributedFutureTracker tracker;
 	public LocalFuturesWaitingGauge(DistributedFutureTracker tracker) {
@@ -12,7 +12,7 @@ public class LocalFuturesWaitingGauge extends Gauge<Integer> {
 	}
 
 	@Override
-	public Integer value() {
+	public Integer getValue() {
 		return this.tracker.size();
 	}
 }

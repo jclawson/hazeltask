@@ -4,11 +4,10 @@ import java.io.Serializable;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Timer;
 import com.hazeltask.executor.ExecutorListener;
 import com.hazeltask.executor.IExecutorTopologyService;
 import com.hazeltask.executor.task.HazeltaskTask;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 @Slf4j
 public class ResponseExecutorListener< G extends Serializable> implements ExecutorListener<G> {
@@ -26,7 +25,7 @@ public class ResponseExecutorListener< G extends Serializable> implements Execut
         HazeltaskTask<G> task = (HazeltaskTask<G>)runnable;
         boolean success = exception == null && task.getException() == null;
         
-        TimerContext ctx = null;
+        Timer.Context ctx = null;
         if(taskFinishedNotificationTimer != null) {
             ctx = taskFinishedNotificationTimer.time();
         }

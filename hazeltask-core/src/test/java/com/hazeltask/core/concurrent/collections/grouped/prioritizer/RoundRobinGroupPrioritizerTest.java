@@ -1,10 +1,11 @@
 package com.hazeltask.core.concurrent.collections.grouped.prioritizer;
 
+import java.util.concurrent.ConcurrentSkipListSet;
+
 import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.hazelcast.util.concurrent.ConcurrentSkipListSet;
 import com.hazeltask.config.HazeltaskConfig;
 import com.hazeltask.core.concurrent.collections.grouped.GroupedPriorityQueueLocking;
 import com.hazeltask.executor.metrics.ExecutorMetrics;

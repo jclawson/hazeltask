@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -19,14 +19,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.base.Predicate;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapIndexConfig;
-import com.hazelcast.core.DistributedTask;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
@@ -56,9 +57,9 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     private String topologyName;
     private final Member me;
     
-    private final ExecutorService communicationExecutorService;
+    private final IExecutorService communicationExecutorService;
 
-    private final ExecutorService taskDistributor;
+    private final IExecutorService taskDistributor;
     //private final CopyOnWriteArrayListSet<Member> readyMembers;
     private final IMap<UUID, HazeltaskTask<GROUP>>                            pendingTask;
     private final ILock rebalanceTasksLock;
@@ -81,8 +82,7 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         hazelcast.getConfig()
             .addExecutorConfig(new ExecutorConfig()
                 .setName(taskDistributorName)
-                .setMaxPoolSize(1)
-                .setCorePoolSize(1)
+                .setPoolSize(1)
             );
         
         taskDistributor =  hazelcast.getExecutorService(taskDistributorName);
@@ -114,26 +114,23 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     }
     
     public void sendTask(HazeltaskTask<GROUP> task, Member member) throws TimeoutException {
-        DistributedTask<Boolean> distTask = MemberTasks.create(new SubmitTaskOp<GROUP>(task, topologyName), member);
+    	SubmitTaskOp<GROUP> distTask = new SubmitTaskOp<GROUP>(task, topologyName);
         if(asyncTaskDistributorExecutor != null) {
-            asyncTaskDistributorExecutor.execute(new $SendTaskToWorker(distTask, taskDistributor));
+            asyncTaskDistributorExecutor.execute(new $SendTaskToWorker(taskDistributor, member, distTask));
         } else {
-            taskDistributor.execute(distTask);
+            taskDistributor.submitToMember(distTask, member);
         }
     }
     
+    @RequiredArgsConstructor
     private static class $SendTaskToWorker implements Runnable {
-        private final ExecutorService taskDistributor;
-        private final DistributedTask<Boolean> task;
-        
-        private $SendTaskToWorker(DistributedTask<Boolean> task, ExecutorService taskDistributor) {
-            this.task = task;
-            this.taskDistributor = taskDistributor;
-        }
+        private final IExecutorService taskDistributor;
+        private final Member member;
+        private final Callable<Boolean> task;
         
         @Override
         public void run() {
-            taskDistributor.execute(task);
+            taskDistributor.submitToMember(task, member);
         }
     }
 
@@ -214,13 +211,16 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         return rebalanceTasksLock;
     }
 
-    @SuppressWarnings("unchecked")
     public Collection<HazeltaskTask<GROUP>> stealTasks(List<MemberValuePair<Long>> numToTake) {
         Collection<HazeltaskTask<GROUP>> result = new LinkedList<HazeltaskTask<GROUP>>();
         Collection<Future<Collection<HazeltaskTask<GROUP>>>> futures = new ArrayList<Future<Collection<HazeltaskTask<GROUP>>>>(numToTake.size());
-        for(MemberValuePair<Long> entry : numToTake) {
-            futures.add((Future<Collection<HazeltaskTask<GROUP>>>)
-                    communicationExecutorService.submit(MemberTasks.create(new StealTasksOp<GROUP>(topology.getName(), entry.getValue()), entry.getMember())));
+        for(MemberValuePair<Long> entry : numToTake) {    	
+        	futures.add(communicationExecutorService
+        					.submitToMember(
+        							new StealTasksOp<GROUP>(topology.getName(), entry.getValue()), 
+        							entry.getMember()
+        					)
+        				);
         }
         
         for(Future<Collection<HazeltaskTask<GROUP>>> f : futures) {

@@ -3,21 +3,20 @@ package com.hazeltask.hazelcast;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.google.common.collect.Lists;
-import com.hazelcast.core.DistributedTask;
+import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
-import com.hazelcast.core.MultiTask;
-import com.hazelcast.impl.InnerFutureTask;
 
 @Slf4j
 public class MemberTasks {
@@ -42,14 +41,6 @@ public class MemberTasks {
         }
     }
     
-    public static <T> MultiTask<T> create(Callable<T> callable, Set<Member> members) {
-        return new MultiTask<T>(callable, members);
-    }
-    
-    public static <T> DistributedTask<T> create(Callable<T> callable, Member member) {
-        return new DistributedTask<T>(callable, member);
-    }
-    
     /**
      * Will wait a maximum of 1 minute for each node to response with their result.  If an error occurs on any
      * member, we will always attempt to continue execution and collect as many results as possible.
@@ -59,7 +50,7 @@ public class MemberTasks {
      * @param callable
      * @return
      */
-    public static <T> Collection<MemberResponse<T>> executeOptimistic(ExecutorService execSvc, Set<Member> members, Callable<T> callable) {
+    public static <T> Collection<MemberResponse<T>> executeOptimistic(IExecutorService execSvc, Set<Member> members, Callable<T> callable) {
     	return executeOptimistic(execSvc, members, callable, 60, TimeUnit.SECONDS);
     }
     
@@ -77,62 +68,42 @@ public class MemberTasks {
      * @param unit
      * @return
      */
-    public static <T> Collection<MemberResponse<T>> executeOptimistic(ExecutorService execSvc, Set<Member> members, Callable<T> callable, long maxWaitTime, TimeUnit unit) {
-       
-        Collection<MemberResponse<T>> result = new ArrayList<MemberResponse<T>>(members.size());
-        Collection<DistributedTask<MemberResponse<T>>> futures = new ArrayList<DistributedTask<MemberResponse<T>>>(members.size());
-        
-        //we copy the member set because it could change under us and throw a NoSuchElementException
-        for(Member m : Lists.newArrayList(members)) {
-          	DistributedTask<MemberResponse<T>> futureTask = new DistributedTask<MemberResponse<T>>(new MemberResponseCallable<T>(callable, m), m);
-            futures.add(futureTask);
-            execSvc.execute(futureTask);
-        }
-        
-        for(DistributedTask<MemberResponse<T>> future : futures) {
-            try {
-                if(maxWaitTime > 0)
-                	result.add(future.get(maxWaitTime, unit));
-                else
-                	result.add(future.get());
+    public static <T> Collection<MemberResponse<T>> executeOptimistic(IExecutorService execSvc, Set<Member> members, Callable<T> callable, long maxWaitTime, TimeUnit unit) {
+    	Collection<MemberResponse<T>> result = new ArrayList<MemberResponse<T>>(members.size());
+    	
+    	Map<Member, Future<T>> resultFutures = execSvc.submitToMembers(callable, members);
+    	for(Entry<Member, Future<T>> futureEntry : resultFutures.entrySet()) {
+    		Future<T> future = futureEntry.getValue();
+    		Member member = futureEntry.getKey();
+    		
+    		try {
+                if(maxWaitTime > 0) {
+                	result.add(new MemberResponse<T>(member, future.get(maxWaitTime, unit)));
+                } else {
+                	result.add(new MemberResponse<T>(member, future.get()));
+                } 
                 //ignore exceptions... return what you can
             } catch (InterruptedException e) {
             	Thread.currentThread().interrupt(); //restore interrupted status and return what we have
             	return result;
             } catch (MemberLeftException e) {
-            	//ignore that this member left....
-                //Member targetMember = getFutureInner(future).getMember();            	
-            	//log.info("Unable to execute task on "+targetMember+". It has left the cluster.", e);
+            	log.warn("Member {} left while trying to get a distributed callable result", member);
             } catch (ExecutionException e) {
             	if(e.getCause() instanceof InterruptedException) {
             	    //restore interrupted state and return
             	    Thread.currentThread().interrupt();
             	    return result;
             	} else {
-            	    Member targetMember = getFutureInner(future).getMember();
-            	    log.warn("Unable to execute task on "+targetMember+". There was an error.", e);
+            	    log.warn("Unable to execute callable on "+member+". There was an error.", e);
             	}
             } catch (TimeoutException e) {
-            	Member targetMember = getFutureInner(future).getMember();
-            	log.error("Unable to execute task on "+targetMember+" within 10 seconds.");
+            	log.error("Unable to execute task on "+member+" within 10 seconds.");
             } catch (RuntimeException e) {
-            	Member targetMember = getFutureInner(future).getMember();
-            	log.error("Unable to execute task on "+targetMember+". An unexpected error occurred.", e);
+            	log.error("Unable to execute task on "+member+". An unexpected error occurred.", e);
             }
-        }
+    	}
         
         return result;
-    }
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-	private static <T> MemberResponseCallable<T> getFutureInner(DistributedTask<MemberResponse<T>> future) {
-        Object o = future.getInner();
-        if(o instanceof InnerFutureTask) {
-            return (MemberResponseCallable<T>) ((InnerFutureTask) o).getCallable();
-        } else if (o instanceof MemberResponseCallable) {
-            return (MemberResponseCallable<T>) o;
-        }
-        return null;
     }
     
     public static class MemberResponseCallable<T> implements Callable<MemberResponse<T>>, Serializable {

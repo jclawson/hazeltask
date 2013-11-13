@@ -1,7 +1,7 @@
 package com.hazeltask.executor.metrics;
 
-import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.Timer;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Timer;
 
 /**
  * The differece between the one minute rates of work being added vs work being removed
@@ -14,7 +14,7 @@ import com.yammer.metrics.core.Timer;
  * 
  * @author Jason Clawson
  */
-public class TaskThroughputGauge extends Gauge<Double> {
+public class TaskThroughputGauge implements Gauge<Double> {
 
 	private final Timer taskSubmitted;
 	private final Timer taskExecuted;
@@ -25,9 +25,9 @@ public class TaskThroughputGauge extends Gauge<Double> {
 	}
 	
 	@Override
-	public Double value() {
-		double addRate = taskSubmitted.oneMinuteRate();
-		double removeRate = taskExecuted.oneMinuteRate();		
+	public Double getValue() {
+		double addRate = taskSubmitted.getOneMinuteRate();
+		double removeRate = taskExecuted.getOneMinuteRate();		
 		return removeRate - addRate;
 	}
 

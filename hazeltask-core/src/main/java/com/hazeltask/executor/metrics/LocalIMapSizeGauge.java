@@ -1,9 +1,9 @@
 package com.hazeltask.executor.metrics;
 
+import com.codahale.metrics.Gauge;
 import com.hazelcast.core.IMap;
-import com.yammer.metrics.core.Gauge;
 
-public class LocalIMapSizeGauge extends Gauge<Integer> {
+public class LocalIMapSizeGauge implements Gauge<Integer> {
 
 	private IMap<?, ?> map;
 	public LocalIMapSizeGauge(IMap<?, ?> map) {
@@ -11,7 +11,7 @@ public class LocalIMapSizeGauge extends Gauge<Integer> {
 	}
 	
 	@Override
-	public Integer value() {
+	public Integer getValue() {
 		return map.localKeySet().size();
 	}
 

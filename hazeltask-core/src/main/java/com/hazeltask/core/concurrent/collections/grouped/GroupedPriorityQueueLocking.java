@@ -19,15 +19,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
 import com.google.common.base.Predicate;
 import com.hazeltask.core.concurrent.collections.grouped.prioritizer.GroupPrioritizer;
 import com.hazeltask.core.concurrent.collections.tracked.ITrackedQueue;
 import com.hazeltask.core.concurrent.collections.tracked.TrackCreated;
 import com.hazeltask.core.concurrent.collections.tracked.TrackedPriorityBlockingQueue;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 /**
  * @author jclawson
@@ -161,7 +161,7 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
     }
 
     public E poll() {
-        TimerContext ctx = pollTimer.time();
+        Context ctx = pollTimer.time();
         try {
             lock.writeLock().lock();
             try {

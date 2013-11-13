@@ -1,10 +1,10 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
 public class GetOldestTimestampOp<GROUP extends Serializable> extends AbstractClusterOp<Long, GROUP> {
@@ -25,11 +25,11 @@ public class GetOldestTimestampOp<GROUP extends Serializable> extends AbstractCl
     }
 
     @Override
-    protected void readChildData(DataInput in) throws IOException {   
+    protected void readChildData(ObjectDataInput in) throws IOException {   
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {    
+    protected void writeChildData(ObjectDataOutput out) throws IOException {    
     }   
 
 }

@@ -1,11 +1,10 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 
-import com.hazelcast.nio.SerializationHelper;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 
 public class ClearGroupQueueOp<GROUP extends Serializable> extends AbstractClusterOp<Boolean, GROUP> {
     private static final long serialVersionUID = 1L;
@@ -26,12 +25,12 @@ public class ClearGroupQueueOp<GROUP extends Serializable> extends AbstractClust
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void readChildData(DataInput in) throws IOException {
-        group = (GROUP) SerializationHelper.readObject(in);
+    protected void readChildData(ObjectDataInput in) throws IOException {
+        group = (GROUP) in.readObject();
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {
-        SerializationHelper.writeObject(out, group);
+    protected void writeChildData(ObjectDataOutput out) throws IOException {
+        out.writeObject(group);
     }
 }

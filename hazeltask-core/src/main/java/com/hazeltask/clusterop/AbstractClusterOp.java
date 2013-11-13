@@ -1,12 +1,12 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 
-import com.hazelcast.nio.DataSerializable;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazeltask.Hazeltask;
 import com.hazeltask.HazeltaskInstance;
 import com.hazeltask.HazeltaskTopology;
@@ -31,9 +31,9 @@ public abstract class AbstractClusterOp<T, GROUP extends Serializable> implement
         return topologyName;
     }
 
-    public void writeData(DataOutput out) throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(topologyName);
-        writChildData(out);
+        writeChildData(out);
     }
     
     protected DistributedExecutorServiceImpl<GROUP> getDistributedExecutorService() {
@@ -61,11 +61,11 @@ public abstract class AbstractClusterOp<T, GROUP extends Serializable> implement
         throw new IllegalStateException("Hazeltask was null for topology: "+topologyName);
     }
 
-    public void readData(DataInput in) throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         topologyName = in.readUTF();      
         readChildData(in);
     }  
     
-    protected abstract void readChildData(DataInput in) throws IOException;
-    protected abstract void writChildData(DataOutput out) throws IOException;
+    protected abstract void readChildData(ObjectDataInput in) throws IOException;
+    protected abstract void writeChildData(ObjectDataOutput out) throws IOException;
 }

@@ -1,9 +1,10 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
+
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 
 public class GetThreadPoolSizesOp<GROUP extends Serializable> extends AbstractClusterOp<Integer, GROUP> {
     private static final long serialVersionUID = 1L;
@@ -21,12 +22,12 @@ public class GetThreadPoolSizesOp<GROUP extends Serializable> extends AbstractCl
     }
 
     @Override
-    protected void readChildData(DataInput in) throws IOException {
+    protected void readChildData(ObjectDataInput in) throws IOException {
         
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {
+    protected void writeChildData(ObjectDataOutput out) throws IOException {
         
     }
 

@@ -7,6 +7,9 @@ import java.util.concurrent.locks.Lock;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Timer;
 import com.hazelcast.core.Member;
 import com.hazeltask.HazeltaskTopology;
 import com.hazeltask.core.concurrent.BackoffTimer.BackoffTask;
@@ -15,10 +18,6 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.hazelcast.MemberTasks.MemberResponse;
 import com.hazeltask.hazelcast.MemberValuePair;
-import com.yammer.metrics.core.Counter;
-import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 /**
  * Is there a way we can do this without locking?
@@ -67,7 +66,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
     public boolean execute() {
 	    try {
     	    log.debug( "Running Rebalance Task");
-    	    TimerContext waitCtx = lockWaitTimer.time();
+    	    Timer.Context waitCtx = lockWaitTimer.time();
     	    try {    	        
     	        LOCK.lock();
     	    } finally {
@@ -84,7 +83,7 @@ public class TaskRebalanceTimerTask<GROUP extends Serializable> extends BackoffT
     	     * NOTE: because we are locking here, we need to make ABSOLUTELY sure all our waits are bounded
     	     * ----> Comment on any external calls to note that they are bounded
     	     */
-    	    TimerContext timerCtx = null; 
+    	    Timer.Context timerCtx = null; 
     	    try {
     	        timerCtx = redistributionTimer.time();
     	        //ClusterServices clusterServices = distributedExecutorService.getTopology().getClusterServices();

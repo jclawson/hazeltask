@@ -2,18 +2,17 @@ package com.hazeltask.executor.metrics;
 
 import java.util.Collection;
 
-import com.yammer.metrics.core.Gauge;
+import com.codahale.metrics.Gauge;
 
-public class CollectionSizeGauge extends Gauge<Integer> {
+public class CollectionSizeGauge implements Gauge<Integer> {
 	private Collection<?> c;
-	
-	
+
 	public CollectionSizeGauge(Collection<?> c) {
 		this.c = c;
 	}
-	
+
 	@Override
-	public Integer value() {
+	public Integer getValue() {
 		return c.size();
 	}
 

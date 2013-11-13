@@ -5,10 +5,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.hazelcast.partition.MigrationEvent;
-import com.hazelcast.partition.MigrationListener;
-import com.hazelcast.partition.Partition;
-import com.hazelcast.partition.PartitionService;
+import com.hazelcast.core.MigrationEvent;
+import com.hazelcast.core.MigrationListener;
+import com.hazelcast.core.Partition;
+import com.hazelcast.core.PartitionService;
 
 @Slf4j
 public class HazelcastPartitionManager {
@@ -45,7 +45,7 @@ public class HazelcastPartitionManager {
     }
     
     public Partition getPartition(UUID id) {
-        return partitionService.getPartition(id);
+    	return partitionService.getPartition(id);
     }
     
     public void addPartitionListener(PartitionLostListener listener) {

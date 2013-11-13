@@ -1,12 +1,11 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.UUID;
 
-import com.hazelcast.nio.SerializationHelper;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 
 public class CancelTaskOp<GROUP extends Serializable> extends AbstractClusterOp<Boolean, GROUP> {
@@ -31,18 +30,18 @@ public class CancelTaskOp<GROUP extends Serializable> extends AbstractClusterOp<
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void readChildData(DataInput in) throws IOException {
+    protected void readChildData(ObjectDataInput in) throws IOException {
         long m = in.readLong();
         long l = in.readLong();        
         taskId = new UUID(m, l);
-        group = (GROUP) SerializationHelper.readObject(in);
+        group = (GROUP) in.readObject();
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {
+    protected void writeChildData(ObjectDataOutput out) throws IOException {
         out.writeLong(taskId.getMostSignificantBits());
         out.writeLong(taskId.getLeastSignificantBits());
-        SerializationHelper.writeObject(out, group);
+        out.writeObject(group);
     }
 
 }

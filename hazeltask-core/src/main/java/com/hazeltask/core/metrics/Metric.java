@@ -1,25 +1,21 @@
 package com.hazeltask.core.metrics;
 
-import com.yammer.metrics.core.MetricName;
 
-public class Metric<T extends com.yammer.metrics.core.Metric> {
-    public MetricName name;
+public class Metric<T extends com.codahale.metrics.Metric> {
+    public String name;
     public T metric;
     
-    public Metric(MetricName name, T metric) {
+    public Metric(String name, T metric) {
         this.name = name;
         this.metric = metric;
     }
 
 
-    public MetricName getName() {
+    public String getName() {
         return name;
     }
-    
     
     public T getMetric() {
         return metric;
     }
-    
-    
 }

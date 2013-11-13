@@ -1,12 +1,12 @@
 package com.hazeltask.clusterop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazeltask.executor.task.HazeltaskTask;
 
 public class ShutdownOp<GROUP extends Serializable> extends AbstractClusterOp<Collection<HazeltaskTask<GROUP>>, GROUP> {
@@ -38,12 +38,12 @@ public class ShutdownOp<GROUP extends Serializable> extends AbstractClusterOp<Co
     }
 
     @Override
-    protected void readChildData(DataInput in) throws IOException {
+    protected void readChildData(ObjectDataInput in) throws IOException {
         isShutdownNow = in.readBoolean();
     }
 
     @Override
-    protected void writChildData(DataOutput out) throws IOException {
+    protected void writeChildData(ObjectDataOutput out) throws IOException {
         out.writeBoolean(isShutdownNow);
     }
 

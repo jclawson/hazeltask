@@ -2,12 +2,11 @@ package com.hazeltask.config;
 
 import java.io.Serializable;
 
+import com.codahale.metrics.MetricRegistry;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazeltask.Hazeltask;
 import com.hazeltask.config.defaults.ExecutorConfigs;
 import com.hazeltask.core.concurrent.NamedThreadFactory;
-import com.hazeltask.core.metrics.MetricNamer;
-import com.yammer.metrics.core.MetricsRegistry;
 
 /**
  * Configure the hazeltask system.  This configuration must be done on each member.  Members should
@@ -73,15 +72,11 @@ public class HazeltaskConfig<GROUP extends Serializable> {
         return this;
     }
     
-    public MetricNamer getMetricNamer() {
-        return this.metricsConfig.metricNamer;
-    }
-    
     public MetricsConfig getMetricsConfig() {
         return this.metricsConfig;
     }
     
-    public MetricsRegistry getMetricsRegistry() {
+    public MetricRegistry getMetricsRegistry() {
         return this.metricsConfig.getMetricsRegistry();
     }
 

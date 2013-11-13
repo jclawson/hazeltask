@@ -15,6 +15,9 @@ import java.util.concurrent.TimeoutException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.hazelcast.core.Member;
 import com.hazeltask.HazeltaskServiceListener;
@@ -25,9 +28,6 @@ import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.HazeltaskTask;
 import com.hazeltask.executor.task.TaskIdAdapter;
-import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.TimerContext;
 
 /**
  * @author jclawson
@@ -48,7 +48,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
     
     private final IExecutorTopologyService<GROUP>  executorTopologyService;
     
-    private com.yammer.metrics.core.Timer taskAddedTimer;
+    private Timer taskAddedTimer;
     private Meter tasksRejected;
     
     //max number of times to try and submit a work before giving up
@@ -83,7 +83,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
         
         metrics.registerLocalWriteAheadLogSizeGauge(new Gauge<Integer>(){
             @Override
-            public Integer value() {
+            public Integer getValue() {
                 return executorTopologyService.getLocalPendingTaskMapSize();
             }
         });
@@ -95,7 +95,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
 
     @Override
     public void execute(Runnable command) {
-        TimerContext ctx = taskAddedTimer.time();
+        Timer.Context ctx = taskAddedTimer.time();
         try {
             submitHazeltaskTask(createHazeltaskTaskWrapper(command), false);
         } finally {
@@ -158,7 +158,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
 
     @Override
     public <T> ListenableFuture<T> submit(Callable<T> task) {
-        TimerContext ctx = taskAddedTimer.time();
+        Timer.Context ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
@@ -214,7 +214,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
 
     @Override
     public <T> ListenableFuture<T> submit(Runnable task, T result) {
-        TimerContext ctx = taskAddedTimer.time();
+        Timer.Context ctx = taskAddedTimer.time();
         try {
             throw new RuntimeException("Not Implemented Yet");
         } finally {
@@ -224,7 +224,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
 
     @Override
     public ListenableFuture<?> submit(Runnable task) {
-        TimerContext ctx = taskAddedTimer.time();
+        Timer.Context ctx = taskAddedTimer.time();
         try {
             if(futureTracker == null)
                 throw new IllegalStateException("FutureTracker is null");
