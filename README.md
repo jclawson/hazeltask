@@ -66,4 +66,5 @@ Change Log
 
 2.0.0-SNAPSHOT
 ---------------
-Refactored for Hazelcast 3.1 support
+- Refactored for Hazelcast 3.1 support
+- Depend on codahale metrics 3.0.1
