@@ -29,6 +29,8 @@ public class HazeltaskTask< G extends Serializable>
 	private long createdAtMillis;
 	private UUID id;
 	private G group;
+	private Serializable taskInfo;
+	
 	private int submissionCount;
 	private transient HazelcastInstance hazelcastInstance;
 	private transient Timer taskExecutedTimer;
@@ -39,20 +41,22 @@ public class HazeltaskTask< G extends Serializable>
     //required for DataSerializable
     protected HazeltaskTask(){}
     
-	public HazeltaskTask(UUID id, G group, Runnable task){
+	public HazeltaskTask(UUID id, G group, Serializable taskInfo, Runnable task){
 		this.runTask = task;
 		this.id = id;
 		this.group = group;
 		createdAtMillis = System.currentTimeMillis();
 		this.submissionCount = 1;
+		this.taskInfo = taskInfo;
 	}
 	
-	public HazeltaskTask(UUID id, G group, Callable<?> task){
+	public HazeltaskTask(UUID id, G group, Serializable taskInfo, Callable<?> task){
         this.callTask = task;
         this.id = id;
         this.group = group;
         createdAtMillis = System.currentTimeMillis();
         this.submissionCount = 1;
+        this.taskInfo = taskInfo;
     }
 	
 	public void setSubmissionCount(int submissionCount){
@@ -155,6 +159,10 @@ public class HazeltaskTask< G extends Serializable>
 
     public void setExecutionTimer(Timer taskExecutedTimer) {
         this.taskExecutedTimer = taskExecutedTimer;
+    }
+
+    public Serializable getTaskInfo() {
+        return taskInfo;
     }
 	
 }

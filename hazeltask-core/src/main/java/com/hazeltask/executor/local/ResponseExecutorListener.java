@@ -32,11 +32,11 @@ public class ResponseExecutorListener< G extends Serializable> implements Execut
         try {
             //Member me = topology.getHazelcast().getCluster().getLocalMember();
             if(success) {
-                service.broadcastTaskCompletion(task.getId(), (Serializable)task.getResult());
+                service.broadcastTaskCompletion(task.getId(), (Serializable)task.getResult(), task.getTaskInfo());
                 //response = new WorkResponse(me, work.getUniqueIdentifier(), (Serializable)work.getResult(), WorkResponse.Status.SUCCESS);
             } else {
                 Throwable resolvedException = (task.getException() != null) ? task.getException() : exception;
-                service.broadcastTaskError(task.getId(), resolvedException);
+                service.broadcastTaskError(task.getId(), resolvedException, task.getTaskInfo());
                 //response = new WorkResponse(me, work.getUniqueIdentifier(), work.getException());
             }
             //TODO: handle work cancellation

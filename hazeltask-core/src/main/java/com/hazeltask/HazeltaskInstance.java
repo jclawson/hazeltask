@@ -24,6 +24,7 @@ import com.hazeltask.executor.DistributedExecutorServiceImpl;
 import com.hazeltask.executor.DistributedFutureTracker;
 import com.hazeltask.executor.HazelcastExecutorTopologyService;
 import com.hazeltask.executor.IExecutorTopologyService;
+import com.hazeltask.executor.TaskResponseListener;
 import com.hazeltask.executor.local.LocalTaskExecutorService;
 import com.hazeltask.executor.metrics.ExecutorMetrics;
 import com.hazeltask.executor.task.TaskRebalanceTimerTask;
@@ -108,6 +109,10 @@ public class HazeltaskInstance<GROUP extends Serializable> {
             });
             
             executorTopologyService.addTaskResponseMessageHandler(futureTracker);
+            for(TaskResponseListener listener : executorConfig.getTaskResponseListeners()) {
+                executorTopologyService.addTaskResponseMessageHandler(listener);
+            }
+            
         } else {
             futureTracker = null;
         }

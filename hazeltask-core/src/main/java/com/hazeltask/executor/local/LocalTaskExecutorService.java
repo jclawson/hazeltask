@@ -237,7 +237,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
             try {
                 HazeltaskTask<G> next = queueIterator.next();
                 if(executorConfig.isFutureSupportEnabled())
-                    executorTopologyService.broadcastTaskCancellation(next.getId());
+                    executorTopologyService.broadcastTaskCancellation(next.getId(), next.getTaskInfo());
                 executorTopologyService.removePendingTask(next);
                 queueIterator.remove();            
             } catch (NoSuchElementException e) {
@@ -321,7 +321,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
                 HazeltaskTask<G> task = it.next();
                 if(task.getId().equals(taskId)) {
                     if(executorConfig.isFutureSupportEnabled())
-                        executorTopologyService.broadcastTaskCancellation(taskId);                
+                        executorTopologyService.broadcastTaskCancellation(taskId, task.getTaskInfo());                
                     it.remove();
                     return true;
                 }

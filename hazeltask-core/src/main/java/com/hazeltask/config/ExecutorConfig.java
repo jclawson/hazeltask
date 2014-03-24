@@ -1,8 +1,11 @@
 package com.hazeltask.config;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.Lists;
+import com.hazeltask.executor.TaskResponseListener;
 import com.hazeltask.executor.task.DefaultTaskIdAdapter;
 import com.hazeltask.executor.task.TaskIdAdapter;
 
@@ -13,7 +16,7 @@ public class ExecutorConfig<GROUP extends Serializable> {
     protected long             maxThreadKeepAlive          = 60000;
 
     @SuppressWarnings("unchecked")
-    protected TaskIdAdapter<?, GROUP>    taskIdAdapter     = (TaskIdAdapter<?, GROUP>) new DefaultTaskIdAdapter();
+    protected TaskIdAdapter<?, GROUP, ?>    taskIdAdapter     = (TaskIdAdapter<?, GROUP, ?>) new DefaultTaskIdAdapter();
     protected boolean          autoStart                   = true;
     private boolean            enableFutureTracking        = true;
     private long               maximumFutureWaitTime = TimeUnit.MINUTES.toMillis(60);
@@ -23,6 +26,7 @@ public class ExecutorConfig<GROUP extends Serializable> {
     private long               recoveryProcessPollInterval = 30000;
     
     private ExecutorLoadBalancingConfig<GROUP> executorLoadBalancingConfig = new ExecutorLoadBalancingConfig<GROUP>();
+    private List<TaskResponseListener> taskResponseListeners = Lists.newArrayList();
     
     /**
      * Please consider using one of the ExecutorConfigs static factory methods
@@ -136,7 +140,7 @@ public class ExecutorConfig<GROUP extends Serializable> {
      * @param taskIdAdapter
      * @return
      */
-    public ExecutorConfig<GROUP> withTaskIdAdapter(TaskIdAdapter<?,GROUP> taskIdAdapter) {
+    public ExecutorConfig<GROUP> withTaskIdAdapter(TaskIdAdapter<?,GROUP, ?> taskIdAdapter) {
         this.taskIdAdapter = taskIdAdapter;
         return this;
     }
@@ -165,6 +169,11 @@ public class ExecutorConfig<GROUP extends Serializable> {
      */
     public ExecutorConfig<GROUP> withRecoveryProcessPollInterval(long intervalMillis) {
         this.recoveryProcessPollInterval = intervalMillis;
+        return this;
+    }
+    
+    public ExecutorConfig<GROUP> addTaskResponseListener(TaskResponseListener listener) {
+        this.taskResponseListeners.add(listener);
         return this;
     }
     
@@ -202,8 +211,8 @@ public class ExecutorConfig<GROUP extends Serializable> {
     }
   
     @SuppressWarnings("unchecked")
-    public TaskIdAdapter<? super Object, GROUP> getTaskIdAdapter() {
-        return (TaskIdAdapter<? super Object, GROUP>) taskIdAdapter;
+    public TaskIdAdapter<? super Object, GROUP, ?> getTaskIdAdapter() {
+        return (TaskIdAdapter<? super Object, GROUP, ?>) taskIdAdapter;
     }
  
     public boolean isAutoStart() {
@@ -242,5 +251,9 @@ public class ExecutorConfig<GROUP extends Serializable> {
 
     public long getMaximumFutureWaitTime() {
         return maximumFutureWaitTime;
+    }
+    
+    public List<TaskResponseListener> getTaskResponseListeners() {
+        return taskResponseListeners;
     }
 }

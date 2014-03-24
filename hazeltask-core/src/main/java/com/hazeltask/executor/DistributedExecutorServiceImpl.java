@@ -42,7 +42,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
     
     private final LocalTaskExecutorService<GROUP> localExecutorService;
     
-    private final TaskIdAdapter<? super Object, GROUP>            taskIdAdapter;
+    private final TaskIdAdapter<? super Object, GROUP, ?>            taskIdAdapter;
     private final DistributedFutureTracker<GROUP> futureTracker;
     private CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>> listeners = new CopyOnWriteArrayList<HazeltaskServiceListener<DistributedExecutorService<GROUP>>>();
     
@@ -201,6 +201,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
             validateTask(task);            
             return new HazeltaskTask<GROUP>(UUID.randomUUID(), 
                                      taskIdAdapter.getTaskGroup(task), 
+                                     taskIdAdapter.getTaskInfo(task),
                                      task);
         }
     }
@@ -209,6 +210,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
         validateTask(task); 
         return new HazeltaskTask<GROUP>(UUID.randomUUID(), 
                                  taskIdAdapter.getTaskGroup(task), 
+                                 taskIdAdapter.getTaskGroup(task),
                                  task);
     }
 

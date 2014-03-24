@@ -12,6 +12,7 @@ public class TaskResponse<R extends Serializable> implements Serializable {
     private final R response;
     private final Throwable error;
     private final Status status;
+    private final Serializable taskInfo;
     
     public static enum Status {
         SUCCESS,
@@ -19,20 +20,22 @@ public class TaskResponse<R extends Serializable> implements Serializable {
         CANCELLED
     }
     
-    public TaskResponse(Member from, UUID taskId, R response, Status status) {
+    public TaskResponse(Member from, UUID taskId, Serializable taskInfo, R response, Status status) {
         this.from = from;
         this.taskId = taskId;
         this.response = response;
         this.error = null;
         this.status = status;
+        this.taskInfo = taskInfo;
     }
     
-    public TaskResponse(Member from, UUID taskId, Throwable error) {
+    public TaskResponse(Member from, UUID taskId, Serializable taskInfo, Throwable error) {
         this.from = from;
         this.taskId = taskId;        
         this.error = error;
         this.response = null;
         this.status = Status.FAILURE;
+        this.taskInfo = taskInfo;
     }
 
     public Member getFrom() {
@@ -53,5 +56,9 @@ public class TaskResponse<R extends Serializable> implements Serializable {
 
     public Status getStatus() {
         return status;
+    }
+
+    public Serializable getTaskInfo() {
+        return taskInfo;
     }
 }

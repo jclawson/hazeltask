@@ -160,18 +160,18 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
         return true;
     }
 
-    public void broadcastTaskCompletion(UUID taskId, Serializable response) {
-        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, response, TaskResponse.Status.SUCCESS);
+    public void broadcastTaskCompletion(UUID taskId, Serializable response, Serializable taskInfo) {
+        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, taskInfo, response, TaskResponse.Status.SUCCESS);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskCancellation(UUID taskId) {
-        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, null, TaskResponse.Status.CANCELLED);
+    public void broadcastTaskCancellation(UUID taskId, Serializable taskInfo) {
+        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, taskInfo, null, TaskResponse.Status.CANCELLED);
         taskResponseTopic.publish(message);
     }
 
-    public void broadcastTaskError(UUID taskId, Throwable exception) {
-        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, exception);
+    public void broadcastTaskError(UUID taskId, Throwable exception, Serializable taskInfo) {
+        TaskResponse<Serializable> message = new TaskResponse<Serializable>(me, taskId, taskInfo, exception);
         taskResponseTopic.publish(message);
     }
 

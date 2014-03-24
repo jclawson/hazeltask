@@ -28,7 +28,7 @@ public class HazeltaskThreadPoolExecutorTest {
     public void setup() {
         listener1 = mock(ExecutorListener.class);
         listener2 = mock(ExecutorListener.class);
-        task = new HazeltaskTask<String>(UUID.randomUUID(),"1", (Runnable) null);
+        task = new HazeltaskTask<String>(UUID.randomUUID(),"1", null, (Runnable) null);
         listener = new HazeltaskThreadPoolExecutor(1,1,1,TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),Executors.defaultThreadFactory(),new AbortPolicy());
         
         listener.addListener(listener1);

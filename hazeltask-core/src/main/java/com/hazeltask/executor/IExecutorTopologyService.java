@@ -77,9 +77,9 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
      */
     public boolean removePendingTask(HazeltaskTask<GROUP> task);
     
-    public void broadcastTaskCompletion(UUID taskId, Serializable response);
-    public void broadcastTaskCancellation(UUID taskId);
-    public void broadcastTaskError(UUID taskId, Throwable exception);
+    public void broadcastTaskCompletion(UUID taskId, Serializable response, Serializable taskInfo);
+    public void broadcastTaskCancellation(UUID taskId, Serializable taskInfo);
+    public void broadcastTaskError(UUID taskId, Throwable exception, Serializable taskInfo);
     public void addTaskResponseMessageHandler(MessageListener<TaskResponse<Serializable>> listener);
     
     public Lock getRebalanceTaskClusterLock();

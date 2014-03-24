@@ -1,9 +1,6 @@
 package com.hazeltask.config;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.Serializable;
 
@@ -67,6 +64,11 @@ public class ExecutorConfigTest {
             public Serializable getTaskGroup(Object task) {return null;}
 
             public boolean supports(Object task) {return false;}
+
+            @Override
+            public Serializable getTaskInfo(Object task) {
+                return null;
+            }
         };
         assertEquals(DefaultTaskIdAdapter.class, config.getTaskIdAdapter().getClass());
         config.withTaskIdAdapter(tmp);
