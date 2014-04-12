@@ -53,6 +53,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
     
     //max number of times to try and submit a work before giving up
     private final int MAX_SUBMIT_TRIES = 10;
+    private final int AWAIT_TERMINATION_POLL_INTERVAL = 100;
     
     private boolean isStarted = false;
     private boolean isShutdown = false;
@@ -147,13 +148,32 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
 
     @Override
     public boolean isTerminated() {
-        return isShutdown;
+        return isShutdown && (futureTracker == null || futureTracker.size() == 0);
     }
 
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-        // TODO Auto-generated method stub
-        throw new RuntimeException("Not Implemented Yet");
+	
+        if(!isShutdown)
+            throw new IllegalStateException("shutdown() must be called before awaitTermination()");
+
+        if(futureTracker == null)
+            throw new IllegalStateException("FutureTracker is null");
+
+        long elapsed = 0;
+        long ms = unit.toMillis(timeout);
+        long interval = Math.min(AWAIT_TERMINATION_POLL_INTERVAL, ms);
+
+        do {
+            if(futureTracker.size() > 0) 
+                return true;
+
+            Thread.sleep(interval);
+            elapsed += interval;
+
+        } while(elapsed < ms);
+
+        return false;
     }
 
     @Override
