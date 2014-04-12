@@ -165,7 +165,7 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
         long interval = Math.min(AWAIT_TERMINATION_POLL_INTERVAL, ms);
 
         do {
-            if(futureTracker.size() > 0) 
+            if(futureTracker.size() == 0) 
                 return true;
 
             Thread.sleep(interval);
