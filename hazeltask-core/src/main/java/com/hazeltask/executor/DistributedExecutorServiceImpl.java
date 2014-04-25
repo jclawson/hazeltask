@@ -129,8 +129,10 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
             if(!executorConfig.isDisableWorkers()) {
                 if(shutdownNow)
                     tasks = ((LocalTaskExecutorService<GROUP>)this.localExecutorService).shutdownNow();
-                else
+                else {
                     this.localExecutorService.shutdown();
+                    tasks = Collections.emptyList();
+                }
             }
             
             for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)
