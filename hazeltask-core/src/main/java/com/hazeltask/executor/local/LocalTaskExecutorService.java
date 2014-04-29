@@ -307,7 +307,7 @@ public class LocalTaskExecutorService<G extends Serializable> {
            localExecutorPool.shutdown();
 	}
 	
-	public boolean awaitTermination(int timeout, TimeUnit unit) throws {
+	public boolean awaitTermination(int timeout, TimeUnit unit) throws InterruptedException {
             return localExecutorPool.awaitTermination(timeout, unit);
 	}
 	
