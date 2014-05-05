@@ -76,6 +76,7 @@ public interface IExecutorTopologyService<GROUP extends Serializable> {
      * @return true if removed, false it did not exist
      */
     public boolean removePendingTask(HazeltaskTask<GROUP> task);
+    public boolean removePendingTask(UUID taskId);
     
     public void broadcastTaskCompletion(UUID taskId, Serializable response, Serializable taskInfo);
     public void broadcastTaskCancellation(UUID taskId, Serializable taskInfo);

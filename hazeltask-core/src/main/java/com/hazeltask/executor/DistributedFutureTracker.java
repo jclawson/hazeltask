@@ -35,7 +35,7 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
      * 
      * @param metrics (nullable)
      */
-    public DistributedFutureTracker(IExecutorTopologyService<GROUP> topologyService, ExecutorMetrics metrics, ExecutorConfig<GROUP> config) {
+    public DistributedFutureTracker(final IExecutorTopologyService<GROUP> topologyService, ExecutorMetrics metrics, ExecutorConfig<GROUP> config) {
         this.topologyService = topologyService;
         futures = CacheBuilder.newBuilder()
                 //no future will wait for more than this time
@@ -44,8 +44,12 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
                     @Override
                     public void onRemoval(RemovalNotification<UUID, DistributedFuture<GROUP, Serializable>> notification) {
                         if(notification.getCause() == RemovalCause.EXPIRED) {
-                            long waitTimeMillis = System.currentTimeMillis() - notification.getValue().getCreatedTime();
+                        	DistributedFuture<GROUP, Serializable> future = notification.getValue();
+                            long waitTimeMillis = System.currentTimeMillis() - future.getCreatedTime();
                             notification.getValue().setException(new TimeoutException("Future timed out waiting.  Waited "+(TimeUnit.MILLISECONDS.toMinutes(waitTimeMillis))+" minutes"));
+                            
+                            topologyService.cancelTask(future.getGroup(), future.getTaskId()); 
+                            topologyService.removePendingTask(future.getTaskId());
                         } else if(notification.getCause() == RemovalCause.COLLECTED) {
                             //future was GC'd because we didn't want to track it
                             log.debug("Future "+notification.getKey()+" was garabge collected and removed from the tracker");
@@ -101,6 +105,7 @@ public class DistributedFutureTracker<GROUP extends Serializable> implements Mes
                 //TODO: add a status for INTERRUPTED
                 future.setCancelled(false);
             }
+            
         }
     }
 

@@ -54,4 +54,11 @@ public class DistributedFuture<GROUP extends Serializable, V> extends AbstractFu
     public long getCreatedTime() {
         return this.createdTime;
     }  
+    
+    GROUP getGroup() {
+    	return this.group;
+    }
+    UUID getTaskId() {
+    	return this.taskId; 
+    }
 }
