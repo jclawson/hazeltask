@@ -127,10 +127,17 @@ public class DistributedExecutorServiceImpl<GROUP extends Serializable> implemen
             //TODO: is everything shutdown?
             List<HazeltaskTask<GROUP>> tasks = null;
             if(!executorConfig.isDisableWorkers()) {
-                if(shutdownNow)
+                if(shutdownNow) {
                     tasks = ((LocalTaskExecutorService<GROUP>)this.localExecutorService).shutdownNow();
-                else
-                    this.localExecutorService.shutdown();
+                }
+                else {
+                    //Perform a synchronous shutdown before notifying service listeners. 
+                    try {
+                            this.localExecutorService.shutdown(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+                        } catch (InterruptedException e) {}
+
+                    tasks = Collections.emptyList();
+                }
             }
             
             for(HazeltaskServiceListener<DistributedExecutorService<GROUP>> listener : listeners)

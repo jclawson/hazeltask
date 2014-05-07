@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
+import com.hazelcast.spi.exception.TargetNotMemberException;
 
 @Slf4j
 public class MemberTasks {
@@ -88,6 +89,8 @@ public class MemberTasks {
             	return result;
             } catch (MemberLeftException e) {
             	log.warn("Member {} left while trying to get a distributed callable result", member);
+            } catch (TargetNotMemberException e) {
+            	log.warn("Target {} is not a member.", member);
             } catch (ExecutionException e) {
             	if(e.getCause() instanceof InterruptedException) {
             	    //restore interrupted state and return

@@ -133,7 +133,8 @@ public class ExecutorMetrics {
 		name = createMetricName("GroupedPriorityQueue", "routes-skipped");
 		routesSkipped = new Metric<Meter>(name, metrics.meter(name));
 
-		name = createMetricName("GroupedPriorityQueue", "route-not-found");
+		name = createMetricName("GroupedPriorityQueue", "rouhazeltask - Advanced distributed task distribution library for Hazelcast. Customizable ... Refactored for Hazelcast 3.1 support; Depend on codahale metrics 3.0.1.\n" + 
+				"te-not-found");
 		routeNotFound = new Metric<Meter>(name, metrics.meter(name));
 
 		name = createMetricName("GroupedPriorityQueue", "poll-time");

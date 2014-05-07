@@ -298,8 +298,17 @@ public class LocalTaskExecutorService<G extends Serializable> {
 	}
 
 	//TODO: time how long it takes to shutdown
-	public void shutdown() {
-	    localExecutorPool.shutdown();
+	public boolean shutdown(int timeout, TimeUnit unit) throws InterruptedException {
+           shutdownAsync();
+           return localExecutorPool.awaitTermination(timeout, unit);
+	}
+	
+	public void shutdownAsync() {
+           localExecutorPool.shutdown();
+	}
+	
+	public boolean awaitTermination(int timeout, TimeUnit unit) throws InterruptedException {
+            return localExecutorPool.awaitTermination(timeout, unit);
 	}
 	
 	//TODO: time how long it takes to shutdown

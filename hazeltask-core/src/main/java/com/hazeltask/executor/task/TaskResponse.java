@@ -1,24 +1,30 @@
 package com.hazeltask.executor.task;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.UUID;
 
 import com.hazelcast.core.Member;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 
-public class TaskResponse<R extends Serializable> implements Serializable {
+public class TaskResponse<R extends Serializable> implements DataSerializable {
     private static final long serialVersionUID = 1L;
-    private final Member from;
-    private final UUID taskId;
-    private final R response;
-    private final Throwable error;
-    private final Status status;
-    private final Serializable taskInfo;
+    private Member from;
+    private UUID taskId;
+    private R response;
+    private Throwable error;
+    private Status status;
+    private Serializable taskInfo;
     
     public static enum Status {
         SUCCESS,
         FAILURE,
         CANCELLED
     }
+    
+    public TaskResponse() {}
     
     public TaskResponse(Member from, UUID taskId, Serializable taskInfo, R response, Status status) {
         this.from = from;
@@ -61,4 +67,24 @@ public class TaskResponse<R extends Serializable> implements Serializable {
     public Serializable getTaskInfo() {
         return taskInfo;
     }
+
+	@Override
+	public void writeData(ObjectDataOutput out) throws IOException {
+		out.writeObject(from);
+		out.writeObject(taskId);
+		out.writeObject(error);
+		out.writeObject(response);
+		out.writeObject(status);
+		out.writeObject(taskInfo);
+	}
+
+	@Override
+	public void readData(ObjectDataInput in) throws IOException {
+		from = in.readObject();
+		taskId = in.readObject();
+		error = in.readObject();
+		response = in.readObject();
+		status = in.readObject();
+		taskInfo = in.readObject();
+	}
 }

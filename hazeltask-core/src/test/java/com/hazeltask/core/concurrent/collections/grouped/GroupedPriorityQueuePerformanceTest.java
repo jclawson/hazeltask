@@ -125,7 +125,7 @@ public class GroupedPriorityQueuePerformanceTest {
 //        System.out.println(queue.size());
     }
     
-    @Test
+ //   @Test
     @BenchmarkOptions(benchmarkRounds = 2, warmupRounds = 0)
     public void offerAndPoll_locking() {
         GroupedPriorityQueueLocking<MyGroupableItem,Long> queue = new GroupedPriorityQueueLocking<MyGroupableItem,Long>(new ExecutorMetrics(new HazeltaskConfig()), new RoundRobinGroupPrioritizer<Long>());

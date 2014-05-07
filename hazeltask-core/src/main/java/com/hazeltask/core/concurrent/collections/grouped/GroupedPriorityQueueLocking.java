@@ -269,9 +269,9 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
         lock.writeLock().lock();
         try {
             int startSize = c.size();
-//            for (G group : groups) {
-//                drainTo(group, c);
-//            }
+            for (G group : groups) {
+                drainTo(group, c);
+            }
             return c.size() - startSize;
         } finally {
             lock.writeLock().unlock();
@@ -283,9 +283,9 @@ public class GroupedPriorityQueueLocking<E extends Groupable<G> & TrackCreated, 
         lock.writeLock().lock();
         try {
             int startSize = c.size();
-//            for (G group : groups) {
-//                drainTo(group, c, maxElements);
-//            }
+            for (G group : groups) {
+                drainTo(group, c, maxElements);
+            }
             return c.size() - startSize;
         } finally {
             lock.writeLock().unlock();
