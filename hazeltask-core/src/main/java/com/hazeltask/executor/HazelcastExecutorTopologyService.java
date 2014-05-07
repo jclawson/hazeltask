@@ -156,8 +156,12 @@ public class HazelcastExecutorTopologyService<GROUP extends Serializable> implem
     }
 
     public boolean removePendingTask(HazeltaskTask<GROUP> task) {
-        pendingTask.removeAsync(task.getId());
-        return true;
+        return removePendingTask(task.getId());
+    }
+    
+    public boolean removePendingTask(UUID taskId) {
+    	pendingTask.removeAsync(taskId);
+    	return true;
     }
 
     public void broadcastTaskCompletion(UUID taskId, Serializable response, Serializable taskInfo) {
